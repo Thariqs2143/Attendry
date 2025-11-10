@@ -7,14 +7,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Building, Loader2, Store, Upload } from 'lucide-react';
-import { useEffect, useState, useRef } from 'react';
+import { Loader2, Store, Upload } from 'lucide-react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { doc, setDoc, writeBatch, collection, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { User } from '@/app/admin/employees/page';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Card, CardContent } from '@/components/ui/card';
 
+type Suggestion = {
+    place_id: number;
+    display_name: string;
+};
 
 export default function AdminCompleteProfilePage() {
     const router = useRouter();
@@ -27,6 +32,12 @@ export default function AdminCompleteProfilePage() {
     const [imageUrl, setImageUrl] = useState<string | null>(null);
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [phone, setPhone] = useState('');
+
+    const [address, setAddress] = useState('');
+    const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         const adminUID = localStorage.getItem('adminUID');
@@ -79,6 +90,42 @@ export default function AdminCompleteProfilePage() {
             setUploading(false);
         }
     };
+    
+    const fetchSuggestions = useCallback(async (query: string) => {
+        if (query.length < 3) {
+            setSuggestions([]);
+            return;
+        }
+        setIsSearching(true);
+        try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&countrycodes=in&limit=5`);
+            const data: Suggestion[] = await response.json();
+            setSuggestions(data);
+        } catch (error) {
+            console.error("Failed to fetch address suggestions:", error);
+            setSuggestions([]);
+        } finally {
+            setIsSearching(false);
+        }
+    }, []);
+
+    const handleAddressChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const value = e.target.value;
+        setAddress(value);
+
+        if (debounceTimeoutRef.current) {
+            clearTimeout(debounceTimeoutRef.current);
+        }
+
+        debounceTimeoutRef.current = setTimeout(() => {
+            fetchSuggestions(value);
+        }, 500); // 500ms debounce
+    };
+
+    const handleSuggestionClick = (suggestion: Suggestion) => {
+        setAddress(suggestion.display_name);
+        setSuggestions([]);
+    };
 
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -87,8 +134,6 @@ export default function AdminCompleteProfilePage() {
 
         const formData = new FormData(e.currentTarget);
         const shopName = formData.get('shopName') as string;
-        const address = formData.get('address') as string;
-        const phone = formData.get('phone') as string;
         const gstNumber = formData.get('gstNumber') as string;
 
 
@@ -106,7 +151,6 @@ export default function AdminCompleteProfilePage() {
         
         const fallback = shopName.split(' ').map(n => n[0]).join('');
 
-        // The owner is an employee of their own shop
         const userAsEmployeeProfile: Partial<User> = {
             name,
             email,
@@ -119,7 +163,7 @@ export default function AdminCompleteProfilePage() {
             imageUrl: imageUrl || `https://placehold.co/100x100.png?text=${fallback}`,
         };
 
-        const newShopRef = doc(db, "shops", uid); // The first shop's ID is the owner's UID
+        const newShopRef = doc(db, "shops", uid); 
 
         const shopProfile = {
             id: newShopRef.id,
@@ -137,23 +181,18 @@ export default function AdminCompleteProfilePage() {
         try {
             const batch = writeBatch(db);
 
-            // 1. Set the user document in 'users' collection (this is the owner's main profile)
             const userDocRef = doc(db, "users", uid);
-            // This profile is slightly different; it holds main contact info
              const mainUserProfile = {
                 ...userAsEmployeeProfile,
-                shopId: newShopRef.id, // Link to their main shop
+                shopId: newShopRef.id, 
              };
             batch.set(userDocRef, mainUserProfile, { merge: true });
 
-            // 2. Set the main shop document in 'shops' collection
             batch.set(newShopRef, shopProfile, { merge: true });
 
-            // 3. Create the owner as the first employee in the new shop's subcollection
             const ownerAsEmployeeRef = doc(db, 'shops', newShopRef.id, 'employees', uid);
             batch.set(ownerAsEmployeeRef, { ...userAsEmployeeProfile, shopId: newShopRef.id });
 
-            // 4. Handle referral if it exists
             const shopDocSnap = await getDoc(newShopRef);
             const referredBy = shopDocSnap.data()?.referredBy;
             if (referredBy) {
@@ -170,7 +209,6 @@ export default function AdminCompleteProfilePage() {
                 }
             }
             
-            // 5. Create the phone lookup for the owner
             const phoneLookupRef = doc(db, 'employee_phone_to_shop_lookup', `+91${phone}`);
             batch.set(phoneLookupRef, {
                 shopId: newShopRef.id,
@@ -217,7 +255,7 @@ export default function AdminCompleteProfilePage() {
                 <div className="flex flex-col items-center gap-4">
                     <Avatar className="h-24 w-24 border-2 border-primary">
                         <AvatarImage src={imageUrl ?? undefined} />
-                        <AvatarFallback><Building className="h-10 w-10"/></AvatarFallback>
+                        <AvatarFallback>{name.split(' ').map(n=>n[0]).join('')}</AvatarFallback>
                     </Avatar>
                      <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" className="hidden" />
                     <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
@@ -237,7 +275,7 @@ export default function AdminCompleteProfilePage() {
                     </div>
                      <div className="space-y-2">
                         <Label htmlFor="phone">Contact Phone Number *</Label>
-                        <Input id="phone" name="phone" type="tel" placeholder="10-digit mobile number" required maxLength={10} pattern="[0-9]{10}" />
+                        <Input id="phone" name="phone" type="tel" placeholder="10-digit mobile number" required maxLength={10} pattern="[0-9]{10}" value={phone} onChange={(e) => setPhone(e.target.value)} />
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="shopName">Shop / Business Name *</Label>
@@ -263,9 +301,30 @@ export default function AdminCompleteProfilePage() {
                         <Input id="gstNumber" name="gstNumber" placeholder="e.g. 29ABCDE1234F1Z5" />
                     </div>
                 </div>
-                <div className="space-y-2">
+                <div className="relative space-y-2">
                     <Label htmlFor="address">Full Shop Address *</Label>
-                    <Textarea id="address" name="address" placeholder="e.g. 123 Main Street, City, State, Pincode" required />
+                    <Textarea id="address" name="address" placeholder="e.g. 123 Main Street, City, State, Pincode" required value={address} onChange={handleAddressChange} />
+                     {isSearching && (
+                        <div className="absolute top-full left-0 w-full p-2 z-10">
+                            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                        </div>
+                    )}
+                    {suggestions.length > 0 && (
+                        <Card className="absolute top-full left-0 w-full max-h-60 overflow-y-auto z-10 shadow-lg">
+                            <CardContent className="p-2">
+                                {suggestions.map(suggestion => (
+                                    <button
+                                        key={suggestion.place_id}
+                                        type="button"
+                                        className="w-full text-left p-2 rounded-md hover:bg-accent text-sm"
+                                        onClick={() => handleSuggestionClick(suggestion)}
+                                    >
+                                        {suggestion.display_name}
+                                    </button>
+                                ))}
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
             </div>
             <div className="flex justify-center pt-4">
@@ -280,5 +339,3 @@ export default function AdminCompleteProfilePage() {
     </div>
   );
 }
-
-    
