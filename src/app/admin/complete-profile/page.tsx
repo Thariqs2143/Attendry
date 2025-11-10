@@ -88,13 +88,20 @@ export default function AdminCompleteProfilePage() {
         const formData = new FormData(e.currentTarget);
         const shopName = formData.get('shopName') as string;
         const address = formData.get('address') as string;
+        const phone = formData.get('phone') as string;
         const gstNumber = formData.get('gstNumber') as string;
 
 
-        if (!shopName || !businessType || !address) {
+        if (!shopName || !businessType || !address || !phone) {
              toast({ title: "Error", description: "Please fill out all required fields.", variant: "destructive" });
              setLoading(false);
              return;
+        }
+
+        if (!/^\d{10}$/.test(phone)) {
+            toast({ title: "Invalid Phone Number", description: "Please enter a valid 10-digit phone number.", variant: "destructive" });
+            setLoading(false);
+            return;
         }
         
         const fallback = shopName.split(' ').map(n => n[0]).join('');
@@ -103,6 +110,7 @@ export default function AdminCompleteProfilePage() {
         const userAsEmployeeProfile: Partial<User> = {
             name,
             email,
+            phone: `+91${phone}`,
             role: 'Admin',
             status: 'Active',
             isProfileComplete: true,
@@ -120,6 +128,7 @@ export default function AdminCompleteProfilePage() {
             shopName,
             businessType,
             address,
+            phone: `+91${phone}`,
             email,
             gstNumber,
             status: 'active',
@@ -160,6 +169,16 @@ export default function AdminCompleteProfilePage() {
                     });
                 }
             }
+            
+            // 5. Create the phone lookup for the owner
+            const phoneLookupRef = doc(db, 'employee_phone_to_shop_lookup', `+91${phone}`);
+            batch.set(phoneLookupRef, {
+                shopId: newShopRef.id,
+                employeeDocId: uid,
+                isAdmin: true,
+                isProfileComplete: true
+            });
+
 
             await batch.commit();
 
@@ -216,6 +235,10 @@ export default function AdminCompleteProfilePage() {
                         <Label htmlFor="email">Contact Email Address</Label>
                         <Input id="email" name="email" type="email" value={email} required readOnly disabled />
                     </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="phone">Contact Phone Number *</Label>
+                        <Input id="phone" name="phone" type="tel" placeholder="10-digit mobile number" required maxLength={10} pattern="[0-9]{10}" />
+                    </div>
                     <div className="space-y-2">
                         <Label htmlFor="shopName">Shop / Business Name *</Label>
                         <Input id="shopName" name="shopName" placeholder="e.g. JD Retail Store" required />
@@ -257,3 +280,5 @@ export default function AdminCompleteProfilePage() {
     </div>
   );
 }
+
+    
