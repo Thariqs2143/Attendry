@@ -188,9 +188,6 @@ export default function AdminCompleteProfilePage() {
       <div className="w-full max-w-2xl mx-auto">
         <form onSubmit={handleSubmit} className="space-y-8">
             <div className="text-center">
-                <div className="inline-block p-4 bg-primary/10 rounded-full mb-4">
-                    <Building className="h-10 w-10 text-primary" />
-                </div>
                 <h1 className="text-3xl font-bold">Setup Your Shop Profile</h1>
                 <p className="text-muted-foreground mt-2">
                     Please provide your business details to get started.

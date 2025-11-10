@@ -1,4 +1,3 @@
-
 rules_version = '2';
 
 service cloud.firestore {
@@ -7,96 +6,145 @@ service cloud.firestore {
     // ----------------------
     // Helper Functions
     // ----------------------
+
     function isSignedIn() {
       return request.auth != null;
     }
 
+    // Check if the user is the owner of a given document
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
 
+    // Shop owner check
     function isShopOwner(shopId) {
-      return isSignedIn() && get(/databases/$(database)/documents/shops/$(shopId)).data.ownerId == request.auth.uid;
+      return isSignedIn() &&
+             (request.auth.uid == shopId ||
+              request.auth.uid == get(/databases/$(database)/documents/shops/$(shopId)).data.ownerId);
     }
 
-    function isEmployeeOfShop(shopId) {
-      return isSignedIn() && exists(/databases/$(database)/documents/shops/$(shopId)/employees/$(request.auth.uid));
+    // Check if resource belongs to the shop owned by this user
+    function isOwnerOfResourceShop() {
+      return isSignedIn() &&
+             resource.data.shopId != null &&
+             isShopOwner(resource.data.shopId);
     }
-    
-    function isSuperAdmin() {
-      return request.auth.uid == "9x42M1n2aPVAH8ygeZt1Jc3A4e52";
+
+    // Employee check (exists under shop's subcollection or users collection)
+    function isEmployeeByUsersCollection(shopId) {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Employee' &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.shopId == shopId;
+    }
+
+    function isEmployeeBySubcollection(shopId) {
+      return exists(/databases/$(database)/documents/shops/$(shopId)/employees/$(request.auth.uid));
+    }
+
+    function isEmployee(shopId) {
+      return isEmployeeByUsersCollection(shopId) || isEmployeeBySubcollection(shopId);
+    }
+
+    function isOwnerOrEmployee(shopId) {
+      return isShopOwner(shopId) || isEmployee(shopId);
     }
 
     // ----------------------
     // Users Collection
     // ----------------------
     match /users/{userId} {
-      // Any signed-in user can create their own user document.
-      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
-      
-      // Users can read and update their own profile. Shop owners can read their employees' profiles.
-      allow read, update: if isOwner(userId) || isShopOwner(resource.data.shopId);
-      
-      // Only the user or a super admin can delete a user profile.
-      allow delete: if isOwner(userId) || isSuperAdmin();
+      // Allow a user to read/update their own profile
+      allow read, update: if isOwner(userId);
 
-      // Admins can list their own employees.
-      allow list: if isSignedIn() && isShopOwner(request.query.shopId);
-    }
-    
-    // Platform-wide config (for announcements, etc.)
-    match /platform_config/{docId} {
-        allow read;
-        allow write: if isSuperAdmin();
+      // Allow create if it's their own UID
+      allow create: if request.auth.uid == userId;
+
+      // Super admin-style delete protection could be added here if needed
+      allow delete: if isOwner(userId);
     }
 
     // ----------------------
     // Shops Collection
     // ----------------------
     match /shops/{shopId} {
-      // Owners can do anything to their own shop document.
-      allow create: if isShopOwner(shopId);
-      allow update, delete: if isShopOwner(shopId) || isSuperAdmin();
-      
-      // An owner or an employee can read the shop they belong to.
-      allow read: if isShopOwner(shopId) || isEmployeeOfShop(shopId) || isSuperAdmin();
 
-      // Authenticated users can query for shops they own.
-      allow list: if isSignedIn() || isSuperAdmin();
+      // Owners can do anything to their shop
+      allow create, update, delete: if isShopOwner(shopId);
 
+      // Allow read for owner or employee
+      allow read, get: if isShopOwner(shopId) || isEmployee(shopId);
+
+      // Any authenticated user can list/search shops
+      allow list: if isSignedIn();
+
+      // ----------------------
       // Employees Subcollection
+      // ----------------------
       match /employees/{employeeId} {
-        // Shop owner can manage employees.
-        allow create, delete, update: if isShopOwner(shopId) || isSuperAdmin();
-        // Employees can read their own data.
-        allow read: if isOwner(employeeId) || isShopOwner(shopId) || isEmployeeOfShop(shopId);
+        // Owner can manage employees
+        allow create, update, delete: if isShopOwner(shopId);
+
+        // Employees can read their own document
+        allow read: if isOwner(employeeId) || isShopOwner(shopId);
       }
 
+      // ----------------------
       // Attendance Subcollection
-      match /attendance/{recordId} {
-        allow read, list: if isShopOwner(shopId) || (isEmployeeOfShop(shopId) && resource.data.userId == request.auth.uid);
-        allow create: if isEmployeeOfShop(shopId) && request.resource.data.userId == request.auth.uid;
-        allow update: if isShopOwner(shopId) || (isEmployeeOfShop(shopId) && resource.data.userId == request.auth.uid);
-        allow delete: if isShopOwner(shopId) || isSuperAdmin();
+      // ----------------------
+      match /attendance/{attendanceId} {
+        // Employee can create for themselves; owner can do anything
+        allow create: if isEmployee(shopId) && request.auth.uid == request.resource.data.userId
+                      || isShopOwner(shopId);
+
+        // Owner can read/write all; employees can read their own
+        allow read, write: if isShopOwner(shopId)
+                           || (isEmployee(shopId) && resource.data.userId == request.auth.uid);
       }
 
+      // ----------------------
       // Leave Requests Subcollection
-      match /leaveRequests/{requestId} {
-        allow read, list: if isShopOwner(shopId) || (isEmployeeOfShop(shopId) && resource.data.userId == request.auth.uid);
-        allow create: if isEmployeeOfShop(shopId) && request.resource.data.userId == request.auth.uid;
-        allow update, delete: if isShopOwner(shopId) || isSuperAdmin();
+      // ----------------------
+      match /leaveRequests/{leaveId} {
+        allow create: if isEmployee(shopId)
+                      && request.resource.data.userId == request.auth.uid;
+        allow read, write: if isShopOwner(shopId)
+                           || (isEmployee(shopId)
+                               && resource.data.userId == request.auth.uid);
       }
 
-      // Other Subcollections
-      match /qr-history/{docId} {
-        allow read, write: if isShopOwner(shopId) || isSuperAdmin();
-      }
+      // ----------------------
+      // Config / Shifts / QR History (Owner only)
+      // ----------------------
       match /config/{docId} {
-        allow read, write: if isShopOwner(shopId) || isSuperAdmin();
+        allow read, write: if isShopOwner(shopId);
       }
+
+      match /qr-history/{docId} {
+        allow read, write: if isShopOwner(shopId);
+      }
+
       match /shifts/{shiftId} {
-          allow read, write: if isShopOwner(shopId) || isSuperAdmin();
+        allow read, write: if isShopOwner(shopId);
       }
+    }
+
+    // ----------------------
+    // Collection Group Queries (for dashboards/admin views)
+    // ----------------------
+    match /{path=**}/employees/{employeeId} {
+      allow get, list: if isOwnerOfResourceShop();
+    }
+
+    match /{path=**}/attendance/{attendanceId} {
+      allow get, list: if isOwnerOfResourceShop();
+    }
+
+    match /{path=**}/leaveRequests/{leaveId} {
+      allow get, list: if isOwnerOfResourceShop();
+    }
+
+    match /{path=**}/shifts/{shiftId} {
+      allow get, list: if isOwnerOfResourceShop();
     }
   }
 }
