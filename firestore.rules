@@ -11,55 +11,36 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Check if the user is the owner of a given document
+    // Check if the user is the owner of a given document/ID
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
 
-    // Shop owner check
+    // Check if the currently authenticated user is the owner of a specific shop
     function isShopOwner(shopId) {
-      return isSignedIn() &&
-             (request.auth.uid == shopId ||
-              request.auth.uid == get(/databases/$(database)/documents/shops/$(shopId)).data.ownerId);
+      // The owner's UID is the same as the shop's document ID
+      return isSignedIn() && request.auth.uid == shopId;
     }
-
-    // Check if resource belongs to the shop owned by this user
-    function isOwnerOfResourceShop() {
-      return isSignedIn() &&
-             resource.data.shopId != null &&
-             isShopOwner(resource.data.shopId);
-    }
-
-    // Employee check (exists under shop's subcollection or users collection)
-    function isEmployeeByUsersCollection(shopId) {
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Employee' &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.shopId == shopId;
-    }
-
-    function isEmployeeBySubcollection(shopId) {
-      return exists(/databases/$(database)/documents/shops/$(shopId)/employees/$(request.auth.uid));
-    }
-
+    
+    // Check if a user is an employee of a specific shop
     function isEmployee(shopId) {
-      return isEmployeeByUsersCollection(shopId) || isEmployeeBySubcollection(shopId);
-    }
-
-    function isOwnerOrEmployee(shopId) {
-      return isShopOwner(shopId) || isEmployee(shopId);
+      return exists(/databases/$(database)/documents/shops/$(shopId)/employees/$(request.auth.uid));
     }
 
     // ----------------------
     // Users Collection
     // ----------------------
     match /users/{userId} {
-      // Allow a user to read/update their own profile
+      // A user can read or update their own profile.
       allow read, update: if isOwner(userId);
 
-      // Allow create if it's their own UID
-      allow create: if request.auth.uid == userId;
+      // A user can create their own document (e.g., on first sign-up).
+      // A shop owner can create a document for a new employee they are inviting.
+      allow create: if isOwner(userId) || 
+                      (isSignedIn() && 
+                       exists(/databases/$(database)/documents/shops/$(request.auth.uid)));
 
-      // Super admin-style delete protection could be added here if needed
+      // Only the user can delete their own profile.
       allow delete: if isOwner(userId);
     }
 
@@ -68,23 +49,23 @@ service cloud.firestore {
     // ----------------------
     match /shops/{shopId} {
 
-      // Owners can do anything to their shop
+      // Only the shop owner can create, update, or delete their shop document.
       allow create, update, delete: if isShopOwner(shopId);
 
-      // Allow read for owner or employee
-      allow read, get: if isShopOwner(shopId) || isEmployee(shopId);
-
-      // Any authenticated user can list/search shops
+      // The owner or an employee can read the shop document.
+      allow read: if isShopOwner(shopId) || isEmployee(shopId);
+      
+      // Any authenticated user can list shops (e.g., for a search feature).
       allow list: if isSignedIn();
 
       // ----------------------
       // Employees Subcollection
       // ----------------------
       match /employees/{employeeId} {
-        // Owner can manage employees
+        // The shop owner can create, update, and delete employee records.
         allow create, update, delete: if isShopOwner(shopId);
 
-        // Employees can read their own document
+        // An employee can read their own record, and the owner can read all employee records.
         allow read: if isOwner(employeeId) || isShopOwner(shopId);
       }
 
@@ -92,11 +73,11 @@ service cloud.firestore {
       // Attendance Subcollection
       // ----------------------
       match /attendance/{attendanceId} {
-        // Employee can create for themselves; owner can do anything
-        allow create: if isEmployee(shopId) && request.auth.uid == request.resource.data.userId
+        // An employee can create their own attendance record, or the owner can create one manually.
+        allow create: if (isEmployee(shopId) && request.resource.data.userId == request.auth.uid)
                       || isShopOwner(shopId);
 
-        // Owner can read/write all; employees can read their own
+        // An owner can read/write all records; an employee can only access their own.
         allow read, write: if isShopOwner(shopId)
                            || (isEmployee(shopId) && resource.data.userId == request.auth.uid);
       }
@@ -105,15 +86,17 @@ service cloud.firestore {
       // Leave Requests Subcollection
       // ----------------------
       match /leaveRequests/{leaveId} {
+        // An employee can create their own leave request.
         allow create: if isEmployee(shopId)
                       && request.resource.data.userId == request.auth.uid;
+        
+        // An owner can manage all requests; an employee can access their own.
         allow read, write: if isShopOwner(shopId)
-                           || (isEmployee(shopId)
-                               && resource.data.userId == request.auth.uid);
+                           || (isEmployee(shopId) && resource.data.userId == request.auth.uid);
       }
-
+      
       // ----------------------
-      // Config / Shifts / QR History (Owner only)
+      // Config, QR History, Shifts (Owner only)
       // ----------------------
       match /config/{docId} {
         allow read, write: if isShopOwner(shopId);
@@ -122,29 +105,10 @@ service cloud.firestore {
       match /qr-history/{docId} {
         allow read, write: if isShopOwner(shopId);
       }
-
+      
       match /shifts/{shiftId} {
         allow read, write: if isShopOwner(shopId);
       }
-    }
-
-    // ----------------------
-    // Collection Group Queries (for dashboards/admin views)
-    // ----------------------
-    match /{path=**}/employees/{employeeId} {
-      allow get, list: if isOwnerOfResourceShop();
-    }
-
-    match /{path=**}/attendance/{attendanceId} {
-      allow get, list: if isOwnerOfResourceShop();
-    }
-
-    match /{path=**}/leaveRequests/{leaveId} {
-      allow get, list: if isOwnerOfResourceShop();
-    }
-
-    match /{path=**}/shifts/{shiftId} {
-      allow get, list: if isOwnerOfResourceShop();
     }
   }
 }
