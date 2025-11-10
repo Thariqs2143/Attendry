@@ -78,7 +78,6 @@ export default function AddEmployeePage() {
         
         try {
             // NOTE: This creates a temporary user account.
-            // In a real app, you might want to send an invite link instead.
             // For simplicity, we create the user directly.
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const newEmployeeUser = userCredential.user;
