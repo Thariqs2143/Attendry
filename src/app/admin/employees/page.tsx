@@ -97,7 +97,7 @@ const EmployeeList = ({ allBranches, selectedBranchId, allBranchIds, searchTerm,
 
     const q = isAllBranches
       ? query(collectionGroup(db, 'employees'), where('shopId', 'in', allBranchIds))
-      : query(collection(db, 'shops', selectedBranchId, 'employees'), where("role", "!=", "Admin"));
+      : query(collection(db, 'shops', selectedBranchId, 'employees'));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const branchNameMap = new Map(allBranches.map(branch => [branch.id, branch.shopName]));
@@ -111,9 +111,7 @@ const EmployeeList = ({ allBranches, selectedBranchId, allBranchIds, searchTerm,
              } as User
         });
         
-        const finalEmployeeList = isAllBranches 
-            ? employeeList.filter(emp => emp.role !== 'Admin') 
-            : employeeList;
+        const finalEmployeeList = employeeList.filter(emp => emp.role !== 'Admin') 
 
         setEmployees(finalEmployeeList);
         setLoading(false);
