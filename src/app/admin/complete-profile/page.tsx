@@ -20,7 +20,8 @@ export default function AdminCompleteProfilePage() {
     const router = useRouter();
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
-    const [phone, setPhone] = useState('');
+    const [email, setEmail] = useState('');
+    const [name, setName] = useState('');
     const [uid, setUid] = useState('');
     const [businessType, setBusinessType] = useState('');
     const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -29,13 +30,15 @@ export default function AdminCompleteProfilePage() {
 
     useEffect(() => {
         const adminUID = localStorage.getItem('adminUID');
-        const adminPhone = localStorage.getItem('adminPhone');
-        if (adminUID && adminPhone) {
+        const adminEmail = localStorage.getItem('adminEmail');
+        const adminName = localStorage.getItem('adminName');
+        if (adminUID && adminEmail && adminName) {
             setUid(adminUID);
-            setPhone(adminPhone);
+            setEmail(adminEmail);
+            setName(adminName);
         } else {
             toast({ title: "Error", description: "Could not find admin information. Please log in again.", variant: "destructive"});
-            router.replace('/admin/login');
+            router.replace('/login');
         }
     }, [router, toast]);
     
@@ -83,14 +86,12 @@ export default function AdminCompleteProfilePage() {
         setLoading(true);
 
         const formData = new FormData(e.currentTarget);
-        const name = formData.get('name') as string;
         const shopName = formData.get('shopName') as string;
         const address = formData.get('address') as string;
-        const email = formData.get('email') as string;
         const gstNumber = formData.get('gstNumber') as string;
 
 
-        if (!name || !shopName || !businessType || !address) {
+        if (!shopName || !businessType || !address) {
              toast({ title: "Error", description: "Please fill out all required fields.", variant: "destructive" });
              setLoading(false);
              return;
@@ -102,7 +103,6 @@ export default function AdminCompleteProfilePage() {
         const userAsEmployeeProfile: Partial<User> = {
             name,
             email,
-            phone,
             role: 'Admin',
             status: 'Active',
             isProfileComplete: true,
@@ -144,11 +144,7 @@ export default function AdminCompleteProfilePage() {
             const ownerAsEmployeeRef = doc(db, 'shops', newShopRef.id, 'employees', uid);
             batch.set(ownerAsEmployeeRef, { ...userAsEmployeeProfile, shopId: newShopRef.id });
 
-            // 4. Create a lookup for the admin phone
-            const phoneLookupRef = doc(db, 'employee_phone_to_shop_lookup', phone);
-            batch.set(phoneLookupRef, { shopId: newShopRef.id, employeeDocId: uid, isAdmin: true, isProfileComplete: true }, { merge: true });
-
-            // 5. Handle referral if it exists
+            // 4. Handle referral if it exists
             const shopDocSnap = await getDoc(newShopRef);
             const referredBy = shopDocSnap.data()?.referredBy;
             if (referredBy) {
@@ -174,7 +170,8 @@ export default function AdminCompleteProfilePage() {
             });
             
             localStorage.removeItem('adminUID');
-            localStorage.removeItem('adminPhone');
+            localStorage.removeItem('adminEmail');
+            localStorage.removeItem('adminName');
             
             router.push('/admin');
 
@@ -215,12 +212,12 @@ export default function AdminCompleteProfilePage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                        <Label htmlFor="name">Contact Person Name *</Label>
-                        <Input id="name" name="name" placeholder="e.g. John Doe" required />
+                        <Label htmlFor="name">Contact Person Name</Label>
+                        <Input id="name" name="name" value={name} required readOnly disabled />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="phone">Contact Phone Number</Label>
-                        <Input id="phone" name="phone" type="tel" value={phone} required readOnly disabled />
+                        <Label htmlFor="email">Contact Email Address</Label>
+                        <Input id="email" name="email" type="email" value={email} required readOnly disabled />
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="shopName">Shop / Business Name *</Label>
@@ -240,10 +237,6 @@ export default function AdminCompleteProfilePage() {
                                 <SelectItem value="Other">Other</SelectItem>
                             </SelectContent>
                         </Select>
-                    </div>
-                     <div className="space-y-2">
-                        <Label htmlFor="email">Business Email Address</Label>
-                        <Input id="email" name="email" type="email" placeholder="e.g. contact@jdretail.com" />
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="gstNumber">GST Number (Optional)</Label>

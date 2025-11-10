@@ -1,64 +1,103 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import { IndianFlagIcon } from "@/components/ui/indian-flag-icon";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
+import { auth, db } from "@/lib/firebase";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { Label } from "@/components/ui/label";
 
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isNewUser, setIsNewUser] = useState(false);
+  
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
-  const handleContinue = async (e: React.FormEvent) => {
+
+  const handleAuthAction = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!/^\d{10}$/.test(phone)) {
+    if (!email || !password || (isNewUser && !name)) {
       toast({
-        title: "Error",
-        description: "Please enter a valid 10-digit phone number.",
+        title: "Missing Fields",
+        description: "Please fill out all required fields.",
         variant: "destructive",
       });
       return;
     }
 
     setLoading(true);
-    try {
-      const phoneNumber = `+91${phone}`;
-      const phoneLookupRef = doc(db, 'employee_phone_to_shop_lookup', phoneNumber);
-      const phoneLookupSnap = await getDoc(phoneLookupRef);
 
-      let isNewUser = true;
-      if (phoneLookupSnap.exists()) {
-        if(phoneLookupSnap.data()?.isAdmin) {
-          isNewUser = false;
+    try {
+      if (isNewUser) {
+        // Handle Sign Up
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // Store preliminary info and redirect to complete profile
+        localStorage.setItem('adminUID', user.uid);
+        localStorage.setItem('adminEmail', user.email || email);
+        localStorage.setItem('adminName', name);
+
+        await setDoc(doc(db, "users", user.uid), {
+            uid: user.uid,
+            email: user.email || email,
+            name: name,
+            role: 'Admin',
+            isProfileComplete: false,
+            joinDate: new Date().toISOString().split('T')[0],
+        }, { merge: true });
+        
+        toast({ title: "Account Created!", description: "Please complete your shop profile to continue." });
+        router.push('/admin/complete-profile');
+
+      } else {
+        // Handle Sign In
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (userDocSnap.exists() && userDocSnap.data().isProfileComplete) {
+            toast({ title: "Login Successful!", description: "Redirecting to dashboard..." });
+            router.push('/admin');
         } else {
-          toast({
-            title: "Employee Account",
-            description: "This number is registered as an employee. Please use the employee login.",
-          });
-          setLoading(false);
-          return;
+             // This case handles users who signed up but didn't complete their profile
+             localStorage.setItem('adminUID', user.uid);
+             localStorage.setItem('adminEmail', user.email || email);
+             localStorage.setItem('adminName', userDocSnap.data()?.name || '');
+             toast({ title: "Welcome Back!", description: "Please complete your shop profile." });
+             router.push('/admin/complete-profile');
         }
       }
-      
-      router.push(`/admin/login?phone=${phone}&isNewUser=${isNewUser}`);
-
-    } catch (error) {
-      console.error("Error during owner check:", error);
+    } catch (error: any) {
+      console.error("Authentication error:", error);
+      let description = "An unknown error occurred.";
+      if (error.code === 'auth/email-already-in-use') {
+        description = "This email is already in use. Please log in instead.";
+      } else if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        description = "Invalid email or password. Please try again.";
+      } else if (error.code === 'auth/weak-password') {
+        description = "Your password must be at least 6 characters long.";
+      }
       toast({
-        title: "Error",
-        description: "Something went wrong. Please try again.",
+        title: "Authentication Failed",
+        description: description,
         variant: "destructive",
       });
+    } finally {
       setLoading(false);
     }
   };
@@ -99,54 +138,57 @@ export default function LoginPage() {
             <div className="flex items-center my-4">
                 <hr className="w-full border-muted-foreground/20" />
                 <span className="px-4 text-muted-foreground font-semibold whitespace-nowrap text-sm">
-                LOG IN OR SIGN UP
+                OWNER ACCESS
                 </span>
                 <hr className="w-full border-muted-foreground/20" />
             </div>
             </div>
 
             {/* LOGIN FORM */}
-            <form className="space-y-6" onSubmit={handleContinue}>
-            <div className="flex items-center gap-2 border border-input rounded-md px-3 bg-transparent">
-                <IndianFlagIcon />
-                <span className="text-sm font-medium text-muted-foreground">+91</span>
-                <Input
-                id="phone"
-                type="tel"
-                inputMode="numeric"
-                placeholder="10-digit mobile number"
-                required
-                className="flex-1 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
-                value={phone}
-                onChange={(e) =>
-                    setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))
-                }
-                maxLength={10}
-                pattern="\d{10}"
-                title="Please enter a 10-digit phone number"
-                />
+            <form className="space-y-4" onSubmit={handleAuthAction}>
+            {isNewUser && (
+                 <div className="space-y-1.5">
+                    <Label htmlFor="name">Your Full Name</Label>
+                    <Input id="name" type="text" placeholder="e.g. John Doe" value={name} onChange={(e) => setName(e.target.value)} required={isNewUser} />
+                </div>
+            )}
+            <div className="space-y-1.5">
+                <Label htmlFor="email">Email Address</Label>
+                <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
+            <div className="space-y-1.5">
+                <Label htmlFor="password">Password</Label>
+                <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            </div>
+
 
             <Button
                 type="submit"
-                className="w-full bg-[#0C2A6A] hover:bg-[#0C2A6A]/90"
+                className="w-full bg-[#0C2A6A] hover:bg-[#0C2A6A]/90 !mt-6"
                 disabled={loading}
             >
-                {loading && <Loader2 className="mr-2 animate-spin" />}
-                Continue
+                {loading ? <Loader2 className="mr-2 animate-spin" /> : null}
+                {isNewUser ? "Create Account" : "Continue to Dashboard"}
             </Button>
             </form>
 
+             <p className="text-center text-sm text-muted-foreground">
+                {isNewUser ? "Already have an account?" : "Don't have an account?"}{' '}
+                <button onClick={() => setIsNewUser(!isNewUser)} className="text-primary hover:underline font-medium">
+                    {isNewUser ? "Sign In" : "Sign Up"}
+                </button>
+            </p>
+
             <div className="flex items-center my-8">
-            <hr className="w-full" />
-            <span className="px-4 text-muted-foreground font-medium">OR</span>
-            <hr className="w-full" />
+                <hr className="w-full" />
+                <span className="px-4 text-muted-foreground font-medium">OR</span>
+                <hr className="w-full" />
             </div>
 
             <Link href="/employee/login" className="w-full">
-            <Button variant="outline" className="w-full border-primary text-primary hover:bg-primary/5">
-                Login as Employee
-            </Button>
+                <Button variant="outline" className="w-full border-primary text-primary hover:bg-primary/5">
+                    Login as Employee
+                </Button>
             </Link>
         </div>
         </div>
@@ -154,3 +196,4 @@ export default function LoginPage() {
     </div>
   );
 }
+

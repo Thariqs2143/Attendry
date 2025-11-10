@@ -8,13 +8,12 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, UserPlus, Loader2, ChevronsUpDown } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { collection, addDoc, query, where, getDocs, doc, setDoc, writeBatch, getDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, setDoc, writeBatch } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase";
 import { useState, useEffect } from "react";
-import { onAuthStateChanged, type User as AuthUser } from "firebase/auth";
+import { onAuthStateChanged, type User as AuthUser, createUserWithEmailAndPassword } from "firebase/auth";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { IndianFlagIcon } from "@/components/ui/indian-flag-icon";
 
 type Branch = {
     id: string;
@@ -45,7 +44,7 @@ export default function AddEmployeePage() {
                     setSelectedBranch(fetchedBranches[0]);
                 }
             } else {
-                router.push('/admin/login');
+                router.push('/login');
             }
         });
         return () => unsubscribe();
@@ -63,10 +62,11 @@ export default function AddEmployeePage() {
         const name = formData.get('name') as string;
         const employeeId = formData.get('employeeId') as string;
         const role = formData.get('role') as string;
-        const phone = formData.get('phone') as string;
+        const email = formData.get('email') as string;
+        const password = formData.get('password') as string;
         const baseSalary = formData.get('baseSalary') as string;
         
-        if (!name || !phone || !role || !employeeId) {
+        if (!name || !email || !password || !role || !employeeId) {
             toast({
                 title: "Error",
                 description: "Please fill out all required fields.",
@@ -76,61 +76,68 @@ export default function AddEmployeePage() {
             return;
         }
         
-        const fullPhoneNumber = `+91${phone}`;
-
-        // Check if employee with this phone number already exists globally
-        const phoneLookupRef = doc(db, 'employee_phone_to_shop_lookup', fullPhoneNumber);
-        const phoneLookupSnap = await getDoc(phoneLookupRef);
-
-        if (phoneLookupSnap.exists()) {
-             toast({
-                title: "Employee Exists",
-                description: "An employee with this phone number is already registered in another shop.",
-                variant: "destructive",
-            });
-            setLoading(false);
-            return;
-        }
-
-        const newEmployeeInvitation = {
-            name,
-            phone: fullPhoneNumber,
-            role,
-            employeeId,
-            status: 'Pending Onboarding',
-            fallback: name.split(' ').map(n => n[0]).join(''),
-            shopId: selectedBranch.id,
-            points: 0,
-            streak: 0,
-            joinDate: new Date().toISOString().split('T')[0],
-            baseSalary: Number(baseSalary) || 0,
-        };
-
         try {
+            // NOTE: This creates a temporary user account.
+            // In a real app, you might want to send an invite link instead.
+            // For simplicity, we create the user directly.
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const newEmployeeUser = userCredential.user;
+
+            const newEmployeeProfile = {
+                uid: newEmployeeUser.uid,
+                name,
+                email,
+                role,
+                employeeId,
+                status: 'Pending Onboarding',
+                fallback: name.split(' ').map(n => n[0]).join(''),
+                shopId: selectedBranch.id,
+                points: 0,
+                streak: 0,
+                joinDate: new Date().toISOString().split('T')[0],
+                baseSalary: Number(baseSalary) || 0,
+                isProfileComplete: false,
+            };
+
             const batch = writeBatch(db);
 
-            // 1. Add employee to the selected shop's subcollection
-            const newEmployeeDocRef = doc(collection(db, 'shops', selectedBranch.id, 'employees'));
-            batch.set(newEmployeeDocRef, newEmployeeInvitation);
-
-            // 2. Add to the phone number lookup table
-            batch.set(phoneLookupRef, { shopId: selectedBranch.id, employeeDocId: newEmployeeDocRef.id });
+            // 1. Add employee to the 'users' collection for global lookup
+            const userDocRef = doc(db, 'users', newEmployeeUser.uid);
+            batch.set(userDocRef, newEmployeeProfile);
+            
+            // 2. Add employee to the selected shop's subcollection
+            const shopEmployeeDocRef = doc(db, 'shops', selectedBranch.id, 'employees', newEmployeeUser.uid);
+            batch.set(shopEmployeeDocRef, newEmployeeProfile);
 
             await batch.commit();
 
             toast({
-                title: "Invitation Sent!",
-                description: `${name} has been invited to join ${selectedBranch.shopName}. They need to log in to complete their profile.`,
+                title: "Employee Invited!",
+                description: `${name} has been added. They can now log in with their email and password.`,
             });
             router.push('/admin/employees');
-        } catch (error) {
-            console.error("Error adding employee invitation:", error);
+        } catch (error: any) {
+            console.error("Error adding employee:", error);
+            let description = "Could not create invitation. Please try again.";
+            if (error.code === 'auth/email-already-in-use') {
+                description = "This email address is already in use by another account.";
+            } else if (error.code === 'auth/weak-password') {
+                description = "The password is too weak. It must be at least 6 characters long.";
+            }
             toast({
                 title: "Error",
-                description: "Could not create invitation. Please try again.",
+                description: description,
                 variant: "destructive",
             });
         } finally {
+            // This is important for UX, so the admin can log back in.
+            if(auth.currentUser?.uid !== authUser.uid) {
+                await auth.signOut();
+                // Re-authenticate admin - this is a tricky flow for web.
+                // For this app, we'll rely on the user to log back in if the session is lost.
+                // A better solution would involve session tokens.
+                console.log("Session switched. Admin may need to re-login.");
+            }
             setLoading(false);
         }
     };
@@ -206,26 +213,24 @@ export default function AddEmployeePage() {
                                 <Input id="role" name="role" placeholder="e.g., Cashier" required />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="phone">Phone Number *</Label>
-                                <div className="flex items-center gap-2">
-                                    <div className="flex h-10 items-center rounded-md border border-input bg-transparent px-3">
-                                        <IndianFlagIcon />
-                                        <span className="ml-2 text-sm font-medium text-muted-foreground">+91</span>
-                                    </div>
-                                    <Input id="phone" name="phone" type="tel" inputMode="numeric" placeholder="10-digit mobile number" required className="flex-1" pattern="\d{10}" title="Phone number must be 10 digits" maxLength={10} />
-                                </div>
+                                <Label htmlFor="email">Email Address *</Label>
+                                <Input id="email" name="email" type="email" placeholder="employee@example.com" required />
                             </div>
-                            <div className="space-y-2 md:col-span-2">
+                            <div className="space-y-2">
+                                <Label htmlFor="password">Set Initial Password *</Label>
+                                <Input id="password" name="password" type="password" placeholder="Min. 6 characters" required />
+                            </div>
+                            <div className="space-y-2">
                                 <Label htmlFor="baseSalary">Base Monthly Salary (₹)</Label>
                                 <Input id="baseSalary" name="baseSalary" type="number" placeholder="e.g., 25000" />
                             </div>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-2 text-center">The employee will use this phone number to log in and complete their profile by adding their Aadhaar number.</p>
+                        <p className="text-xs text-muted-foreground mt-2 text-center">The employee will use this email and password to log in for the first time.</p>
                         <div className="flex justify-center mt-8">
                             <Button type="submit" size="lg" className="w-full max-w-xs" disabled={!selectedBranch || loading}>
                                 {loading && <Loader2 className="mr-2 animate-spin" />}
                                 <UserPlus className="mr-2"/>
-                                Send Invitation
+                                Create Employee Account
                             </Button>
                         </div>
                     </fieldset>

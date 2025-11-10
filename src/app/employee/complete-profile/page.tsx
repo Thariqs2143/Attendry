@@ -8,34 +8,31 @@ import { Label } from "@/components/ui/label";
 import { useToast } from '@/hooks/use-toast';
 import { UserCheck, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { doc, updateDoc, writeBatch, getDoc } from 'firebase/firestore';
+import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { User } from '@/app/admin/employees/page';
+import { getAuth, onAuthStateChanged, updatePassword } from 'firebase/auth';
 
 export default function CompleteProfilePage() {
     const router = useRouter();
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
     const [profile, setProfile] = useState<Partial<User>>({});
-    const [phone, setPhone] = useState('');
     const [uid, setUid] = useState('');
     const [shopId, setShopId] = useState('');
-    const [docId, setDocId] = useState('');
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
 
     useEffect(() => {
-        const userPhone = localStorage.getItem('newUserPhone');
         const userUID = localStorage.getItem('newUserUID');
         const userShopId = localStorage.getItem('newUserShopId');
-        const userDocId = localStorage.getItem('newUserDocId');
 
-        if (userPhone && userUID && userShopId && userDocId) {
-            setPhone(userPhone);
+        if (userUID && userShopId) {
             setUid(userUID);
             setShopId(userShopId);
-            setDocId(userDocId);
 
             const fetchProfile = async () => {
-                const employeeDocRef = doc(db, "shops", userShopId, "employees", userDocId);
+                const employeeDocRef = doc(db, "users", userUID);
                 const docSnap = await getDoc(employeeDocRef);
                 if (docSnap.exists()) {
                     setProfile(docSnap.data());
@@ -55,54 +52,57 @@ export default function CompleteProfilePage() {
         setLoading(true);
 
         const formData = new FormData(e.currentTarget);
-        const email = formData.get('email') as string;
         const aadhaar = formData.get('aadhaar') as string;
 
         if (!aadhaar) {
-             toast({ title: "Error", description: "Please fill out all required fields.", variant: "destructive" });
+             toast({ title: "Error", description: "Please enter your Aadhaar number.", variant: "destructive" });
              setLoading(false);
              return;
         }
 
-        const updatedProfile: Partial<User> = {
-            email,
-            aadhaar,
-            status: 'Active',
-            isProfileComplete: true,
-            uid: uid, // Add the auth UID to the document
-        };
+        if (password && password !== confirmPassword) {
+            toast({ title: "Error", description: "Passwords do not match.", variant: "destructive" });
+            setLoading(false);
+            return;
+        }
 
         try {
-            const batch = writeBatch(db);
+            const auth = getAuth();
+            const currentUser = auth.currentUser;
 
-            // 1. Update the employee document in the shop's subcollection
-            const employeeDocRef = doc(db, "shops", shopId, "employees", docId);
-            batch.update(employeeDocRef, updatedProfile);
+            if (password && currentUser) {
+                await updatePassword(currentUser, password);
+                 toast({ title: "Password Updated!", description: "Your new password has been set." });
+            }
+
+            const updatedProfile: Partial<User> = {
+                aadhaar,
+                status: 'Active',
+                isProfileComplete: true,
+            };
             
-            // 2. Update the phone number lookup table to mark profile as complete
-            const phoneLookupRef = doc(db, 'employee_phone_to_shop_lookup', phone);
-            batch.update(phoneLookupRef, { isProfileComplete: true });
-
-            await batch.commit();
-
+            const employeeDocRef = doc(db, "users", uid);
+            await updateDoc(employeeDocRef, updatedProfile);
 
             toast({
                 title: "Profile Complete!",
                 description: "Welcome aboard! You will now be redirected to your dashboard.",
             });
-            // Clean up localStorage
-            localStorage.removeItem('newUserPhone');
+            
             localStorage.removeItem('newUserUID');
             localStorage.removeItem('newUserShopId');
-            localStorage.removeItem('newUserDocId');
             
             setTimeout(() => {
                 router.push('/employee');
             }, 1500);
 
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error updating profile:", error);
-            toast({ title: "Error", description: "Could not save your profile. Please try again.", variant: "destructive" });
+            let description = "Could not save your profile. Please try again.";
+            if (error.code === 'auth/weak-password') {
+                description = "Password is too weak. It must be at least 6 characters long.";
+            }
+            toast({ title: "Error", description, variant: "destructive" });
         } finally {
             setLoading(false);
         }
@@ -118,7 +118,7 @@ export default function CompleteProfilePage() {
                 </div>
                 <h1 className="text-3xl font-bold">Complete Your Profile</h1>
                 <p className="text-muted-foreground mt-2">
-                    Please verify your details and provide the missing information.
+                    Verify your details and set a password to get started.
                 </p>
             </div>
             
@@ -137,16 +137,20 @@ export default function CompleteProfilePage() {
                         <Input id="employeeId" name="employeeId" value={profile.employeeId || ''} readOnly disabled />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="phone">Phone Number</Label>
-                        <Input id="phone" name="phone" type="tel" value={phone} readOnly disabled />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="aadhaar">Aadhaar Number *</Label>
-                        <Input id="aadhaar" name="aadhaar" type="text" inputMode="numeric" placeholder="e.g. 1234 5678 9012" required maxLength={12} pattern="\d{12}" title="Aadhaar must be 12 digits" />
+                        <Label htmlFor="email">Email Address</Label>
+                        <Input id="email" name="email" value={profile.email || ''} readOnly disabled />
                     </div>
                      <div className="space-y-2">
-                        <Label htmlFor="email">Email Address (Optional)</Label>
-                        <Input id="email" name="email" type="email" placeholder="e.g. you@example.com" />
+                        <Label htmlFor="password">Set New Password</Label>
+                        <Input id="password" name="password" type="password" placeholder="Must be at least 6 characters" value={password} onChange={(e) => setPassword(e.target.value)} />
+                    </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                        <Input id="confirmPassword" name="confirmPassword" type="password" placeholder="Re-enter your new password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                        <Label htmlFor="aadhaar">Aadhaar Number *</Label>
+                        <Input id="aadhaar" name="aadhaar" type="text" inputMode="numeric" placeholder="e.g. 1234 5678 9012" required maxLength={12} pattern="\d{12}" title="Aadhaar must be 12 digits" />
                     </div>
                 </div>
             </div>

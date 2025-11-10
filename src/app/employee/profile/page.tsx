@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { differenceInMonths, differenceInYears } from 'date-fns';
 import { auth, db, requestForToken } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { onAuthStateChanged, signOut, type User as AuthUser } from 'firebase/auth';
+import { onAuthStateChanged, signOut, type User as AuthUser, updatePassword } from 'firebase/auth';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import type { User as AppUser } from '@/app/admin/employees/page';
 import { Loader2, LogOut, Upload, Bell } from 'lucide-react';
@@ -49,13 +49,10 @@ export default function ProfilePage() {
   const [userProfile, setUserProfile] = useState<AppUser | null>(null);
   const [editableProfile, setEditableProfile] = useState<Partial<AppUser>>({
       name: '',
-      email: '',
-      phone: '',
-      employeeId: '',
       aadhaar: '',
-      joinDate: '',
       imageUrl: '',
   });
+  const [newPassword, setNewPassword] = useState('');
   const [tenure, setTenure] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -65,24 +62,16 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user && user.phoneNumber) {
+      if (user) {
         setAuthUser(user);
         
-        const phoneLookupRef = doc(db, "employee_phone_to_shop_lookup", user.phoneNumber);
-        const phoneLookupSnap = await getDoc(phoneLookupRef);
+        const userDocRef = doc(db, "users", user.uid);
+        const userDocSnap = await getDoc(userDocRef);
 
-        if (phoneLookupSnap.exists()) {
-            const { shopId, employeeDocId } = phoneLookupSnap.data();
-            const employeeDocRef = doc(db, "shops", shopId, "employees", employeeDocId);
-            const employeeDocSnap = await getDoc(employeeDocRef);
-
-            if (employeeDocSnap.exists()) {
-                const profile = { id: employeeDocSnap.id, ...employeeDocSnap.data() } as AppUser;
-                setUserProfile(profile);
-                setEditableProfile(profile);
-            } else {
-                 router.push('/employee/login');
-            }
+        if (userDocSnap.exists() && userDocSnap.data().role === 'Employee') {
+            const profile = { id: userDocSnap.id, ...userDocSnap.data() } as AppUser;
+            setUserProfile(profile);
+            setEditableProfile(profile);
         } else {
             router.push('/employee/login');
         }
@@ -107,21 +96,47 @@ export default function ProfilePage() {
   };
 
   const handleSaveChanges = async () => {
-    if (!authUser || !userProfile?.shopId || !userProfile?.id) return;
+    if (!authUser || !userProfile?.id) return;
     setSaving(true);
-    const userDocRef = doc(db, 'shops', userProfile.shopId, 'employees', userProfile.id);
+    const userDocRef = doc(db, 'users', userProfile.id);
     try {
+        // Update password if a new one is provided
+        if (newPassword) {
+            if (newPassword.length < 6) {
+                toast({ title: "Error", description: "Password must be at least 6 characters long.", variant: "destructive" });
+                setSaving(false);
+                return;
+            }
+            await updatePassword(authUser, newPassword);
+            setNewPassword(''); // Clear after successful update
+        }
+
+        // Update profile details
         await updateDoc(userDocRef, {
             name: editableProfile.name,
-            email: editableProfile.email,
             aadhaar: editableProfile.aadhaar,
             fallback: editableProfile.name?.split(' ').map(n => n[0]).join('')
         });
+        
+        // Also update the mirrored document in the shop's subcollection
+        if(userProfile.shopId) {
+            const shopEmployeeDocRef = doc(db, 'shops', userProfile.shopId, 'employees', userProfile.id);
+            await updateDoc(shopEmployeeDocRef, {
+                 name: editableProfile.name,
+                 aadhaar: editableProfile.aadhaar,
+                 fallback: editableProfile.name?.split(' ').map(n => n[0]).join('')
+            });
+        }
+
         setUserProfile(prev => ({...prev!, ...editableProfile}));
         toast({ title: "Success", description: "Your profile has been updated." });
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error updating profile:", error);
-        toast({ title: "Error", description: "Could not update your profile.", variant: "destructive" });
+        let description = "Could not update your profile.";
+        if (error.code === 'auth/requires-recent-login') {
+            description = "This action is sensitive and requires a recent login. Please log out and log back in to change your password."
+        }
+        toast({ title: "Error", description, variant: "destructive" });
     } finally {
         setSaving(false);
     }
@@ -132,8 +147,8 @@ export default function ProfilePage() {
     setNotifLoading(true);
     try {
       const token = await requestForToken();
-      if (token && userProfile?.shopId && userProfile?.id) {
-        const userDocRef = doc(db, 'shops', userProfile.shopId, 'employees', userProfile.id);
+      if (token && userProfile?.id) {
+        const userDocRef = doc(db, 'users', userProfile.id);
         await updateDoc(userDocRef, { fcmToken: token });
         toast({
           title: "Notifications Enabled!",
@@ -171,7 +186,7 @@ export default function ProfilePage() {
   };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0 || !authUser || !userProfile?.shopId || !userProfile?.id) {
+    if (!e.target.files || e.target.files.length === 0 || !authUser || !userProfile?.id) {
       return;
     }
     const file = e.target.files[0];
@@ -201,8 +216,12 @@ export default function ProfilePage() {
           setUserProfile(prev => ({...(prev as AppUser), imageUrl: imageUrl }));
           setEditableProfile(prev => ({ ...prev, imageUrl: imageUrl }));
           
-          const userDocRef = doc(db, 'shops', userProfile.shopId, 'employees', userProfile.id);
+          const userDocRef = doc(db, 'users', userProfile.id);
           await updateDoc(userDocRef, { imageUrl: imageUrl });
+           if(userProfile.shopId) {
+                const shopEmployeeDocRef = doc(db, 'shops', userProfile.shopId, 'employees', userProfile.id);
+                await updateDoc(shopEmployeeDocRef, { imageUrl: imageUrl });
+            }
           
           toast({ title: "Photo Updated!", description: "Your new profile photo has been saved." });
       } else {
@@ -271,15 +290,15 @@ export default function ProfilePage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
-              <Input id="email" type="email" value={editableProfile.email || ''} onChange={handleInputChange} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number</Label>
-              <Input id="phone" type="tel" value={editableProfile.phone || ''} readOnly disabled />
+              <Input id="email" type="email" value={userProfile.email || ''} readOnly disabled />
             </div>
              <div className="space-y-2">
               <Label htmlFor="aadhaar">Aadhaar Number</Label>
               <Input id="aadhaar" value={editableProfile.aadhaar || ''} onChange={handleInputChange} />
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="newPassword">New Password</Label>
+                <Input id="newPassword" type="password" placeholder="Leave blank to keep current password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
             </div>
             <div className="space-y-2">
                 <Label htmlFor="joinDate">Date Joined</Label>
@@ -344,5 +363,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-    
