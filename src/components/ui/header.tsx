@@ -30,7 +30,10 @@ export function Header() {
   }, []);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 p-4">
+    <header className={cn(
+        "fixed left-0 right-0 z-50 p-4 transition-all duration-300",
+        hasScrolled ? 'top-0' : 'top-12' // This leaves space for the banner when at top
+    )}>
       <div
         className={cn(
           'container mx-auto flex h-16 items-center justify-between px-6 rounded-full transition-all duration-300',
@@ -64,10 +67,10 @@ export function Header() {
         {/* Desktop Buttons */}
         <div className="hidden md:flex items-center gap-2">
             <Link href="/login">
-                <Button variant="ghost">Get Started</Button>
+                <Button>Get Started</Button>
             </Link>
             <Link href="/pricing">
-                <Button>Go Pro</Button>
+                <Button variant="outline">Go Pro</Button>
             </Link>
         </div>
 
