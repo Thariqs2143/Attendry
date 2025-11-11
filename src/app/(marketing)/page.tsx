@@ -209,12 +209,12 @@ export default function LandingPage() {
              <div className="flex flex-col items-center gap-4 rounded-xl border-2 border-primary/50 bg-primary/5 p-8 text-center transition-all hover:shadow-2xl hover:border-primary">
                 <h3 className="text-xl font-bold text-primary">With Attendry</h3>
                 <div className="relative">
-                  <div className="p-6 bg-primary rounded-full">
+                  <div className="p-6 bg-primary rounded-full animate-pulse">
                       <QrCode className="h-10 w-10 text-primary-foreground" />
                   </div>
-                  <Users className="absolute -top-1 -left-1 h-6 w-6 text-primary animate-pulse" />
-                   <TrendingUp className="absolute -top-1 -right-1 h-6 w-6 text-primary animate-pulse" />
-                   <FileText className="absolute -bottom-1 left-0 h-6 w-6 text-primary animate-pulse" />
+                  <Users className="absolute -top-1 -left-1 h-6 w-6 text-primary animate-pulse delay-300" />
+                   <TrendingUp className="absolute -top-1 -right-1 h-6 w-6 text-primary animate-pulse delay-500" />
+                   <FileText className="absolute -bottom-1 left-0 h-6 w-6 text-primary animate-pulse delay-700" />
                 </div>
                 <p className="text-muted-foreground">Automating check-ins with QR codes, simplifying payroll, and empowering employees.</p>
             </div>
