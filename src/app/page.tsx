@@ -2,7 +2,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { ArrowRight, BarChart3, QrCode, Users, Quote } from 'lucide-react';
+import { ArrowRight, BarChart3, QrCode, Users, Quote, Menu } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +14,11 @@ import {
   CarouselContent,
   CarouselItem,
 } from "@/components/ui/carousel";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 
 const testimonials = [
@@ -42,29 +47,82 @@ export default function LandingPage() {
 
   return (
     <div className="flex flex-col min-h-dvh bg-background">
-      <header className="fixed top-4 inset-x-0 z-50 px-4">
-        <div className="w-full max-w-7xl mx-auto flex items-center h-16 bg-background/80 backdrop-blur-sm border rounded-full shadow-sm px-6">
+      <header className="px-4 lg:px-6 h-16 flex items-center absolute top-0 left-0 right-0 z-50">
+        <div className="container mx-auto flex items-center justify-between">
             <Link href="#" className="flex items-center" prefetch={false}>
                 <span className="font-bold text-2xl text-primary tracking-wider">
                     Attendry
                 </span>
             </Link>
-            <nav className="ml-auto flex gap-4 sm:gap-6">
-            <Link
-                href="/login"
-                className="text-sm font-medium hover:underline underline-offset-4"
-                prefetch={false}
-            >
-                Owner Login
-            </Link>
-            <Link
-                href="/employee/login"
-                className="text-sm font-medium hover:underline underline-offset-4"
-                prefetch={false}
-            >
-                Employee Login
-            </Link>
+            <nav className="hidden lg:flex gap-6">
+                <Link
+                    href="#how-it-works"
+                    className="text-sm font-medium hover:underline underline-offset-4"
+                    prefetch={false}
+                >
+                    How It Works
+                </Link>
+                 <Link
+                    href="#features"
+                    className="text-sm font-medium hover:underline underline-offset-4"
+                    prefetch={false}
+                >
+                    Features
+                </Link>
+                <Link
+                    href="#testimonials"
+                    className="text-sm font-medium hover:underline underline-offset-4"
+                    prefetch={false}
+                >
+                    Testimonials
+                </Link>
             </nav>
+            <div className="hidden lg:flex items-center gap-4">
+                <Link
+                    href="/login"
+                    className="text-sm font-medium hover:underline underline-offset-4"
+                    prefetch={false}
+                >
+                    Owner Login
+                </Link>
+                <Link href="/employee/login">
+                    <Button>Employee Login</Button>
+                </Link>
+            </div>
+            <Sheet>
+                <SheetTrigger asChild>
+                    <Button variant="outline" size="icon" className="lg:hidden">
+                        <Menu className="h-6 w-6" />
+                        <span className="sr-only">Toggle navigation menu</span>
+                    </Button>
+                </SheetTrigger>
+                <SheetContent side="left">
+                    <div className="flex flex-col gap-6">
+                         <Link href="#" className="flex items-center" prefetch={false}>
+                            <span className="font-bold text-2xl text-primary tracking-wider">
+                                Attendry
+                            </span>
+                        </Link>
+                        <nav className="grid gap-4">
+                            <Link href="#how-it-works" className="text-lg font-medium hover:underline underline-offset-4">
+                                How It Works
+                            </Link>
+                            <Link href="#features" className="text-lg font-medium hover:underline underline-offset-4">
+                                Features
+                            </Link>
+                            <Link href="#testimonials" className="text-lg font-medium hover:underline underline-offset-4">
+                                Testimonials
+                            </Link>
+                            <Link href="/login" className="text-lg font-medium hover:underline underline-offset-4">
+                                Owner Login
+                            </Link>
+                            <Link href="/employee/login" className="text-lg font-medium hover:underline underline-offset-4">
+                                Employee Login
+                            </Link>
+                        </nav>
+                    </div>
+                </SheetContent>
+            </Sheet>
         </div>
       </header>
       <main className="flex-1">
