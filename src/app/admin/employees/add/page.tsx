@@ -14,6 +14,8 @@ import { useState, useEffect } from "react";
 import { onAuthStateChanged, type User as AuthUser, createUserWithEmailAndPassword } from "firebase/auth";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { FirestorePermissionError } from '@/lib/errors';
+import { errorEmitter } from '@/lib/error-emitter';
 
 type Branch = {
     id: string;
@@ -78,7 +80,8 @@ export default function AddEmployeePage() {
         
         try {
             // NOTE: This creates a temporary user account.
-            // For simplicity, we create the user directly.
+            // For simplicity, we create the user directly. In a real app, you might use a cloud function.
+            // This approach requires temporary sign-out/sign-in of the admin, which can be disruptive.
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const newEmployeeUser = userCredential.user;
 
@@ -100,15 +103,24 @@ export default function AddEmployeePage() {
 
             const batch = writeBatch(db);
 
-            // 1. Add employee to the 'users' collection for global lookup
+            // 1. Add employee to the 'users' collection for global lookup and profile data
             const userDocRef = doc(db, 'users', newEmployeeUser.uid);
             batch.set(userDocRef, newEmployeeProfile);
             
-            // 2. Add employee to the selected shop's subcollection
+            // 2. Add employee to the selected shop's subcollection for branch-specific management
             const shopEmployeeDocRef = doc(db, 'shops', selectedBranch.id, 'employees', newEmployeeUser.uid);
             batch.set(shopEmployeeDocRef, newEmployeeProfile);
 
-            await batch.commit();
+            await batch.commit()
+              .catch(async (serverError) => {
+                  const permissionError = new FirestorePermissionError({
+                      path: `users/${newEmployeeUser.uid} and shops/${selectedBranch.id}/employees/${newEmployeeUser.uid}`,
+                      operation: 'create',
+                      requestResourceData: newEmployeeProfile,
+                  });
+                  errorEmitter.emit('permission-error', permissionError);
+                  throw serverError; // re-throw to be caught by outer catch block
+              });
 
             toast({
                 title: "Employee Invited!",
@@ -122,6 +134,9 @@ export default function AddEmployeePage() {
                 description = "This email address is already in use by another account.";
             } else if (error.code === 'auth/weak-password') {
                 description = "The password is too weak. It must be at least 6 characters long.";
+            } else if (error.message.includes('permission-error')) {
+                 // The contextual error is already displayed by the listener
+                 return;
             }
             toast({
                 title: "Error",
@@ -129,13 +144,14 @@ export default function AddEmployeePage() {
                 variant: "destructive",
             });
         } finally {
-            // This is important for UX, so the admin can log back in.
+            // This is important for UX. After creating a new user, the auth state changes.
+            // We need to sign out the temporary user and restore the admin's session.
+            // A truly robust solution would use a backend function to create users.
+            // For this project, we'll alert the admin they might need to log in again.
             if(auth.currentUser?.uid !== authUser.uid) {
                 await auth.signOut();
-                // Re-authenticate admin - this is a tricky flow for web.
-                // For this app, we'll rely on the user to log back in if the session is lost.
-                // A better solution would involve session tokens.
-                console.log("Session switched. Admin may need to re-login.");
+                console.log("Admin session was interrupted by new user creation. Please log in again if you are signed out.");
+                // We don't force a redirect, as the auth state listener in the layout should handle it.
             }
             setLoading(false);
         }
@@ -238,3 +254,5 @@ export default function AddEmployeePage() {
         </div>
     );
 }
+
+    
