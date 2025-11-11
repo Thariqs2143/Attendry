@@ -31,8 +31,7 @@ export function Header() {
 
   return (
     <header className={cn(
-        "fixed left-0 right-0 z-50 p-4 transition-all duration-300",
-        hasScrolled ? 'top-0' : 'top-12' // This leaves space for the banner when at top
+        "fixed left-0 right-0 z-50 p-4 transition-all duration-300 top-0"
     )}>
       <div
         className={cn(

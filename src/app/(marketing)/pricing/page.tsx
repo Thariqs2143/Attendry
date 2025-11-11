@@ -380,9 +380,11 @@ const PricingPlans = () => {
 
 export default function PricingPage() {
     return (
-        <Suspense fallback={<div className="flex items-center justify-center h-screen"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
-            <PricingPlans />
-        </Suspense>
+        <div className="pt-16 md:pt-24">
+            <Suspense fallback={<div className="flex items-center justify-center h-screen"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+                <PricingPlans />
+            </Suspense>
+        </div>
     )
 }
 
