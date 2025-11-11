@@ -2,7 +2,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { ArrowRight, BarChart3, QrCode, Users, Quote, Fingerprint, Files, TrendingUp } from 'lucide-react';
+import { ArrowRight, BarChart3, QrCode, Users, Quote, Fingerprint, Files, TrendingUp, CalendarOff, FileText, GitBranch, Trophy, BrainCircuit } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,7 +40,7 @@ export default function LandingPage() {
 
   return (
     <>
-      <section className="w-full pt-32 pb-12 md:pt-40 md:pb-24 lg:pt-48 lg:pb-32 bg-gradient-to-br from-indigo-50 via-white to-blue-50 dark:from-indigo-950/50 dark:via-background dark:to-blue-950/50">
+      <section className="w-full pt-20 md:pt-24 lg:pt-32">
         <div className="container px-4 md:px-6">
           <div className="grid gap-10 lg:grid-cols-2 lg:gap-16 items-center">
             <div className="flex flex-col justify-center space-y-6">
@@ -58,7 +58,7 @@ export default function LandingPage() {
                   className="inline-flex h-11 items-center justify-center rounded-full bg-primary px-8 text-sm font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   prefetch={false}
                 >
-                  Claim Your Free Account
+                  Get Started for Free
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
                  <Link
@@ -81,7 +81,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section id="features" className="w-full py-12 md:py-24 lg:py-32 bg-muted dark:bg-muted/50">
+      <section id="features" className="w-full py-12 md:py-24 lg:py-32 bg-muted/50 dark:bg-muted/20">
         <div className="container px-4 md:px-6">
           <div className="flex flex-col items-center justify-center space-y-4 text-center">
             <div className="space-y-2">
@@ -115,21 +115,76 @@ export default function LandingPage() {
                 Easily invite, view, and manage all your employee profiles across single or multiple branches.
               </p>
             </div>
+            <div className="grid gap-2 p-6 rounded-lg border-2 bg-background border-border hover:border-primary hover:shadow-lg transition-all">
+               <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-full bg-primary/10 text-primary">
+                      <FileText className="h-6 w-6" />
+                  </div>
+                  <h3 className="text-lg font-bold">Payroll & Muster Reports</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Automate salary calculations and generate traditional muster rolls for compliance with one click.
+              </p>
+            </div>
+            <div className="grid gap-2 p-6 rounded-lg border-2 bg-background border-border hover:border-primary hover:shadow-lg transition-all">
+               <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-full bg-primary/10 text-primary">
+                      <CalendarOff className="h-6 w-6" />
+                  </div>
+                  <h3 className="text-lg font-bold">Leave Management</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Employees can request leave through the app, and admins can approve or deny requests on the go.
+              </p>
+            </div>
+             <div className="grid gap-2 p-6 rounded-lg border-2 bg-background border-border hover:border-primary hover:shadow-lg transition-all">
+               <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-full bg-primary/10 text-primary">
+                      <GitBranch className="h-6 w-6" />
+                  </div>
+                  <h3 className="text-lg font-bold">Multi-Branch Support</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Manage all your business locations from a single dashboard and easily transfer staff between them.
+              </p>
+            </div>
+            <div className="grid gap-2 p-6 rounded-lg border-2 bg-background border-border hover:border-primary hover:shadow-lg transition-all">
+               <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-full bg-primary/10 text-primary">
+                      <Trophy className="h-6 w-6" />
+                  </div>
+                  <h3 className="text-lg font-bold">Gamified Rewards</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Boost punctuality with a points-based leaderboard and reward system that encourages on-time check-ins.
+              </p>
+            </div>
+             <div className="grid gap-2 p-6 rounded-lg border-2 bg-background border-border hover:border-primary hover:shadow-lg transition-all">
+               <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-full bg-primary/10 text-primary">
+                      <BrainCircuit className="h-6 w-6" />
+                  </div>
+                  <h3 className="text-lg font-bold">AI-Powered Insights</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Receive smart weekly briefings on staff performance and get AI-driven advice on optimal staffing levels.
+              </p>
+            </div>
              <div className="grid gap-2 p-6 rounded-lg border-2 bg-background border-border hover:border-primary hover:shadow-lg transition-all">
                <div className="flex items-center gap-3">
                   <div className="p-3 rounded-full bg-primary/10 text-primary">
                       <BarChart3 className="h-6 w-6" />
                   </div>
-                  <h3 className="text-lg font-bold">Powerful Reports</h3>
+                  <h3 className="text-lg font-bold">Detailed Analytics</h3>
               </div>
               <p className="text-sm text-muted-foreground">
-                Generate detailed attendance, muster, and payroll reports. Export to PDF or Excel with a single click.
+                Access detailed reports on attendance, punctuality, and leaves. Export to PDF or Excel anytime.
               </p>
             </div>
           </div>
         </div>
       </section>
-
+      
       <section className="w-full py-12 md:py-24 lg:py-32">
         <div className="container px-4 md:px-6">
           <div className="flex flex-col items-center justify-center space-y-4 text-center">
@@ -213,7 +268,7 @@ export default function LandingPage() {
           </div>
       </section>
       
-      <section className="w-full py-12 md:py-24 lg:py-32 bg-muted dark:bg-muted/50">
+      <section className="w-full py-12 md:py-24 lg:py-32 bg-muted/50 dark:bg-muted/20">
         <div className="container grid items-center justify-center gap-4 px-4 text-center md:px-6">
           <div className="space-y-3">
             <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">
