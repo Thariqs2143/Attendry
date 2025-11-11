@@ -38,7 +38,7 @@ export default function MarketingLayout({
         </div>
       )}
       <Header hasBanner={showBanner} />
-      <main className="flex-1 pt-[var(--header-height)]">
+      <main className="flex-1">
         {children}
       </main>
       <Footer />
