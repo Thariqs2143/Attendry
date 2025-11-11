@@ -2,7 +2,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { ArrowRight, BarChart3, QrCode, Users, Quote, Fingerprint, Files, TrendingUp, CalendarOff, FileText, GitBranch, Trophy, BrainCircuit, Store, UtensilsCrossed, Wrench } from 'lucide-react';
+import { ArrowRight, BarChart3, QrCode, Users, Quote, Files, TrendingUp, CalendarOff, FileText, GitBranch, Trophy, BrainCircuit, Store, UtensilsCrossed, Wrench } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -210,11 +210,11 @@ export default function LandingPage() {
                 <h3 className="text-xl font-bold text-primary">With Attendry</h3>
                 <div className="relative">
                   <div className="p-6 bg-primary rounded-full">
-                      <Fingerprint className="h-10 w-10 text-primary-foreground" />
+                      <QrCode className="h-10 w-10 text-primary-foreground" />
                   </div>
                   <Users className="absolute -top-1 -left-1 h-6 w-6 text-primary animate-pulse" />
                    <TrendingUp className="absolute -top-1 -right-1 h-6 w-6 text-primary animate-pulse" />
-                   <QrCode className="absolute -bottom-1 left-0 h-6 w-6 text-primary animate-pulse" />
+                   <FileText className="absolute -bottom-1 left-0 h-6 w-6 text-primary animate-pulse" />
                 </div>
                 <p className="text-muted-foreground">Automating check-ins with QR codes, simplifying payroll, and empowering employees.</p>
             </div>
