@@ -201,24 +201,18 @@ export default function LandingPage() {
             </div>
             <div className="mx-auto grid max-w-5xl items-start gap-12 md:grid-cols-3 mt-12">
             <div className="grid gap-4 text-center">
-                <div className="relative flex justify-center">
-                    <div className="p-4 rounded-full bg-primary text-primary-foreground text-2xl font-bold h-16 w-16 flex items-center justify-center">1</div>
-                </div>
-                <h3 className="text-xl font-bold">Create Your Shop</h3>
+                <Image src="https://picsum.photos/seed/signup/600/400" data-ai-hint="signup form" alt="Create Shop" width={600} height={400} className="rounded-lg object-cover w-full aspect-[3/2] mb-4"/>
+                <h3 className="text-xl font-bold">1. Create Your Shop</h3>
                 <p className="text-muted-foreground">Sign up as a shop owner and set up your business profile. Invite your employees to join your workspace via email.</p>
             </div>
             <div className="grid gap-4 text-center">
-                <div className="relative flex justify-center">
-                    <div className="p-4 rounded-full bg-primary text-primary-foreground text-2xl font-bold h-16 w-16 flex items-center justify-center">2</div>
-                </div>
-                <h3 className="text-xl font-bold">Generate QR Code</h3>
+                <Image src="https://picsum.photos/seed/qrcode/600/400" data-ai-hint="QR code" alt="Generate QR" width={600} height={400} className="rounded-lg object-cover w-full aspect-[3/2] mb-4"/>
+                <h3 className="text-xl font-bold">2. Generate QR Code</h3>
                 <p className="text-muted-foreground">Generate a unique QR code for your shop. Choose between a permanent code for printing or a dynamic one for a screen.</p>
             </div>
             <div className="grid gap-4 text-center">
-                    <div className="relative flex justify-center">
-                    <div className="p-4 rounded-full bg-primary text-primary-foreground text-2xl font-bold h-16 w-16 flex items-center justify-center">3</div>
-                </div>
-                <h3 className="text-xl font-bold">Scan & Track</h3>
+                <Image src="https://picsum.photos/seed/tracking/600/400" data-ai-hint="dashboard analytics" alt="Scan & Track" width={600} height={400} className="rounded-lg object-cover w-full aspect-[3/2] mb-4"/>
+                <h3 className="text-xl font-bold">3. Scan & Track</h3>
                 <p className="text-muted-foreground">Employees scan the QR code with their phone to check in and out. All data is logged in your real-time dashboard instantly.</p>
             </div>
             </div>
@@ -395,23 +389,31 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="w-full py-12 md:py-24 lg:py-32">
+       <section className="w-full py-16 md:py-24 lg:py-32 bg-muted/20">
         <div className="container grid items-center justify-center gap-4 px-4 text-center md:px-6">
-          <div className="space-y-3">
+          <div className="space-y-4">
             <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">
-              Ready to transform your attendance system?
+              Ready to Boost Your Business?
             </h2>
             <p className="mx-auto max-w-[600px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-              Join hundreds of businesses saving time and money. Get started in minutes.
+              Join hundreds of businesses saving time and money. Get started for free today.
             </p>
           </div>
-          <div className="mx-auto w-full max-w-sm space-y-2">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mx-auto w-full max-w-sm">
             <Link
               href="/login"
               className="inline-flex h-11 items-center justify-center rounded-full bg-primary px-8 text-sm font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               prefetch={false}
             >
-              Sign Up Now
+              Claim Your Free Account
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+             <Link
+              href="/contact"
+              className="inline-flex h-11 items-center justify-center rounded-full border border-input bg-background px-8 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              prefetch={false}
+            >
+              Contact Sales
             </Link>
           </div>
         </div>
