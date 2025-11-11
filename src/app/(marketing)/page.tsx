@@ -45,14 +45,14 @@ export default function LandingPage() {
           <div className="grid gap-10 lg:grid-cols-2 lg:gap-16 items-center">
             <div className="flex flex-col justify-center space-y-6">
               <div className="space-y-4">
-                <h1 className="text-4xl font-bold tracking-tighter md:text-5xl lg:text-6xl bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-600">
+                <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-600">
                   QR-Powered Attendance <br /> for the Modern Workforce
                 </h1>
                 <p className="max-w-[600px] text-muted-foreground md:text-xl">
                   Ditch the paperwork. Attendry simplifies your employee check-ins with our smart QR code system. Save time, reduce errors, and boost productivity.
                 </p>
               </div>
-              <div className="flex flex-col gap-4 min-[400px]:flex-row">
+              <div className="flex flex-col gap-4 sm:flex-row">
                 <Link
                   href="/login"
                   className="inline-flex h-11 items-center justify-center rounded-full bg-primary px-8 text-sm font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
