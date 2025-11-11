@@ -40,12 +40,12 @@ export default function LandingPage() {
 
   return (
     <>
-      <section className="w-full pt-32 pb-12 md:pt-48 md:pb-24 lg:pt-56 lg:pb-32 bg-gradient-to-br from-indigo-50 via-white to-blue-50 dark:from-indigo-950/50 dark:via-background dark:to-blue-950/50">
+      <section className="w-full pt-20 md:pt-32 lg:pt-40 bg-gradient-to-br from-indigo-50 via-white to-blue-50 dark:from-indigo-950/50 dark:via-background dark:to-blue-950/50">
         <div className="container px-4 md:px-6">
-          <div className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-12 xl:grid-cols-[1fr_600px] items-center">
-            <div className="flex flex-col justify-center space-y-4">
+          <div className="grid gap-10 lg:grid-cols-2 lg:gap-16 items-center">
+            <div className="flex flex-col justify-center space-y-6">
               <div className="space-y-4">
-                 <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-600">
+                <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-600">
                   Effortless Attendance for the Modern Workforce
                 </h1>
                 <p className="max-w-[600px] text-muted-foreground md:text-xl">
@@ -55,7 +55,7 @@ export default function LandingPage() {
               <div className="flex flex-col gap-4 min-[400px]:flex-row">
                 <Link
                   href="/login"
-                  className="inline-flex h-11 items-center justify-center rounded-full bg-primary px-8 text-sm font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border-2 border-primary-foreground/30"
+                  className="inline-flex h-11 items-center justify-center rounded-full bg-primary px-8 text-sm font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   prefetch={false}
                 >
                   Claim Your Free Account
@@ -63,7 +63,7 @@ export default function LandingPage() {
                 </Link>
                  <Link
                   href="/contact"
-                  className="inline-flex h-11 items-center justify-center rounded-full border border-primary bg-background px-8 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+                  className="inline-flex h-11 items-center justify-center rounded-full border border-primary bg-background px-8 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   prefetch={false}
                 >
                   Contact Sales
@@ -72,10 +72,10 @@ export default function LandingPage() {
             </div>
              <Image
               src="https://res.cloudinary.com/dnkghymx5/image/upload/v1722839933/attendry-hero-image_axjg5v.png"
-              width="600"
-              height="600"
+              width={700}
+              height={700}
               alt="Hero"
-              className="mx-auto aspect-square overflow-hidden rounded-xl object-contain sm:w-full lg:order-last"
+              className="mx-auto aspect-square overflow-hidden rounded-xl object-contain"
             />
           </div>
         </div>
@@ -85,7 +85,7 @@ export default function LandingPage() {
         <div className="container px-4 md:px-6">
           <div className="flex flex-col items-center justify-center space-y-4 text-center">
             <div className="space-y-2">
-              <div className="inline-block rounded-full bg-primary/10 border-2 border-primary/20 px-3 py-1 text-sm text-primary font-medium">Key Features</div>
+              <div className="inline-block rounded-full bg-primary/10 border-2 border-primary/20 px-4 py-1.5 text-sm text-primary font-medium">Key Features</div>
               <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">Everything You Need, Nothing You Don't</h2>
               <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
                 Our platform is packed with powerful features designed to make attendance management a breeze for both owners and employees.
