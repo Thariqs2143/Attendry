@@ -42,31 +42,33 @@ export default function LandingPage() {
 
   return (
     <div className="flex flex-col min-h-dvh bg-background">
-      <header className="px-4 lg:px-6 h-16 flex items-center shadow-sm sticky top-0 z-50 bg-background/80 backdrop-blur-sm">
-        <Link href="#" className="flex items-center justify-center" prefetch={false}>
-            <span className="font-bold text-2xl text-primary tracking-wider">
-                Attendry
-            </span>
-        </Link>
-        <nav className="ml-auto flex gap-4 sm:gap-6">
-          <Link
-            href="/login"
-            className="text-sm font-medium hover:underline underline-offset-4"
-            prefetch={false}
-          >
-            Owner Login
-          </Link>
-          <Link
-            href="/employee/login"
-            className="text-sm font-medium hover:underline underline-offset-4"
-            prefetch={false}
-          >
-            Employee Login
-          </Link>
-        </nav>
+      <header className="fixed top-4 inset-x-0 z-50 px-4">
+        <div className="w-full max-w-7xl mx-auto flex items-center h-16 bg-background/80 backdrop-blur-sm border rounded-full shadow-sm px-6">
+            <Link href="#" className="flex items-center" prefetch={false}>
+                <span className="font-bold text-2xl text-primary tracking-wider">
+                    Attendry
+                </span>
+            </Link>
+            <nav className="ml-auto flex gap-4 sm:gap-6">
+            <Link
+                href="/login"
+                className="text-sm font-medium hover:underline underline-offset-4"
+                prefetch={false}
+            >
+                Owner Login
+            </Link>
+            <Link
+                href="/employee/login"
+                className="text-sm font-medium hover:underline underline-offset-4"
+                prefetch={false}
+            >
+                Employee Login
+            </Link>
+            </nav>
+        </div>
       </header>
       <main className="flex-1">
-        <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48 bg-gradient-to-br from-indigo-50 via-white to-blue-50 dark:from-indigo-950/50 dark:via-background dark:to-blue-950/50">
+        <section className="w-full pt-24 pb-12 md:pt-32 md:pb-24 lg:pt-48 lg:pb-32 xl:pt-56 xl:pb-48 bg-gradient-to-br from-indigo-50 via-white to-blue-50 dark:from-indigo-950/50 dark:via-background dark:to-blue-950/50">
           <div className="container px-4 md:px-6">
             <div className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-12 xl:grid-cols-[1fr_600px]">
               <div className="flex flex-col justify-center space-y-4">
@@ -78,14 +80,21 @@ export default function LandingPage() {
                     Ditch the paperwork. Attendry simplifies your employee check-ins with our smart QR code system. Save time, reduce errors, and boost productivity.
                   </p>
                 </div>
-                <div className="flex flex-col gap-2 min-[400px]:flex-row">
+                <div className="flex flex-col gap-4 min-[400px]:flex-row">
                   <Link
                     href="/login"
-                    className="inline-flex h-11 items-center justify-center rounded-md bg-primary px-8 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+                    className="inline-flex h-11 items-center justify-center rounded-full bg-primary px-8 text-sm font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
                     prefetch={false}
                   >
-                    Get Started for Free
+                    Claim Your Free Account
                     <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                   <Link
+                    href="#"
+                    className="inline-flex h-11 items-center justify-center rounded-full border bg-background px-8 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+                    prefetch={false}
+                  >
+                    Contact Sales
                   </Link>
                 </div>
               </div>
@@ -245,7 +254,7 @@ export default function LandingPage() {
             <div className="mx-auto w-full max-w-sm space-y-2">
               <Link
                 href="/login"
-                className="inline-flex h-11 items-center justify-center rounded-md bg-primary px-8 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+                className="inline-flex h-11 items-center justify-center rounded-full bg-primary px-8 text-sm font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 prefetch={false}
               >
                 Sign Up Now
@@ -254,16 +263,38 @@ export default function LandingPage() {
           </div>
         </section>
       </main>
-       <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
-        <p className="text-xs text-muted-foreground">&copy; 2024 Attendry. All rights reserved.</p>
-        <nav className="sm:ml-auto flex gap-4 sm:gap-6">
-          <Link href="#" className="text-xs hover:underline underline-offset-4" prefetch={false}>
-            Terms of Service
-          </Link>
-          <Link href="#" className="text-xs hover:underline underline-offset-4" prefetch={false}>
-            Privacy
-          </Link>
-        </nav>
+      <footer className="bg-background border-t">
+        <div className="container mx-auto py-12 px-4 md:px-6 grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div className="col-span-1 md:col-span-2 space-y-4">
+                <Link href="#" className="flex items-center" prefetch={false}>
+                    <span className="font-bold text-2xl text-primary tracking-wider">Attendry</span>
+                </Link>
+                <p className="text-muted-foreground max-w-md">Attendry connects local shops with customers through a simple QR code. Display real-time offers, track engagement, and watch your walk-ins grow.</p>
+            </div>
+            <div className="space-y-4">
+                <h4 className="font-semibold uppercase text-muted-foreground">Navigation</h4>
+                <nav className="flex flex-col gap-2">
+                    <Link href="#how-it-works" className="text-sm hover:underline">How It Works</Link>
+                    <Link href="#features" className="text-sm hover:underline">Features</Link>
+                    <Link href="#testimonials" className="text-sm hover:underline">Testimonials</Link>
+                    <Link href="/login" className="text-sm hover:underline">Get Started</Link>
+                </nav>
+            </div>
+            <div className="space-y-4">
+                <h4 className="font-semibold uppercase text-muted-foreground">Quick Links</h4>
+                 <nav className="flex flex-col gap-2">
+                    <Link href="/login" className="text-sm hover:underline">Shop Owner Portal</Link>
+                    <Link href="#" className="text-sm hover:underline">Terms of Service</Link>
+                    <Link href="#" className="text-sm hover:underline">Privacy Policy</Link>
+                </nav>
+            </div>
+        </div>
+        <div className="border-t">
+            <div className="container mx-auto py-6 px-4 md:px-6 flex flex-col sm:flex-row justify-between items-center text-xs text-muted-foreground">
+                <p>&copy; 2024 Attendry. All rights reserved.</p>
+                <p>Made with ❤️ in India</p>
+            </div>
+        </div>
       </footer>
     </div>
   );
