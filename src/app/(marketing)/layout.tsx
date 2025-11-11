@@ -23,9 +23,9 @@ export default function MarketingLayout({
             <span>Special Offer! Upgrade and save up to 40% on our plans.</span>
             <ArrowRight className="h-4 w-4" />
           </Link>
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             className="absolute top-1/2 right-4 -translate-y-1/2 h-7 w-7 text-primary-foreground hover:bg-primary/50 hover:text-primary-foreground"
             onClick={(e) => {
                 e.preventDefault();
