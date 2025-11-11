@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePathname } from 'next/navigation';
@@ -93,6 +93,7 @@ export function Header({ hasBanner }: { hasBanner: boolean }) {
                   </Button>
               </SheetTrigger>
               <SheetContent side="left">
+                  <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
                   <div className="flex flex-col gap-8 p-6">
                   <Link href="/" className="flex items-center" prefetch={false}>
                       <span className="font-bold text-2xl text-primary tracking-wider">Attendry</span>
