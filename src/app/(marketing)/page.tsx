@@ -75,7 +75,7 @@ export default function LandingPage() {
               width={700}
               height={700}
               alt="Hero"
-              className="mx-auto aspect-square overflow-hidden rounded-xl object-contain"
+              className="mx-auto overflow-hidden rounded-xl object-contain"
             />
           </div>
         </div>
