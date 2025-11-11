@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -186,7 +185,7 @@ const PricingPlans = ({ profile }: { profile: FullProfile | null }) => {
   ];
 
   const handlePayment = async (plan: typeof plans[0]) => {
-    if (!profile || !profile.id) {
+    if (!profile || !profile.uid) {
         toast({ title: "Error", description: "You must be logged in to subscribe.", variant: "destructive" });
         return;
     }
@@ -213,7 +212,7 @@ const PricingPlans = ({ profile }: { profile: FullProfile | null }) => {
                   paymentId: response.dodo_payment_id,
                   subscriptionId: response.dodo_subscription_id,
                   signature: response.dodo_signature,
-                  shopId: profile.id,
+                  shopId: profile.uid,
                   planName: plan.name,
               });
 
@@ -343,7 +342,8 @@ const PricingPlans = ({ profile }: { profile: FullProfile | null }) => {
                         className={cn(
                           'w-full mt-auto py-3 rounded-lg font-semibold text-slate-900 transition-all shadow-md text-base',
                           p.isPopular ? 'bg-blue-400 hover:bg-blue-500' : 'bg-slate-200 hover:bg-white',
-                          p.isBestValue ? 'bg-green-400 hover:bg-green-500' : ''
+                          p.isBestValue ? 'bg-green-400 hover:bg-green-500' : '',
+                          (loadingPlan === p.id || !isWithinLimit) && 'opacity-50 cursor-not-allowed'
                         )}
                       >
                           {loadingPlan === p.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
@@ -414,7 +414,7 @@ const PricingPlans = ({ profile }: { profile: FullProfile | null }) => {
             </tbody>
           </table>
         </div>
-        <p className="text-center text-sm text-slate-400 mt-8">Need a custom quote or on-premise version? <Link href="#" className="font-semibold text-primary hover:underline">Contact our team</Link> — we'll tailor it for your business.</p>
+        <p className="text-center text-sm text-slate-400 mt-8">Need a custom quote or on-premise version? <Link href="/contact" className="font-semibold text-primary hover:underline">Contact our team</Link> — we'll tailor it for your business.</p>
       </div>
 
     </div>
@@ -933,5 +933,7 @@ export default function AdminSettingsPage() {
   );
 }
 
+
+    
 
     
