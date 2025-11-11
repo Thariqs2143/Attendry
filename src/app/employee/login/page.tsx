@@ -1,4 +1,3 @@
-
 'use client';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,7 +33,7 @@ export default function EmployeeLoginPage() {
             const userDocRef = doc(db, 'users', user.uid);
             const userDocSnap = await getDoc(userDocRef);
             
-            if (userDocSnap.exists() && userDocSnap.data().role === 'Employee') {
+            if (userDocSnap.exists() && (userDocSnap.data().role === 'Employee' || userDocSnap.data().role === 'Admin')) {
                 const shopId = userDocSnap.data().shopId;
                 const shopDocRef = doc(db, 'shops', shopId);
                 const shopDocSnap = await getDoc(shopDocRef);
@@ -98,7 +97,7 @@ export default function EmployeeLoginPage() {
                 </form>
 
                 <p className="mt-8 text-center text-sm text-muted-foreground">
-                    Invited but don't have a password? Please contact your manager to get a temporary one.
+                    Forgot your password? Please contact your manager to get it reset.
                 </p>
                 
                 <p className="mt-4 text-center text-sm text-muted-foreground">

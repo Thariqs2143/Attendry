@@ -1,4 +1,3 @@
-
 'use strict';
 
 import * as functions from 'firebase-functions';
@@ -10,6 +9,77 @@ import * as crypto from 'crypto';
 admin.initializeApp();
 const db = admin.firestore();
 const messaging = admin.messaging();
+
+/**
+ * A callable function for admins to create a new employee user.
+ */
+export const createEmployee = functions.https.onCall(async (data, context) => {
+    // Check if the caller is authenticated and is an admin
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'The function must be called while authenticated.');
+    }
+    
+    // An admin's UID is the same as their shopId
+    const adminShopId = context.auth.uid;
+    const { email, password, name, employeeId, role, baseSalary, shopId } = data;
+
+    // Verify that the calling admin owns the shop they're adding to
+    if (adminShopId !== shopId) {
+        throw new functions.https.HttpsError('permission-denied', 'You can only add employees to your own shop.');
+    }
+
+    try {
+        // Create the user in Firebase Authentication
+        const userRecord = await admin.auth().createUser({
+            email: email,
+            password: password,
+            displayName: name,
+        });
+
+        // Create the user profiles in Firestore
+        const newEmployeeProfile = {
+            uid: userRecord.uid,
+            name,
+            email,
+            role,
+            employeeId,
+            status: 'Pending Onboarding',
+            fallback: name.split(' ').map((n: string) => n[0]).join(''),
+            shopId: shopId,
+            points: 0,
+            streak: 0,
+            joinDate: new Date().toISOString().split('T')[0],
+            baseSalary: baseSalary || 0,
+            isProfileComplete: false,
+        };
+
+        const batch = db.batch();
+
+        // 1. Add to global 'users' collection
+        const userDocRef = db.collection('users').doc(userRecord.uid);
+        batch.set(userDocRef, newEmployeeProfile);
+        
+        // 2. Add to shop's 'employees' subcollection
+        const shopEmployeeDocRef = db.collection('shops').doc(shopId).collection('employees').doc(userRecord.uid);
+        batch.set(shopEmployeeDocRef, newEmployeeProfile);
+
+        await batch.commit();
+        
+        return { success: true, uid: userRecord.uid };
+
+    } catch (error: any) {
+        console.error('Error creating new employee:', error);
+        // Throw specific errors that the client can understand
+        if (error.code === 'auth/email-already-exists') {
+            throw new functions.https.HttpsError('already-exists', 'The email address is already in use by another account.', { errorCode: 'EMAIL_EXISTS' });
+        }
+        if (error.code === 'auth/invalid-password') {
+            throw new functions.https.HttpsError('invalid-argument', 'The password must be a string with at least 6 characters.', { errorCode: 'WEAK_PASSWORD' });
+        }
+        throw new functions.https.HttpsError('internal', 'An unexpected error occurred while creating the employee.');
+    }
+});
+
 
 /**
  * A scheduled function that runs every 15 minutes to send shift start reminders.

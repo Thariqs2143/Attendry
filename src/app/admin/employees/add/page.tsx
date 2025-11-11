@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -8,15 +7,13 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, UserPlus, Loader2, ChevronsUpDown } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { collection, query, where, getDocs, doc, setDoc, writeBatch } from "firebase/firestore";
-import { db, auth, app as mainApp } from "@/lib/firebase";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { db, auth, functions } from "@/lib/firebase";
 import { useState, useEffect } from "react";
-import { initializeApp } from 'firebase/app';
-import { onAuthStateChanged, type User as AuthUser, createUserWithEmailAndPassword, getAuth, signOut } from "firebase/auth";
+import { onAuthStateChanged, type User as AuthUser } from "firebase/auth";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { FirestorePermissionError } from '@/lib/errors';
-import { errorEmitter } from '@/lib/error-emitter';
+import { httpsCallable } from "firebase/functions";
 
 type Branch = {
     id: string;
@@ -24,8 +21,6 @@ type Branch = {
     ownerId: string;
 };
 
-// Create a unique name for the temporary app
-const secondaryAppName = 'employeeCreation';
 
 export default function AddEmployeePage() {
     const router = useRouter();
@@ -82,69 +77,36 @@ export default function AddEmployeePage() {
             return;
         }
 
-        // Initialize a temporary, secondary Firebase app instance.
-        // This isolates the authentication state for user creation from the main app.
-        const secondaryApp = initializeApp(mainApp.options, secondaryAppName);
-        const secondaryAuth = getAuth(secondaryApp);
-        
         try {
-            // Create the new user with the temporary auth instance
-            const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
-            const newEmployeeUser = userCredential.user;
-
-            const newEmployeeProfile = {
-                uid: newEmployeeUser.uid,
-                name,
+            const createEmployee = httpsCallable(functions, 'createEmployee');
+            const result = await createEmployee({
                 email,
-                role,
+                password,
+                name,
                 employeeId,
-                status: 'Pending Onboarding',
-                fallback: name.split(' ').map(n => n[0]).join(''),
-                shopId: selectedBranch.id,
-                points: 0,
-                streak: 0,
-                joinDate: new Date().toISOString().split('T')[0],
+                role,
                 baseSalary: Number(baseSalary) || 0,
-                isProfileComplete: false,
-            };
-
-            const batch = writeBatch(db);
-
-            // 1. Add employee to the 'users' collection for global lookup and profile data
-            const userDocRef = doc(db, 'users', newEmployeeUser.uid);
-            batch.set(userDocRef, newEmployeeProfile);
-            
-            // 2. Add employee to the selected shop's subcollection for branch-specific management
-            const shopEmployeeDocRef = doc(db, 'shops', selectedBranch.id, 'employees', newEmployeeUser.uid);
-            batch.set(shopEmployeeDocRef, newEmployeeProfile);
-
-            // This commit is now performed by the logged-in admin, not the new employee
-            await batch.commit()
-              .catch(async (serverError) => {
-                  const permissionError = new FirestorePermissionError({
-                      path: `users/${newEmployeeUser.uid} and shops/${selectedBranch.id}/employees/${newEmployeeUser.uid}`,
-                      operation: 'create',
-                      requestResourceData: newEmployeeProfile,
-                  });
-                  errorEmitter.emit('permission-error', permissionError);
-                  throw serverError; // re-throw to be caught by outer catch block
-              });
-
-            toast({
-                title: "Employee Invited!",
-                description: `${name} has been added. They can now log in with their email and password.`,
+                shopId: selectedBranch.id,
             });
-            router.push('/admin/employees');
+
+            if ((result.data as any).success) {
+                toast({
+                    title: "Employee Invited!",
+                    description: `${name} has been added. They can now log in with their email and password.`,
+                });
+                router.push('/admin/employees');
+            } else {
+                 throw new Error((result.data as any).error || "An unknown error occurred.");
+            }
+           
         } catch (error: any) {
             console.error("Error adding employee:", error);
-            let description = "Could not create invitation. Please try again.";
-            if (error.code === 'auth/email-already-in-use') {
+            let description = error.message || "Could not create invitation. Please try again.";
+            // Firebase functions often wrap auth errors, so we check the message string
+            if (error.message.includes('EMAIL_EXISTS')) {
                 description = "This email address is already in use by another account.";
-            } else if (error.code === 'auth/weak-password') {
+            } else if (error.message.includes('WEAK_PASSWORD')) {
                 description = "The password is too weak. It must be at least 6 characters long.";
-            } else if (error.message.includes('permission-error')) {
-                 // The contextual error is already displayed by the listener
-                 return;
             }
             toast({
                 title: "Error",
@@ -152,8 +114,6 @@ export default function AddEmployeePage() {
                 variant: "destructive",
             });
         } finally {
-            // Sign out from the temporary app instance to clean up
-            await signOut(secondaryAuth);
             setLoading(false);
         }
     };
@@ -255,5 +215,3 @@ export default function AddEmployeePage() {
         </div>
     );
 }
-
-    
