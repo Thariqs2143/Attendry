@@ -40,7 +40,7 @@ export default function LandingPage() {
 
   return (
     <>
-      <section className="w-full pt-32 pb-12 md:pt-40 md:pb-24 lg:pt-48 lg:pb-32">
+      <section className="w-full pt-20 pb-12 md:pt-24 md:pb-24 lg:pt-32 lg:pb-32">
         <div className="container px-4 md:px-6">
           <div className="grid gap-10 lg:grid-cols-2 lg:gap-16 items-center">
             <div className="flex flex-col justify-center space-y-6">
@@ -234,21 +234,21 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="mx-auto grid max-w-5xl items-stretch gap-8 sm:grid-cols-2 md:grid-cols-3 lg:max-w-none mt-12">
-            <Card className="flex flex-col items-center text-center p-8 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+            <Card className="flex flex-col items-center text-center p-8 transition-all duration-300 border-2 border-border hover:border-primary hover:shadow-lg hover:-translate-y-1">
               <div className="p-4 bg-primary/10 rounded-full mb-4">
                 <Store className="h-8 w-8 text-primary" />
               </div>
               <h3 className="text-xl font-bold">Retail & Shops</h3>
               <p className="text-muted-foreground mt-2">Manage cashiers, floor staff, and stockists. Easily track shifts and overtime during peak festival seasons.</p>
             </Card>
-            <Card className="flex flex-col items-center text-center p-8 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+            <Card className="flex flex-col items-center text-center p-8 transition-all duration-300 border-2 border-border hover:border-primary hover:shadow-lg hover:-translate-y-1">
               <div className="p-4 bg-primary/10 rounded-full mb-4">
                 <UtensilsCrossed className="h-8 w-8 text-primary" />
               </div>
               <h3 className="text-xl font-bold">Restaurants & Cafes</h3>
               <p className="text-muted-foreground mt-2">Handle complex schedules for waiters, kitchen staff, and part-time workers. Simplify payroll for tipped employees.</p>
             </Card>
-            <Card className="flex flex-col items-center text-center p-8 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+            <Card className="flex flex-col items-center text-center p-8 transition-all duration-300 border-2 border-border hover:border-primary hover:shadow-lg hover:-translate-y-1">
               <div className="p-4 bg-primary/10 rounded-full mb-4">
                 <Wrench className="h-8 w-8 text-primary" />
               </div>
