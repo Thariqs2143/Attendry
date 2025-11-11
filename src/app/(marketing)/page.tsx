@@ -55,7 +55,7 @@ export default function LandingPage() {
               <div className="flex flex-col gap-4 min-[400px]:flex-row">
                 <Link
                   href="/login"
-                  className="inline-flex h-11 items-center justify-center rounded-full bg-primary px-8 text-sm font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+                  className="inline-flex h-11 items-center justify-center rounded-full bg-primary px-8 text-sm font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border-2 border-primary-foreground/30"
                   prefetch={false}
                 >
                   Claim Your Free Account
@@ -63,7 +63,7 @@ export default function LandingPage() {
                 </Link>
                  <Link
                   href="/contact"
-                  className="inline-flex h-11 items-center justify-center rounded-full border bg-background px-8 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+                  className="inline-flex h-11 items-center justify-center rounded-full border border-primary bg-background px-8 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
                   prefetch={false}
                 >
                   Contact Sales
@@ -85,7 +85,7 @@ export default function LandingPage() {
         <div className="container px-4 md:px-6">
           <div className="flex flex-col items-center justify-center space-y-4 text-center">
             <div className="space-y-2">
-              <div className="inline-block rounded-lg bg-background px-3 py-1 text-sm">Key Features</div>
+              <div className="inline-block rounded-full bg-primary/10 border-2 border-primary/20 px-3 py-1 text-sm text-primary font-medium">Key Features</div>
               <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">Everything You Need, Nothing You Don't</h2>
               <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
                 Our platform is packed with powerful features designed to make attendance management a breeze for both owners and employees.
@@ -200,3 +200,5 @@ export default function LandingPage() {
     </>
   );
 }
+
+    
