@@ -40,7 +40,7 @@ export default function LandingPage() {
 
   return (
     <>
-      <section className="w-full pt-28 md:pt-32 lg:pt-40">
+      <section className="w-full pt-20 md:pt-24 lg:pt-32">
         <div className="container px-4 md:px-6">
           <div className="grid gap-10 lg:grid-cols-2 lg:gap-16 items-center">
             <div className="flex flex-col justify-center space-y-6">
@@ -92,8 +92,8 @@ export default function LandingPage() {
               </p>
             </div>
           </div>
-          <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 lg:max-w-none mt-12">
-            <div className="grid gap-2 p-6 rounded-lg border-2 bg-background border-border hover:border-primary hover:shadow-lg transition-all">
+          <div className="mx-auto grid max-w-5xl items-stretch gap-8 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 lg:max-w-none mt-12">
+            <div className="flex flex-col gap-2 p-6 rounded-lg border-2 bg-background border-border hover:border-primary hover:shadow-lg transition-all">
               <div className="flex items-center gap-3">
                   <div className="p-3 rounded-full bg-primary/10 text-primary">
                       <QrCode className="h-6 w-6" />
@@ -104,7 +104,7 @@ export default function LandingPage() {
                 Generate static or dynamic QR codes. Employees scan with their phone to check in and out instantly.
               </p>
             </div>
-             <div className="grid gap-2 p-6 rounded-lg border-2 bg-background border-border hover:border-primary hover:shadow-lg transition-all">
+             <div className="flex flex-col gap-2 p-6 rounded-lg border-2 bg-background border-border hover:border-primary hover:shadow-lg transition-all">
                <div className="flex items-center gap-3">
                   <div className="p-3 rounded-full bg-primary/10 text-primary">
                       <Users className="h-6 w-6" />
@@ -115,7 +115,7 @@ export default function LandingPage() {
                 Easily invite, view, and manage all your employee profiles across single or multiple branches.
               </p>
             </div>
-            <div className="grid gap-2 p-6 rounded-lg border-2 bg-background border-border hover:border-primary hover:shadow-lg transition-all">
+            <div className="flex flex-col gap-2 p-6 rounded-lg border-2 bg-background border-border hover:border-primary hover:shadow-lg transition-all">
                <div className="flex items-center gap-3">
                   <div className="p-3 rounded-full bg-primary/10 text-primary">
                       <FileText className="h-6 w-6" />
@@ -126,7 +126,7 @@ export default function LandingPage() {
                 Automate salary calculations and generate traditional muster rolls for compliance with one click.
               </p>
             </div>
-            <div className="grid gap-2 p-6 rounded-lg border-2 bg-background border-border hover:border-primary hover:shadow-lg transition-all">
+            <div className="flex flex-col gap-2 p-6 rounded-lg border-2 bg-background border-border hover:border-primary hover:shadow-lg transition-all">
                <div className="flex items-center gap-3">
                   <div className="p-3 rounded-full bg-primary/10 text-primary">
                       <CalendarOff className="h-6 w-6" />
@@ -137,7 +137,7 @@ export default function LandingPage() {
                 Employees can request leave through the app, and admins can approve or deny requests on the go.
               </p>
             </div>
-             <div className="grid gap-2 p-6 rounded-lg border-2 bg-background border-border hover:border-primary hover:shadow-lg transition-all">
+             <div className="flex flex-col gap-2 p-6 rounded-lg border-2 bg-background border-border hover:border-primary hover:shadow-lg transition-all">
                <div className="flex items-center gap-3">
                   <div className="p-3 rounded-full bg-primary/10 text-primary">
                       <GitBranch className="h-6 w-6" />
@@ -148,7 +148,7 @@ export default function LandingPage() {
                 Manage all your business locations from a single dashboard and easily transfer staff between them.
               </p>
             </div>
-            <div className="grid gap-2 p-6 rounded-lg border-2 bg-background border-border hover:border-primary hover:shadow-lg transition-all">
+            <div className="flex flex-col gap-2 p-6 rounded-lg border-2 bg-background border-border hover:border-primary hover:shadow-lg transition-all">
                <div className="flex items-center gap-3">
                   <div className="p-3 rounded-full bg-primary/10 text-primary">
                       <Trophy className="h-6 w-6" />
@@ -159,7 +159,7 @@ export default function LandingPage() {
                 Boost punctuality with a points-based leaderboard and reward system that encourages on-time check-ins.
               </p>
             </div>
-             <div className="grid gap-2 p-6 rounded-lg border-2 bg-background border-border hover:border-primary hover:shadow-lg transition-all">
+             <div className="flex flex-col gap-2 p-6 rounded-lg border-2 bg-background border-border hover:border-primary hover:shadow-lg transition-all">
                <div className="flex items-center gap-3">
                   <div className="p-3 rounded-full bg-primary/10 text-primary">
                       <BrainCircuit className="h-6 w-6" />
@@ -170,7 +170,7 @@ export default function LandingPage() {
                 Receive smart weekly briefings on staff performance and get AI-driven advice on optimal staffing levels.
               </p>
             </div>
-             <div className="grid gap-2 p-6 rounded-lg border-2 bg-background border-border hover:border-primary hover:shadow-lg transition-all">
+             <div className="flex flex-col gap-2 p-6 rounded-lg border-2 bg-background border-border hover:border-primary hover:shadow-lg transition-all">
                <div className="flex items-center gap-3">
                   <div className="p-3 rounded-full bg-primary/10 text-primary">
                       <BarChart3 className="h-6 w-6" />
