@@ -40,7 +40,7 @@ export default function LandingPage() {
 
   return (
     <>
-      <section className="w-full pt-20 md:pt-32 lg:pt-40 bg-gradient-to-br from-indigo-50 via-white to-blue-50 dark:from-indigo-950/50 dark:via-background dark:to-blue-950/50">
+      <section className="w-full pt-32 pb-12 md:pt-48 md:pb-24 lg:pt-56 lg:pb-32 bg-gradient-to-br from-indigo-50 via-white to-blue-50 dark:from-indigo-950/50 dark:via-background dark:to-blue-950/50">
         <div className="container px-4 md:px-6">
           <div className="grid gap-10 lg:grid-cols-2 lg:gap-16 items-center">
             <div className="flex flex-col justify-center space-y-6">
