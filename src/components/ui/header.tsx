@@ -16,7 +16,7 @@ const navLinks = [
   { href: '/contact', label: 'Contact' },
 ];
 
-export function Header() {
+export function Header({ hasBanner }: { hasBanner: boolean }) {
   const [hasScrolled, setHasScrolled] = useState(false);
   const pathname = usePathname();
 
@@ -30,9 +30,12 @@ export function Header() {
   }, []);
 
   return (
-    <header className={cn(
-        "fixed left-0 right-0 z-50 p-4 transition-all duration-300 top-0"
-    )}>
+    <header 
+        className={cn(
+            "fixed left-0 right-0 z-50 p-4 transition-all duration-300",
+            hasBanner ? "top-12" : "top-0"
+        )}
+    >
       <div
         className={cn(
           'container mx-auto flex h-16 items-center justify-between px-6 rounded-full transition-all duration-300',

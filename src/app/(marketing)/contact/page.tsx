@@ -6,72 +6,86 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Menu, Mail, Phone, MapPin } from 'lucide-react';
-import Link from 'next/link';
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Mail, Phone, MapPin } from 'lucide-react';
 
 export default function ContactPage() {
     return (
-        <>
-            <section className="w-full pt-32 pb-12 md:pt-48 md:pb-24 lg:pt-56 lg:pb-32 bg-muted/50">
-                <div className="container px-4 md:px-6">
-                    <div className="grid gap-12 lg:grid-cols-2 lg:gap-16">
+        <div className="w-full py-24 md:py-32 lg:py-40">
+            <div className="container px-4 md:px-6">
+                <div className="flex flex-col items-center justify-center space-y-4 text-center mb-12">
+                    <div className="space-y-2">
+                        <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl">Get in Touch</h1>
+                        <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                            We'd love to hear from you. Whether you have a question about features, pricing, or anything else, our team is ready to answer all your questions.
+                        </p>
+                    </div>
+                </div>
+
+                <div className="grid gap-12 lg:grid-cols-2 lg:gap-16">
+                    <div className="space-y-8">
+                         <h2 className="text-2xl font-bold tracking-tighter">Contact Information</h2>
+                         <p className="text-muted-foreground">
+                            Find us at our office or drop us a line via email or phone.
+                         </p>
                         <div className="space-y-6">
-                            <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl">Get in Touch</h1>
-                            <p className="text-muted-foreground md:text-lg">
-                                Have questions about our features, pricing, or anything else? Our team is ready to answer all your questions.
-                            </p>
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-4">
+                            <div className="flex items-start gap-4">
+                                <div className="p-3 rounded-md bg-muted">
+                                    <MapPin className="h-6 w-6 text-primary" />
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold">Our Office</h3>
+                                    <p className="text-muted-foreground">123 Business Rd, Commerce City, 12345</p>
+                                </div>
+                            </div>
+                             <div className="flex items-start gap-4">
+                                <div className="p-3 rounded-md bg-muted">
                                     <Mail className="h-6 w-6 text-primary" />
-                                    <a href="mailto:support@attendry.com" className="hover:underline">support@attendry.com</a>
                                 </div>
-                                <div className="flex items-center gap-4">
+                                <div>
+                                    <h3 className="font-semibold">Email Us</h3>
+                                    <a href="mailto:support@attendry.com" className="text-muted-foreground hover:underline">support@attendry.com</a>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-4">
+                                <div className="p-3 rounded-md bg-muted">
                                     <Phone className="h-6 w-6 text-primary" />
-                                    <span>+91 12345 67890</span>
                                 </div>
-                                <div className="flex items-start gap-4">
-                                    <MapPin className="h-6 w-6 text-primary mt-1" />
-                                    <span>123 Tech Park, Innovation Drive<br/>Bangalore, Karnataka, 560100, India</span>
+                                <div>
+                                    <h3 className="font-semibold">Call Us</h3>
+                                    <p className="text-muted-foreground">+91 12345 67890</p>
                                 </div>
                             </div>
                         </div>
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Send us a Message</CardTitle>
-                                <CardDescription>We'll get back to you as soon as possible.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <form className="space-y-4">
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="name">Name</Label>
-                                            <Input id="name" placeholder="Enter your name" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="email">Email</Label>
-                                            <Input id="email" type="email" placeholder="Enter your email" />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="subject">Subject</Label>
-                                        <Input id="subject" placeholder="What's your message about?" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="message">Message</Label>
-                                        <Textarea id="message" placeholder="Your message..." className="min-h-[120px]" />
-                                    </div>
-                                    <Button type="submit" className="w-full">Send Message</Button>
-                                </form>
-                            </CardContent>
-                        </Card>
+                    </div>
+                    <div className="space-y-8">
+                        <h2 className="text-2xl font-bold tracking-tighter">Send us a Message</h2>
+                         <p className="text-muted-foreground">
+                            Fill out the form and we'll get back to you.
+                         </p>
+                        <form className="space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="name">Name</Label>
+                                    <Input id="name" placeholder="Enter your name" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="email">Email</Label>
+                                    <Input id="email" type="email" placeholder="Enter your email" />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="subject">Subject</Label>
+                                <Input id="subject" placeholder="What's your message about?" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="message">Message</Label>
+                                <Textarea id="message" placeholder="Your message..." className="min-h-[120px]" />
+                            </div>
+                            <Button type="submit" className="w-full">Send Message</Button>
+                        </form>
                     </div>
                 </div>
-            </section>
-        </>
+            </div>
+        </div>
     );
 }
