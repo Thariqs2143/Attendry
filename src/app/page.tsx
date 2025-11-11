@@ -39,309 +39,90 @@ const testimonials = [
   { name: 'Arun Singh', role: 'Automobile Service Center', review: "The system just works. It's reliable, my mechanics find it easy to use, and I get all the data I need without any fuss. I'm very happy with it.", seed: '15' },
 ];
 
-
-export default function LandingPage() {
-  const plugin = useRef(
-    Autoplay({ delay: 2500, stopOnInteraction: true, stopOnMouseEnter: true })
-  );
-
+const AppLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <div className="flex flex-col min-h-dvh bg-background">
-       <header className="fixed top-4 left-0 right-0 z-50 px-4">
+      <header className="fixed top-4 left-0 right-0 z-50 px-4">
         <div className="container mx-auto h-16 flex items-center justify-between rounded-full bg-background/80 backdrop-blur-sm shadow-lg border border-border/20 px-6">
-            <Link href="#" className="flex items-center" prefetch={false}>
-                <span className="font-bold text-2xl text-primary tracking-wider">
-                    Attendry
-                </span>
+          <Link href="/" className="flex items-center" prefetch={false}>
+            <span className="font-bold text-2xl text-primary tracking-wider">Attendry</span>
+          </Link>
+          <nav className="hidden lg:flex gap-6">
+            <Link href="/" className="text-sm font-medium hover:underline underline-offset-4" prefetch={false}>
+              Home
             </Link>
-            <nav className="hidden lg:flex gap-6">
-                <Link
-                    href="#how-it-works"
-                    className="text-sm font-medium hover:underline underline-offset-4"
-                    prefetch={false}
-                >
-                    How It Works
+            <Link href="/about" className="text-sm font-medium hover:underline underline-offset-4" prefetch={false}>
+              About Us
+            </Link>
+            <Link href="/how-it-works" className="text-sm font-medium hover:underline underline-offset-4" prefetch={false}>
+              How It Works
+            </Link>
+            <Link href="/pricing" className="text-sm font-medium hover:underline underline-offset-4" prefetch={false}>
+              Pricing
+            </Link>
+            <Link href="/contact" className="text-sm font-medium hover:underline underline-offset-4" prefetch={false}>
+              Contact Us
+            </Link>
+          </nav>
+          <div className="hidden lg:flex items-center gap-4">
+            <Link href="/login" className="text-sm font-medium hover:underline underline-offset-4" prefetch={false}>
+              Owner Login
+            </Link>
+            <Link href="/employee/login">
+              <Button>Employee Login</Button>
+            </Link>
+          </div>
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="icon" className="lg:hidden rounded-full">
+                <Menu className="h-6 w-6" />
+                <span className="sr-only">Toggle navigation menu</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left">
+              <div className="flex flex-col gap-6 p-6">
+                <Link href="/" className="flex items-center" prefetch={false}>
+                  <span className="font-bold text-2xl text-primary tracking-wider">Attendry</span>
                 </Link>
-                 <Link
-                    href="#features"
-                    className="text-sm font-medium hover:underline underline-offset-4"
-                    prefetch={false}
-                >
-                    Features
-                </Link>
-                <Link
-                    href="#testimonials"
-                    className="text-sm font-medium hover:underline underline-offset-4"
-                    prefetch={false}
-                >
-                    Testimonials
-                </Link>
-            </nav>
-            <div className="hidden lg:flex items-center gap-4">
-                <Link
-                    href="/login"
-                    className="text-sm font-medium hover:underline underline-offset-4"
-                    prefetch={false}
-                >
-                    Owner Login
-                </Link>
-                <Link href="/employee/login">
-                    <Button>Employee Login</Button>
-                </Link>
-            </div>
-            <Sheet>
-                <SheetTrigger asChild>
-                    <Button variant="outline" size="icon" className="lg:hidden rounded-full">
-                        <Menu className="h-6 w-6" />
-                        <span className="sr-only">Toggle navigation menu</span>
-                    </Button>
-                </SheetTrigger>
-                <SheetContent side="left">
-                    <div className="flex flex-col gap-6 p-6">
-                         <Link href="#" className="flex items-center" prefetch={false}>
-                            <span className="font-bold text-2xl text-primary tracking-wider">
-                                Attendry
-                            </span>
-                        </Link>
-                        <nav className="grid gap-4 text-lg">
-                            <Link href="#how-it-works" className="font-medium hover:underline underline-offset-4">
-                                How It Works
-                            </Link>
-                            <Link href="#features" className="font-medium hover:underline underline-offset-4">
-                                Features
-                            </Link>
-                            <Link href="#testimonials" className="font-medium hover:underline underline-offset-4">
-                                Testimonials
-                            </Link>
-                            <Link href="/login" className="font-medium hover:underline underline-offset-4">
-                                Owner Login
-                            </Link>
-                            <Link href="/employee/login" className="font-medium hover:underline underline-offset-4">
-                                Employee Login
-                            </Link>
-                        </nav>
-                    </div>
-                </SheetContent>
-            </Sheet>
+                <nav className="grid gap-4 text-lg">
+                  <Link href="/" className="font-medium hover:underline underline-offset-4">Home</Link>
+                  <Link href="/about" className="font-medium hover:underline underline-offset-4">About Us</Link>
+                  <Link href="/how-it-works" className="font-medium hover:underline underline-offset-4">How It Works</Link>
+                  <Link href="/pricing" className="font-medium hover:underline underline-offset-4">Pricing</Link>
+                  <Link href="/contact" className="font-medium hover:underline underline-offset-4">Contact Us</Link>
+                  <Link href="/login" className="font-medium hover:underline underline-offset-4">Owner Login</Link>
+                  <Link href="/employee/login" className="font-medium hover:underline underline-offset-4">Employee Login</Link>
+                </nav>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </header>
       <main className="flex-1">
-        <section className="w-full pt-24 pb-12 md:pt-32 md:pb-24 lg:pt-48 lg:pb-32 xl:pt-56 xl:pb-48 bg-gradient-to-br from-indigo-50 via-white to-blue-50 dark:from-indigo-950/50 dark:via-background dark:to-blue-950/50">
-          <div className="container px-4 md:px-6">
-            <div className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-12 xl:grid-cols-[1fr_600px] items-center">
-              <div className="flex flex-col justify-center space-y-4">
-                <div className="space-y-4">
-                   <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-600">
-                    Effortless Attendance for the Modern Workforce
-                  </h1>
-                  <p className="max-w-[600px] text-muted-foreground md:text-xl">
-                    Ditch the paperwork. Attendry simplifies your employee check-ins with our smart QR code system. Save time, reduce errors, and boost productivity.
-                  </p>
-                </div>
-                <div className="flex flex-col gap-4 min-[400px]:flex-row">
-                  <Link
-                    href="/login"
-                    className="inline-flex h-11 items-center justify-center rounded-full bg-primary px-8 text-sm font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
-                    prefetch={false}
-                  >
-                    Claim Your Free Account
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                   <Link
-                    href="#"
-                    className="inline-flex h-11 items-center justify-center rounded-full border bg-background px-8 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
-                    prefetch={false}
-                  >
-                    Contact Sales
-                  </Link>
-                </div>
-              </div>
-               <Image
-                src="https://res.cloudinary.com/dnkghymx5/image/upload/v1722839933/attendry-hero-image_axjg5v.png"
-                width="600"
-                height="600"
-                alt="Hero"
-                className="mx-auto aspect-square overflow-hidden rounded-xl object-contain sm:w-full lg:order-last"
-              />
-            </div>
-          </div>
-        </section>
-        
-        <section id="how-it-works" className="w-full py-12 md:py-24 lg:py-32">
-            <div className="container px-4 md:px-6">
-                 <div className="flex flex-col items-center justify-center space-y-4 text-center">
-                    <div className="space-y-2">
-                        <div className="inline-block rounded-lg bg-muted px-3 py-1 text-sm">How It Works</div>
-                        <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">Get Started in 3 Simple Steps</h2>
-                        <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                            Our platform is designed for simplicity and speed. Go from signup to tracking in minutes.
-                        </p>
-                    </div>
-                </div>
-                <div className="mx-auto grid max-w-5xl items-start gap-12 md:grid-cols-3 mt-12">
-                    <div className="grid gap-4 text-center">
-                        <div className="relative flex justify-center">
-                            <div className="p-4 rounded-full bg-primary text-primary-foreground text-2xl font-bold h-16 w-16 flex items-center justify-center">1</div>
-                        </div>
-                        <h3 className="text-xl font-bold">Create Your Shop</h3>
-                        <p className="text-muted-foreground">Sign up as a shop owner and set up your business profile. Invite your employees to join your workspace via email.</p>
-                    </div>
-                    <div className="grid gap-4 text-center">
-                        <div className="relative flex justify-center">
-                           <div className="p-4 rounded-full bg-primary text-primary-foreground text-2xl font-bold h-16 w-16 flex items-center justify-center">2</div>
-                        </div>
-                        <h3 className="text-xl font-bold">Generate QR Code</h3>
-                        <p className="text-muted-foreground">Generate a unique QR code for your shop. Choose between a permanent code for printing or a dynamic one for a screen.</p>
-                    </div>
-                    <div className="grid gap-4 text-center">
-                         <div className="relative flex justify-center">
-                           <div className="p-4 rounded-full bg-primary text-primary-foreground text-2xl font-bold h-16 w-16 flex items-center justify-center">3</div>
-                        </div>
-                        <h3 className="text-xl font-bold">Scan & Track</h3>
-                        <p className="text-muted-foreground">Employees scan the QR code with their phone to check in and out. All data is logged in your real-time dashboard instantly.</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section id="features" className="w-full py-12 md:py-24 lg:py-32 bg-muted dark:bg-muted/50">
-          <div className="container px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center space-y-4 text-center">
-              <div className="space-y-2">
-                <div className="inline-block rounded-lg bg-background px-3 py-1 text-sm">Key Features</div>
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">Everything You Need, Nothing You Don't</h2>
-                <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                  Our platform is packed with powerful features designed to make attendance management a breeze for both owners and employees.
-                </p>
-              </div>
-            </div>
-            <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-2 md:gap-12 lg:grid-cols-3 lg:max-w-none mt-12">
-              <div className="grid gap-2 p-6 rounded-lg border-2 bg-background border-border hover:border-primary hover:shadow-lg transition-all">
-                <div className="flex items-center gap-3">
-                    <div className="p-3 rounded-full bg-primary/10 text-primary">
-                        <QrCode className="h-6 w-6" />
-                    </div>
-                    <h3 className="text-lg font-bold">QR Code Check-in</h3>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Generate static or dynamic QR codes. Employees scan with their phone to check in and out instantly.
-                </p>
-              </div>
-               <div className="grid gap-2 p-6 rounded-lg border-2 bg-background border-border hover:border-primary hover:shadow-lg transition-all">
-                 <div className="flex items-center gap-3">
-                    <div className="p-3 rounded-full bg-primary/10 text-primary">
-                        <Users className="h-6 w-6" />
-                    </div>
-                    <h3 className="text-lg font-bold">Staff Management</h3>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Easily invite, view, and manage all your employee profiles across single or multiple branches.
-                </p>
-              </div>
-               <div className="grid gap-2 p-6 rounded-lg border-2 bg-background border-border hover:border-primary hover:shadow-lg transition-all">
-                 <div className="flex items-center gap-3">
-                    <div className="p-3 rounded-full bg-primary/10 text-primary">
-                        <BarChart3 className="h-6 w-6" />
-                    </div>
-                    <h3 className="text-lg font-bold">Powerful Reports</h3>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Generate detailed attendance, muster, and payroll reports. Export to PDF or Excel with a single click.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="testimonials" className="w-full py-12 md:py-24 lg:py-32">
-            <div className="container px-4 md:px-6">
-                <div className="flex flex-col items-center justify-center space-y-4 text-center">
-                    <div className="space-y-2">
-                        <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">What Our Customers Say</h2>
-                        <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                            We're trusted by businesses across various industries to manage their most valuable asset: their people.
-                        </p>
-                    </div>
-                </div>
-                <Carousel
-                  opts={{
-                    align: "start",
-                    loop: true,
-                  }}
-                  plugins={[plugin.current]}
-                  className="w-full max-w-6xl mx-auto mt-12"
-                >
-                  <CarouselContent>
-                    {testimonials.map((testimonial, index) => (
-                      <CarouselItem key={index} className="md:basis-1/2 lg:basis-1/3">
-                        <div className="p-1 h-full">
-                          <Card className="h-full border-2 border-border hover:border-primary hover:shadow-lg transition-all flex flex-col">
-                              <CardHeader className="flex-row gap-4 items-center">
-                                  <Avatar>
-                                      <AvatarImage src={`https://picsum.photos/seed/${testimonial.seed}/100/100`} />
-                                      <AvatarFallback>{testimonial.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                                  </Avatar>
-                                  <div>
-                                      <CardTitle>{testimonial.name}</CardTitle>
-                                      <p className="text-sm text-muted-foreground">{testimonial.role}</p>
-                                  </div>
-                              </CardHeader>
-                              <CardContent className="flex-1">
-                                  <Quote className="h-6 w-6 text-primary mb-2" />
-                                  <p className="text-muted-foreground">{testimonial.review}</p>
-                              </CardContent>
-                          </Card>
-                        </div>
-                      </CarouselItem>
-                    ))}
-                  </CarouselContent>
-                </Carousel>
-            </div>
-        </section>
-        
-        <section className="w-full py-12 md:py-24 lg:py-32 bg-muted dark:bg-muted/50">
-          <div className="container grid items-center justify-center gap-4 px-4 text-center md:px-6">
-            <div className="space-y-3">
-              <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">
-                Ready to transform your attendance system?
-              </h2>
-              <p className="mx-auto max-w-[600px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                Join hundreds of businesses saving time and money. Get started in minutes.
-              </p>
-            </div>
-            <div className="mx-auto w-full max-w-sm space-y-2">
-              <Link
-                href="/login"
-                className="inline-flex h-11 items-center justify-center rounded-full bg-primary px-8 text-sm font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                prefetch={false}
-              >
-                Sign Up Now
-              </Link>
-            </div>
-          </div>
-        </section>
+        {children}
       </main>
       <footer className="bg-background border-t">
         <div className="container mx-auto py-12 px-4 md:px-6 grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="col-span-1 md:col-span-2 space-y-4">
-                <Link href="#" className="flex items-center" prefetch={false}>
+                <Link href="/" className="flex items-center" prefetch={false}>
                     <span className="font-bold text-2xl text-primary tracking-wider">Attendry</span>
                 </Link>
-                <p className="text-muted-foreground max-w-md">Attendry connects local shops with customers through a simple QR code. Display real-time offers, track engagement, and watch your walk-ins grow.</p>
+                <p className="text-muted-foreground max-w-md">Attendry simplifies attendance tracking for modern businesses, helping you save time, reduce errors, and boost productivity with a smart, QR-based system.</p>
             </div>
             <div className="space-y-4">
                 <h4 className="font-semibold uppercase text-muted-foreground">Navigation</h4>
                 <nav className="flex flex-col gap-2">
-                    <Link href="#how-it-works" className="text-sm hover:underline">How It Works</Link>
-                    <Link href="#features" className="text-sm hover:underline">Features</Link>
-                    <Link href="#testimonials" className="text-sm hover:underline">Testimonials</Link>
-                    <Link href="/login" className="text-sm hover:underline">Get Started</Link>
+                    <Link href="/about" className="text-sm hover:underline">About Us</Link>
+                    <Link href="/how-it-works" className="text-sm hover:underline">How It Works</Link>
+                    <Link href="/pricing" className="text-sm hover:underline">Pricing</Link>
+                    <Link href="/contact" className="text-sm hover:underline">Contact Us</Link>
                 </nav>
             </div>
             <div className="space-y-4">
                 <h4 className="font-semibold uppercase text-muted-foreground">Quick Links</h4>
                  <nav className="flex flex-col gap-2">
                     <Link href="/login" className="text-sm hover:underline">Shop Owner Portal</Link>
+                    <Link href="/employee/login" className="text-sm hover:underline">Employee Portal</Link>
                     <Link href="#" className="text-sm hover:underline">Terms of Service</Link>
                     <Link href="#" className="text-sm hover:underline">Privacy Policy</Link>
                 </nav>
@@ -356,5 +137,173 @@ export default function LandingPage() {
       </footer>
     </div>
   );
-}
+};
 
+
+export default function LandingPage() {
+  const plugin = useRef(
+    Autoplay({ delay: 2500, stopOnInteraction: true, stopOnMouseEnter: true })
+  );
+
+  return (
+    <AppLayout>
+      <section className="w-full pt-24 pb-12 md:pt-32 md:pb-24 lg:pt-48 lg:pb-32 xl:pt-56 xl:pb-48 bg-gradient-to-br from-indigo-50 via-white to-blue-50 dark:from-indigo-950/50 dark:via-background dark:to-blue-950/50">
+        <div className="container px-4 md:px-6">
+          <div className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-12 xl:grid-cols-[1fr_600px] items-center">
+            <div className="flex flex-col justify-center space-y-4">
+              <div className="space-y-4">
+                 <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-600">
+                  Effortless Attendance for the Modern Workforce
+                </h1>
+                <p className="max-w-[600px] text-muted-foreground md:text-xl">
+                  Ditch the paperwork. Attendry simplifies your employee check-ins with our smart QR code system. Save time, reduce errors, and boost productivity.
+                </p>
+              </div>
+              <div className="flex flex-col gap-4 min-[400px]:flex-row">
+                <Link
+                  href="/login"
+                  className="inline-flex h-11 items-center justify-center rounded-full bg-primary px-8 text-sm font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+                  prefetch={false}
+                >
+                  Claim Your Free Account
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+                 <Link
+                  href="/contact"
+                  className="inline-flex h-11 items-center justify-center rounded-full border bg-background px-8 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+                  prefetch={false}
+                >
+                  Contact Sales
+                </Link>
+              </div>
+            </div>
+             <Image
+              src="https://res.cloudinary.com/dnkghymx5/image/upload/v1722839933/attendry-hero-image_axjg5v.png"
+              width="600"
+              height="600"
+              alt="Hero"
+              className="mx-auto aspect-square overflow-hidden rounded-xl object-contain sm:w-full lg:order-last"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section id="features" className="w-full py-12 md:py-24 lg:py-32 bg-muted dark:bg-muted/50">
+        <div className="container px-4 md:px-6">
+          <div className="flex flex-col items-center justify-center space-y-4 text-center">
+            <div className="space-y-2">
+              <div className="inline-block rounded-lg bg-background px-3 py-1 text-sm">Key Features</div>
+              <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">Everything You Need, Nothing You Don't</h2>
+              <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                Our platform is packed with powerful features designed to make attendance management a breeze for both owners and employees.
+              </p>
+            </div>
+          </div>
+          <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-2 md:gap-12 lg:grid-cols-3 lg:max-w-none mt-12">
+            <div className="grid gap-2 p-6 rounded-lg border-2 bg-background border-border hover:border-primary hover:shadow-lg transition-all">
+              <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-full bg-primary/10 text-primary">
+                      <QrCode className="h-6 w-6" />
+                  </div>
+                  <h3 className="text-lg font-bold">QR Code Check-in</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Generate static or dynamic QR codes. Employees scan with their phone to check in and out instantly.
+              </p>
+            </div>
+             <div className="grid gap-2 p-6 rounded-lg border-2 bg-background border-border hover:border-primary hover:shadow-lg transition-all">
+               <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-full bg-primary/10 text-primary">
+                      <Users className="h-6 w-6" />
+                  </div>
+                  <h3 className="text-lg font-bold">Staff Management</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Easily invite, view, and manage all your employee profiles across single or multiple branches.
+              </p>
+            </div>
+             <div className="grid gap-2 p-6 rounded-lg border-2 bg-background border-border hover:border-primary hover:shadow-lg transition-all">
+               <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-full bg-primary/10 text-primary">
+                      <BarChart3 className="h-6 w-6" />
+                  </div>
+                  <h3 className="text-lg font-bold">Powerful Reports</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Generate detailed attendance, muster, and payroll reports. Export to PDF or Excel with a single click.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="testimonials" className="w-full py-12 md:py-24 lg:py-32">
+          <div className="container px-4 md:px-6">
+              <div className="flex flex-col items-center justify-center space-y-4 text-center">
+                  <div className="space-y-2">
+                      <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">What Our Customers Say</h2>
+                      <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                          We're trusted by businesses across various industries to manage their most valuable asset: their people.
+                      </p>
+                  </div>
+              </div>
+              <Carousel
+                opts={{
+                  align: "start",
+                  loop: true,
+                }}
+                plugins={[plugin.current]}
+                className="w-full max-w-6xl mx-auto mt-12"
+              >
+                <CarouselContent>
+                  {testimonials.map((testimonial, index) => (
+                    <CarouselItem key={index} className="md:basis-1/2 lg:basis-1/3">
+                      <div className="p-1 h-full">
+                        <Card className="h-full border-2 border-border hover:border-primary hover:shadow-lg transition-all flex flex-col">
+                            <CardHeader className="flex-row gap-4 items-center">
+                                <Avatar>
+                                    <AvatarImage src={`https://picsum.photos/seed/${testimonial.seed}/100/100`} />
+                                    <AvatarFallback>{testimonial.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    <CardTitle>{testimonial.name}</CardTitle>
+                                    <p className="text-sm text-muted-foreground">{testimonial.role}</p>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="flex-1">
+                                <Quote className="h-6 w-6 text-primary mb-2" />
+                                <p className="text-muted-foreground">{testimonial.review}</p>
+                            </CardContent>
+                        </Card>
+                      </div>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+              </Carousel>
+          </div>
+      </section>
+      
+      <section className="w-full py-12 md:py-24 lg:py-32 bg-muted dark:bg-muted/50">
+        <div className="container grid items-center justify-center gap-4 px-4 text-center md:px-6">
+          <div className="space-y-3">
+            <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">
+              Ready to transform your attendance system?
+            </h2>
+            <p className="mx-auto max-w-[600px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+              Join hundreds of businesses saving time and money. Get started in minutes.
+            </p>
+          </div>
+          <div className="mx-auto w-full max-w-sm space-y-2">
+            <Link
+              href="/login"
+              className="inline-flex h-11 items-center justify-center rounded-full bg-primary px-8 text-sm font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              prefetch={false}
+            >
+              Sign Up Now
+            </Link>
+          </div>
+        </div>
+      </section>
+    </AppLayout>
+  );
+}
