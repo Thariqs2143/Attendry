@@ -2,7 +2,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { ArrowRight, BarChart3, QrCode, Users, Quote } from 'lucide-react';
+import { ArrowRight, BarChart3, QrCode, Users, Quote, Fingerprint, Files, TrendingUp } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,7 +40,7 @@ export default function LandingPage() {
 
   return (
     <>
-      <section className="w-full pt-20 pb-12 md:pt-28 md:pb-24 lg:pt-32 lg:pb-32 bg-gradient-to-br from-indigo-50 via-white to-blue-50 dark:from-indigo-950/50 dark:via-background dark:to-blue-950/50">
+      <section className="w-full pt-32 pb-12 md:pt-40 md:pb-24 lg:pt-48 lg:pb-32 bg-gradient-to-br from-indigo-50 via-white to-blue-50 dark:from-indigo-950/50 dark:via-background dark:to-blue-950/50">
         <div className="container px-4 md:px-6">
           <div className="grid gap-10 lg:grid-cols-2 lg:gap-16 items-center">
             <div className="flex flex-col justify-center space-y-6">
@@ -125,6 +125,43 @@ export default function LandingPage() {
               <p className="text-sm text-muted-foreground">
                 Generate detailed attendance, muster, and payroll reports. Export to PDF or Excel with a single click.
               </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="w-full py-12 md:py-24 lg:py-32">
+        <div className="container px-4 md:px-6">
+          <div className="flex flex-col items-center justify-center space-y-4 text-center">
+            <div className="space-y-2">
+              <div className="inline-block rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
+                From Manual to Automated
+              </div>
+              <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">Visualize Your Transformation</h2>
+              <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                See the tangible impact Attendry can have on your business, transforming manual paperwork into streamlined, automated workflows.
+              </p>
+            </div>
+          </div>
+          <div className="mx-auto grid max-w-5xl items-center gap-8 md:grid-cols-2 md:gap-12 mt-12">
+            <div className="flex flex-col items-center gap-4 rounded-xl border-2 border-dashed p-8 text-center transition-all hover:border-solid hover:shadow-lg">
+                <h3 className="text-xl font-bold text-muted-foreground">Without Attendry</h3>
+                 <div className="p-6 bg-muted rounded-full">
+                    <Files className="h-10 w-10 text-muted-foreground" />
+                </div>
+                <p className="text-muted-foreground">Wasting hours on manual attendance registers, payroll errors, and tedious paperwork.</p>
+            </div>
+             <div className="flex flex-col items-center gap-4 rounded-xl border-2 border-primary/50 bg-primary/5 p-8 text-center transition-all hover:shadow-2xl hover:border-primary">
+                <h3 className="text-xl font-bold text-primary">With Attendry</h3>
+                <div className="relative">
+                  <div className="p-6 bg-primary rounded-full">
+                      <Fingerprint className="h-10 w-10 text-primary-foreground" />
+                  </div>
+                  <Users className="absolute -top-1 -left-1 h-6 w-6 text-primary animate-pulse" />
+                   <TrendingUp className="absolute -top-1 -right-1 h-6 w-6 text-primary animate-pulse" />
+                   <QrCode className="absolute -bottom-1 left-0 h-6 w-6 text-primary animate-pulse" />
+                </div>
+                <p className="text-muted-foreground">Automating check-ins with QR codes, simplifying payroll, and empowering employees.</p>
             </div>
           </div>
         </div>
