@@ -7,16 +7,18 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { usePathname } from 'next/navigation';
 
 const navLinks = [
   { href: '/', label: 'Home' },
-  { href: '/about', label: 'About Us' },
+  { href: '/about', label: 'About' },
   { href: '/pricing', label: 'Pricing' },
-  { href: '/contact', label: 'Contact Us' },
+  { href: '/contact', label: 'Contact' },
 ];
 
 export function Header() {
   const [hasScrolled, setHasScrolled] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -28,13 +30,15 @@ export function Header() {
   }, []);
 
   return (
-    <header
-      className={cn(
-        'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
-        hasScrolled ? 'bg-background/80 backdrop-blur-sm shadow-md' : 'bg-transparent'
-      )}
-    >
-      <div className="container mx-auto flex h-20 items-center justify-between px-4 md:px-6">
+    <header className="fixed top-0 left-0 right-0 z-50 p-4">
+      <div
+        className={cn(
+          'container mx-auto flex h-16 items-center justify-between px-6 rounded-full transition-all duration-300',
+          hasScrolled
+            ? 'bg-background/80 backdrop-blur-sm shadow-lg border'
+            : 'bg-transparent'
+        )}
+      >
         <Link href="/" className="flex items-center" prefetch={false}>
           <span className="font-bold text-2xl text-primary tracking-wider">
             Attendry
@@ -47,7 +51,9 @@ export function Header() {
             <Link
               key={link.href}
               href={link.href}
-              className="text-sm font-medium hover:text-primary transition-colors"
+              className={cn("text-sm font-medium transition-colors",
+                pathname === link.href ? "text-primary font-bold" : "text-muted-foreground hover:text-primary"
+              )}
               prefetch={false}
             >
               {link.label}
@@ -56,7 +62,7 @@ export function Header() {
         </nav>
 
         {/* Desktop Buttons */}
-        <div className="hidden md:flex items-center gap-4">
+        <div className="hidden md:flex items-center gap-2">
             <Link href="/login">
                 <Button variant="ghost">Get Started</Button>
             </Link>
