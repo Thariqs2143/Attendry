@@ -11,7 +11,8 @@ import { useRouter } from "next/navigation";
 import { collection, query, where, getDocs, doc, setDoc, writeBatch } from "firebase/firestore";
 import { db, auth, app as mainApp } from "@/lib/firebase";
 import { useState, useEffect } from "react";
-import { onAuthStateChanged, type User as AuthUser, createUserWithEmailAndPassword, initializeApp } from "firebase/auth";
+import { initializeApp } from 'firebase/app';
+import { onAuthStateChanged, type User as AuthUser, createUserWithEmailAndPassword, getAuth, signOut } from "firebase/auth";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { FirestorePermissionError } from '@/lib/errors';
@@ -81,12 +82,10 @@ export default function AddEmployeePage() {
             return;
         }
 
-        // --- Start of the fix ---
         // Initialize a temporary, secondary Firebase app instance.
         // This isolates the authentication state for user creation from the main app.
         const secondaryApp = initializeApp(mainApp.options, secondaryAppName);
         const secondaryAuth = getAuth(secondaryApp);
-        // --- End of the fix ---
         
         try {
             // Create the new user with the temporary auth instance
@@ -256,3 +255,5 @@ export default function AddEmployeePage() {
         </div>
     );
 }
+
+    
