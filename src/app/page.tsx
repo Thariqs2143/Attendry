@@ -47,8 +47,8 @@ export default function LandingPage() {
 
   return (
     <div className="flex flex-col min-h-dvh bg-background">
-      <header className="px-4 lg:px-6 h-16 flex items-center absolute top-0 left-0 right-0 z-50">
-        <div className="container mx-auto flex items-center justify-between">
+       <header className="fixed top-4 left-0 right-0 z-50 px-4">
+        <div className="container mx-auto h-16 flex items-center justify-between rounded-full bg-background/80 backdrop-blur-sm shadow-lg border border-border/20 px-6">
             <Link href="#" className="flex items-center" prefetch={false}>
                 <span className="font-bold text-2xl text-primary tracking-wider">
                     Attendry
@@ -91,32 +91,32 @@ export default function LandingPage() {
             </div>
             <Sheet>
                 <SheetTrigger asChild>
-                    <Button variant="outline" size="icon" className="lg:hidden">
+                    <Button variant="outline" size="icon" className="lg:hidden rounded-full">
                         <Menu className="h-6 w-6" />
                         <span className="sr-only">Toggle navigation menu</span>
                     </Button>
                 </SheetTrigger>
                 <SheetContent side="left">
-                    <div className="flex flex-col gap-6">
+                    <div className="flex flex-col gap-6 p-6">
                          <Link href="#" className="flex items-center" prefetch={false}>
                             <span className="font-bold text-2xl text-primary tracking-wider">
                                 Attendry
                             </span>
                         </Link>
-                        <nav className="grid gap-4">
-                            <Link href="#how-it-works" className="text-lg font-medium hover:underline underline-offset-4">
+                        <nav className="grid gap-4 text-lg">
+                            <Link href="#how-it-works" className="font-medium hover:underline underline-offset-4">
                                 How It Works
                             </Link>
-                            <Link href="#features" className="text-lg font-medium hover:underline underline-offset-4">
+                            <Link href="#features" className="font-medium hover:underline underline-offset-4">
                                 Features
                             </Link>
-                            <Link href="#testimonials" className="text-lg font-medium hover:underline underline-offset-4">
+                            <Link href="#testimonials" className="font-medium hover:underline underline-offset-4">
                                 Testimonials
                             </Link>
-                            <Link href="/login" className="text-lg font-medium hover:underline underline-offset-4">
+                            <Link href="/login" className="font-medium hover:underline underline-offset-4">
                                 Owner Login
                             </Link>
-                            <Link href="/employee/login" className="text-lg font-medium hover:underline underline-offset-4">
+                            <Link href="/employee/login" className="font-medium hover:underline underline-offset-4">
                                 Employee Login
                             </Link>
                         </nav>
@@ -128,7 +128,7 @@ export default function LandingPage() {
       <main className="flex-1">
         <section className="w-full pt-24 pb-12 md:pt-32 md:pb-24 lg:pt-48 lg:pb-32 xl:pt-56 xl:pb-48 bg-gradient-to-br from-indigo-50 via-white to-blue-50 dark:from-indigo-950/50 dark:via-background dark:to-blue-950/50">
           <div className="container px-4 md:px-6">
-            <div className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-12 xl:grid-cols-[1fr_600px]">
+            <div className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-12 xl:grid-cols-[1fr_600px] items-center">
               <div className="flex flex-col justify-center space-y-4">
                 <div className="space-y-4">
                    <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-600">
@@ -357,3 +357,4 @@ export default function LandingPage() {
     </div>
   );
 }
+
