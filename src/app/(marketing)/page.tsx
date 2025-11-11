@@ -40,7 +40,7 @@ export default function LandingPage() {
 
   return (
     <>
-      <section className="w-full pt-24 pb-12 md:pt-32 md:pb-24 lg:pt-48 lg:pb-32 xl:pt-56 xl:pb-48 bg-gradient-to-br from-indigo-50 via-white to-blue-50 dark:from-indigo-950/50 dark:via-background dark:to-blue-950/50">
+      <section className="w-full pt-32 pb-12 md:pt-48 md:pb-24 lg:pt-56 lg:pb-32 bg-gradient-to-br from-indigo-50 via-white to-blue-50 dark:from-indigo-950/50 dark:via-background dark:to-blue-950/50">
         <div className="container px-4 md:px-6">
           <div className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-12 xl:grid-cols-[1fr_600px] items-center">
             <div className="flex flex-col justify-center space-y-4">
@@ -200,5 +200,3 @@ export default function LandingPage() {
     </>
   );
 }
-
-    

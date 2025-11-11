@@ -21,15 +21,15 @@ export function Header({ hasBanner }: { hasBanner: boolean }) {
 
   return (
     <header 
-        className={cn(
-            "sticky z-50 w-full",
-            hasBanner ? "top-[var(--banner-height)]" : "top-0"
-        )}
-        style={{ height: 'var(--header-height)'}}
+      className={cn(
+        "sticky z-40 w-full transition-all duration-300",
+        hasBanner ? "top-[var(--banner-height)]" : "top-0"
+      )}
+      style={{ height: 'var(--header-height)'}}
     >
       <div className="container flex h-full max-w-screen-2xl items-center">
         {/* Centered Rounded Navigation for Desktop */}
-        <div className="hidden md:flex mx-auto h-14 items-center justify-center rounded-full border bg-background/95 backdrop-blur-sm px-8 shadow-lg">
+        <div className="hidden md:flex mx-auto h-14 items-center justify-center rounded-full border bg-background/80 backdrop-blur-sm px-8 shadow-lg">
           <Link href="/" className="mr-6 flex items-center" prefetch={false}>
             <span className="font-bold text-lg text-primary tracking-wider">
               Attendry
