@@ -18,7 +18,7 @@ export default function MarketingLayout({
   return (
     <div className="flex flex-col min-h-dvh bg-background">
       {showBanner && (
-        <div className="bg-primary text-primary-foreground p-3 text-center text-sm font-medium relative">
+        <div className="bg-primary text-primary-foreground p-3 text-center text-sm font-medium relative h-[var(--banner-height)]">
           <Link href="/pricing" className="flex items-center justify-center gap-2 hover:underline">
             <span>Special Offer! Upgrade and save up to 40% on our plans.</span>
             <ArrowRight className="h-4 w-4" />
@@ -38,7 +38,9 @@ export default function MarketingLayout({
         </div>
       )}
       <Header hasBanner={showBanner} />
-      <main className="flex-1 pt-16">{children}</main>
+      <main className="flex-1 pt-[var(--header-height)]">
+        {children}
+      </main>
       <Footer />
     </div>
   );
