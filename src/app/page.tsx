@@ -2,13 +2,16 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { ArrowRight, BarChart3, QrCode, Users } from 'lucide-react';
+import { ArrowRight, BarChart3, QrCode, Users, ScanLine, FileText, UserPlus, ShieldCheck, Quote } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
 
 export default function LandingPage() {
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex flex-col min-h-dvh bg-background">
       <header className="px-4 lg:px-6 h-16 flex items-center shadow-sm sticky top-0 z-50 bg-background/80 backdrop-blur-sm">
         <Link href="#" className="flex items-center justify-center" prefetch={false}>
             <span className="font-bold text-2xl text-primary tracking-wider">
@@ -66,11 +69,49 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
-        <section id="features" className="w-full py-12 md:py-24 lg:py-32">
+        
+        <section id="how-it-works" className="w-full py-12 md:py-24 lg:py-32">
+            <div className="container px-4 md:px-6">
+                 <div className="flex flex-col items-center justify-center space-y-4 text-center">
+                    <div className="space-y-2">
+                        <div className="inline-block rounded-lg bg-muted px-3 py-1 text-sm">How It Works</div>
+                        <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">Get Started in 3 Simple Steps</h2>
+                        <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                            Our platform is designed for simplicity and speed. Go from signup to tracking in minutes.
+                        </p>
+                    </div>
+                </div>
+                <div className="mx-auto grid max-w-5xl items-start gap-12 md:grid-cols-3 mt-12">
+                    <div className="grid gap-4 text-center">
+                        <div className="relative flex justify-center">
+                            <div className="p-4 rounded-full bg-primary text-primary-foreground text-2xl font-bold h-16 w-16 flex items-center justify-center">1</div>
+                        </div>
+                        <h3 className="text-xl font-bold">Create Your Shop</h3>
+                        <p className="text-muted-foreground">Sign up as a shop owner and set up your business profile. Invite your employees to join your workspace via email.</p>
+                    </div>
+                    <div className="grid gap-4 text-center">
+                        <div className="relative flex justify-center">
+                           <div className="p-4 rounded-full bg-primary text-primary-foreground text-2xl font-bold h-16 w-16 flex items-center justify-center">2</div>
+                        </div>
+                        <h3 className="text-xl font-bold">Generate QR Code</h3>
+                        <p className="text-muted-foreground">Generate a unique QR code for your shop. Choose between a permanent code for printing or a dynamic one for a screen.</p>
+                    </div>
+                    <div className="grid gap-4 text-center">
+                         <div className="relative flex justify-center">
+                           <div className="p-4 rounded-full bg-primary text-primary-foreground text-2xl font-bold h-16 w-16 flex items-center justify-center">3</div>
+                        </div>
+                        <h3 className="text-xl font-bold">Scan & Track</h3>
+                        <p className="text-muted-foreground">Employees scan the QR code with their phone to check in and out. All data is logged in your real-time dashboard instantly.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="features" className="w-full py-12 md:py-24 lg:py-32 bg-muted dark:bg-muted/50">
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
-                <div className="inline-block rounded-lg bg-muted px-3 py-1 text-sm">Key Features</div>
+                <div className="inline-block rounded-lg bg-background px-3 py-1 text-sm">Key Features</div>
                 <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">Everything You Need, Nothing You Don't</h2>
                 <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
                   Our platform is packed with powerful features designed to make attendance management a breeze for both owners and employees.
@@ -78,7 +119,7 @@ export default function LandingPage() {
               </div>
             </div>
             <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-2 md:gap-12 lg:grid-cols-3 lg:max-w-none mt-12">
-              <div className="grid gap-2 p-6 rounded-lg border-2 border-border hover:border-primary hover:shadow-lg transition-all">
+              <div className="grid gap-2 p-6 rounded-lg border-2 bg-background border-border hover:border-primary hover:shadow-lg transition-all">
                 <div className="flex items-center gap-3">
                     <div className="p-3 rounded-full bg-primary/10 text-primary">
                         <QrCode className="h-6 w-6" />
@@ -89,7 +130,7 @@ export default function LandingPage() {
                   Generate static or dynamic QR codes. Employees scan with their phone to check in and out instantly.
                 </p>
               </div>
-               <div className="grid gap-2 p-6 rounded-lg border-2 border-border hover:border-primary hover:shadow-lg transition-all">
+               <div className="grid gap-2 p-6 rounded-lg border-2 bg-background border-border hover:border-primary hover:shadow-lg transition-all">
                  <div className="flex items-center gap-3">
                     <div className="p-3 rounded-full bg-primary/10 text-primary">
                         <Users className="h-6 w-6" />
@@ -100,7 +141,7 @@ export default function LandingPage() {
                   Easily invite, view, and manage all your employee profiles across single or multiple branches.
                 </p>
               </div>
-               <div className="grid gap-2 p-6 rounded-lg border-2 border-border hover:border-primary hover:shadow-lg transition-all">
+               <div className="grid gap-2 p-6 rounded-lg border-2 bg-background border-border hover:border-primary hover:shadow-lg transition-all">
                  <div className="flex items-center gap-3">
                     <div className="p-3 rounded-full bg-primary/10 text-primary">
                         <BarChart3 className="h-6 w-6" />
@@ -113,6 +154,69 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
+        </section>
+
+        <section id="testimonials" className="w-full py-12 md:py-24 lg:py-32">
+            <div className="container px-4 md:px-6">
+                <div className="flex flex-col items-center justify-center space-y-4 text-center">
+                    <div className="space-y-2">
+                        <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">What Our Customers Say</h2>
+                        <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                            We're trusted by businesses across various industries to manage their most valuable asset: their people.
+                        </p>
+                    </div>
+                </div>
+                <div className="mx-auto grid max-w-5xl grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-12">
+                    <Card className="border-2 border-border hover:border-primary hover:shadow-lg transition-all">
+                        <CardHeader className="flex-row gap-4 items-center">
+                            <Avatar>
+                                <AvatarImage src="https://picsum.photos/seed/1/100/100" />
+                                <AvatarFallback>RS</AvatarFallback>
+                            </Avatar>
+                            <div>
+                                <CardTitle>Ravi Sharma</CardTitle>
+                                <p className="text-sm text-muted-foreground">Retail Store Owner</p>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <Quote className="h-6 w-6 text-primary mb-2" />
+                            <p className="text-muted-foreground">"Attendry has been a game-changer for my store. Payroll used to take me hours, but now it's a matter of minutes. The reporting is fantastic and my staff love how easy it is to use."</p>
+                        </CardContent>
+                    </Card>
+                    <Card className="border-2 border-border hover:border-primary hover:shadow-lg transition-all">
+                        <CardHeader className="flex-row gap-4 items-center">
+                            <Avatar>
+                                <AvatarImage src="https://picsum.photos/seed/2/100/100" />
+                                <AvatarFallback>PJ</AvatarFallback>
+                            </Avatar>
+                            <div>
+                                <CardTitle>Priya Joshi</CardTitle>
+                                <p className="text-sm text-muted-foreground">Cafe Manager</p>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <Quote className="h-6 w-6 text-primary mb-2" />
+                            <p className="text-muted-foreground">"Managing shifts in a busy cafe is chaotic. The dynamic QR code feature is genius - it ensures my team is actually on-site when they check in. It has significantly improved punctuality."</p>
+                        </CardContent>
+                    </Card>
+                    <Card className="border-2 border-border hover:border-primary hover:shadow-lg transition-all">
+                        <CardHeader className="flex-row gap-4 items-center">
+                            <Avatar>
+                                <AvatarImage src="https://picsum.photos/seed/3/100/100" />
+                                <AvatarFallback>AV</AvatarFallback>
+                            </Avatar>
+                            <div>
+                                <CardTitle>Anil Verma</CardTitle>
+                                <p className="text-sm text-muted-foreground">MSME Workshop Supervisor</p>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                             <Quote className="h-6 w-6 text-primary mb-2" />
+                            <p className="text-muted-foreground">"I run a small workshop and needed something simple. Attendry was the perfect fit. No expensive hardware, just a simple app that everyone understands. Highly recommended."</p>
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
         </section>
         
         <section className="w-full py-12 md:py-24 lg:py-32 bg-muted dark:bg-muted/50">
@@ -151,5 +255,3 @@ export default function LandingPage() {
     </div>
   );
 }
-
-    
