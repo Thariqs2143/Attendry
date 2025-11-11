@@ -74,17 +74,12 @@ export default function LeavePage() {
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
-       if (user && user.phoneNumber) {
+       if (user) {
         setAuthUser(user);
-        const phoneLookupRef = doc(db, "employee_phone_to_shop_lookup", user.phoneNumber);
-        const phoneLookupSnap = await getDoc(phoneLookupRef);
-        if (phoneLookupSnap.exists()) {
-          const { shopId, employeeDocId } = phoneLookupSnap.data();
-          const employeeDocRef = doc(db, "shops", shopId, "employees", employeeDocId);
-          const employeeDocSnap = await getDoc(employeeDocRef);
-          if (employeeDocSnap.exists()) {
-            setUserProfile({ id: employeeDocSnap.id, ...employeeDocSnap.data() } as AppUser);
-          }
+        const userDocRef = doc(db, "users", user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        if (userDocSnap.exists()) {
+          setUserProfile({ id: userDocSnap.id, ...userDocSnap.data() } as AppUser);
         }
       }
     });

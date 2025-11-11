@@ -28,26 +28,15 @@ export default function RewardsPage() {
 
     useEffect(() => {
         const fetchUserData = async (user: AuthUser) => {
-             if (!user.phoneNumber) {
-                setLoading(false);
-                router.push('/employee/login');
-                return;
-            }
             try {
-                const phoneLookupRef = doc(db, "employee_phone_to_shop_lookup", user.phoneNumber);
-                const phoneLookupSnap = await getDoc(phoneLookupRef);
+                const userDocRef = doc(db, "users", user.uid);
+                const userDocSnap = await getDoc(userDocRef);
 
-                if (phoneLookupSnap.exists()) {
-                    const { shopId, employeeDocId } = phoneLookupSnap.data();
-                    const employeeDocRef = doc(db, "shops", shopId, "employees", employeeDocId);
-                    const employeeDocSnap = await getDoc(employeeDocRef);
-
-                    if (employeeDocSnap.exists()) {
-                        const profile = { id: employeeDocSnap.id, ...employeeDocSnap.data() } as AppUser;
-                        setUserProfile(profile);
-                        await fetchRank(employeeDocSnap.id, shopId);
-                    } else {
-                        router.push('/employee/login');
+                if (userDocSnap.exists()) {
+                    const profile = { id: userDocSnap.id, ...userDocSnap.data() } as AppUser;
+                    setUserProfile(profile);
+                    if (profile.shopId) {
+                        await fetchRank(profile.id!, profile.shopId);
                     }
                 } else {
                     router.push('/employee/login');
@@ -150,7 +139,3 @@ export default function RewardsPage() {
     </div>
   );
 }
-
-    
-
-    

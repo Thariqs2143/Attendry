@@ -39,30 +39,24 @@ export default function EmployeeLayout({ children }: PropsWithChildren) {
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user && user.phoneNumber) {
+      if (user) {
         try {
-          const phoneLookupRef = doc(db, "employee_phone_to_shop_lookup", user.phoneNumber);
-          const phoneLookupSnap = await getDoc(phoneLookupRef);
+          const userDocRef = doc(db, 'users', user.uid);
+          const userDocSnap = await getDoc(userDocRef);
 
-          if (phoneLookupSnap.exists()) {
-            const { shopId, employeeDocId } = phoneLookupSnap.data();
-            const employeeDocRef = doc(db, "shops", shopId, "employees", employeeDocId);
-            const employeeDocSnap = await getDoc(employeeDocRef);
+          if (userDocSnap.exists()) {
+              const employeeData = { id: userDocSnap.id, ...userDocSnap.data() } as AppUser;
 
-            if (employeeDocSnap.exists()) {
-              const employeeData = { id: employeeDocSnap.id, ...employeeDocSnap.data() } as AppUser;
-
-              // Fetch shop name
-              const shopDocRef = doc(db, "shops", shopId);
-              const shopDocSnap = await getDoc(shopDocRef);
-              if(shopDocSnap.exists()) {
-                  employeeData.shopName = shopDocSnap.data().shopName;
+              // Fetch shop name if shopId exists
+              if (employeeData.shopId) {
+                  const shopDocRef = doc(db, "shops", employeeData.shopId);
+                  const shopDocSnap = await getDoc(shopDocRef);
+                  if(shopDocSnap.exists()) {
+                      employeeData.shopName = shopDocSnap.data().shopName;
+                  }
               }
 
               setUserProfile(employeeData);
-            } else {
-              router.replace('/employee/login');
-            }
           } else {
             router.replace('/employee/login');
           }
