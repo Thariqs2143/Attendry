@@ -37,7 +37,7 @@ const testimonials = [
 
 export default function LandingPage() {
   const plugin = useRef(
-    Autoplay({ delay: 3000, stopOnInteraction: true, stopOnMouseEnter: true })
+    Autoplay({ delay: 2500, stopOnInteraction: true, stopOnMouseEnter: true })
   );
 
   return (
@@ -207,7 +207,7 @@ export default function LandingPage() {
                   <CarouselContent>
                     {testimonials.map((testimonial, index) => (
                       <CarouselItem key={index} className="md:basis-1/2 lg:basis-1/3">
-                        <div className="p-1">
+                        <div className="p-1 h-full">
                           <Card className="h-full border-2 border-border hover:border-primary hover:shadow-lg transition-all flex flex-col">
                               <CardHeader className="flex-row gap-4 items-center">
                                   <Avatar>
@@ -268,5 +268,3 @@ export default function LandingPage() {
     </div>
   );
 }
-
-    
