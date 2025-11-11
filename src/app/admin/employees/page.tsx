@@ -154,127 +154,121 @@ const EmployeeList = ({ allBranches, selectedBranchId, allBranchIds, searchTerm,
   
   return (
     <div className="space-y-4">
-      <Card>
-           {loading ? (
-              <CardContent className="flex items-center justify-center h-48">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </CardContent>
-           ) : (
-          <>
-          {filteredEmployees.length === 0 ? (
-               <CardContent className="text-center py-12 text-muted-foreground">
-                  <p>No employees found. Invite an employee to get started.</p>
-              </CardContent>
-          ): (
+        {loading ? (
+            <div className="flex items-center justify-center h-48">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        ) : filteredEmployees.length === 0 ? (
+            <CardContent className="text-center py-12 text-muted-foreground">
+                <p>No employees found. Invite an employee to get started.</p>
+            </CardContent>
+        ) : (
             <>
-                 <div className="grid gap-4 md:grid-cols-2 lg:hidden">
-                  {filteredEmployees.map((employee) => (
-                    <Card key={employee.id} className="p-4 space-y-4 rounded-lg border-2 border-border hover:border-primary hover:shadow-lg transition-all">
-                      <div className="flex justify-between items-start">
-                        <div className="flex items-center gap-4">
-                          <Avatar className="h-12 w-12 border-2 border-muted">
-                            <AvatarImage src={employee.imageUrl} alt={employee.name} />
-                            <AvatarFallback>{employee.fallback}</AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-bold text-lg">{employee.name}</p>
-                            {selectedBranchId === 'all' && (
-                                <p className="text-xs text-muted-foreground flex items-center gap-1"><Store className="h-3 w-3"/> {employee.shopName}</p>
-                            )}
-                          </div>
-                        </div>
-                        <Badge variant={getStatusVariant(employee.status)}>{employee.status}</Badge>
-                      </div>
-                      <div className="space-y-2 text-sm text-muted-foreground pl-2">
-                        {employee.email && (
-                          <div className="flex items-center gap-3">
-                            <Mail className="h-4 w-4" />
-                            <span>{employee.email}</span>
-                          </div>
-                        )}
-                        {employee.phone && (
-                          <div className="flex items-center gap-3">
-                            <Phone className="h-4 w-4" />
-                            <span>{employee.phone}</span>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-3">
-                          <Briefcase className="h-4 w-4" />
-                          <span>{employee.role}</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <Calendar className="h-4 w-4" />
-                          <span>Joined: {employee.joinDate ? format(new Date(employee.joinDate), 'dd/MM/yyyy') : 'N/A'}</span>
-                        </div>
-                      </div>
-                      <Button 
-                        className="w-full"
-                        onClick={() => router.push(`/admin/employees/${employee.id}?branchId=${employee.shopId}`)}
-                      >
-                        <Eye className="mr-2 h-4 w-4"/>
-                        View Profile
-                      </Button>
-                    </Card>
-                  ))}
+                <div className="grid gap-4 md:grid-cols-2 lg:hidden">
+                    {filteredEmployees.map((employee) => (
+                        <Card key={employee.id} className="p-4 space-y-4 rounded-lg border-2 border-border hover:border-primary hover:shadow-lg transition-all">
+                            <div className="flex justify-between items-start">
+                                <div className="flex items-center gap-4">
+                                    <Avatar className="h-12 w-12 border-2 border-muted">
+                                        <AvatarImage src={employee.imageUrl} alt={employee.name} />
+                                        <AvatarFallback>{employee.fallback}</AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                        <p className="font-bold text-lg">{employee.name}</p>
+                                        {selectedBranchId === 'all' && (
+                                            <p className="text-xs text-muted-foreground flex items-center gap-1"><Store className="h-3 w-3"/> {employee.shopName}</p>
+                                        )}
+                                    </div>
+                                </div>
+                                <Badge variant={getStatusVariant(employee.status)}>{employee.status}</Badge>
+                            </div>
+                            <div className="space-y-2 text-sm text-muted-foreground pl-2">
+                                {employee.email && (
+                                    <div className="flex items-center gap-3">
+                                        <Mail className="h-4 w-4" />
+                                        <span>{employee.email}</span>
+                                    </div>
+                                )}
+                                {employee.phone && (
+                                    <div className="flex items-center gap-3">
+                                        <Phone className="h-4 w-4" />
+                                        <span>{employee.phone}</span>
+                                    </div>
+                                )}
+                                <div className="flex items-center gap-3">
+                                    <Briefcase className="h-4 w-4" />
+                                    <span>{employee.role}</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <Calendar className="h-4 w-4" />
+                                    <span>Joined: {employee.joinDate ? format(new Date(employee.joinDate), 'dd/MM/yyyy') : 'N/A'}</span>
+                                </div>
+                            </div>
+                            <Button 
+                                className="w-full"
+                                onClick={() => router.push(`/admin/employees/${employee.id}?branchId=${employee.shopId}`)}
+                            >
+                                <Eye className="mr-2 h-4 w-4"/>
+                                View Profile
+                            </Button>
+                        </Card>
+                    ))}
                 </div>
 
                 <div className="hidden lg:block rounded-lg border-2 border-border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Employee</TableHead>
-                        {selectedBranchId === 'all' && <TableHead>Shop</TableHead>}
-                        <TableHead>Role</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredEmployees.map((employee) => (
-                        <TableRow key={employee.id} className="transition-all duration-300 ease-out hover:shadow-md hover:border-primary border-y-2 border-transparent">
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              <Avatar>
-                                <AvatarImage src={employee.imageUrl} alt={employee.name} />
-                                <AvatarFallback>{employee.fallback}</AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <p className="font-medium">{employee.name}</p>
-                                <p className="text-xs text-muted-foreground">{employee.phone || employee.email}</p>
-                              </div>
-                            </div>
-                          </TableCell>
-                           {selectedBranchId === 'all' && <TableCell>{employee.shopName}</TableCell>}
-                          <TableCell>{employee.role}</TableCell>
-                          <TableCell><Badge variant={getStatusVariant(employee.status)}>{employee.status}</Badge></TableCell>
-                          <TableCell className="text-right">
-                             <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" className="h-8 w-8 p-0">
-                                    <span className="sr-only">Open menu</span>
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                  <DropdownMenuItem onClick={() => router.push(`/admin/employees/${employee.id}?branchId=${employee.shopId}`)}>
-                                    <Eye className="mr-2 h-4 w-4"/>
-                                    View Profile
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Employee</TableHead>
+                                {selectedBranchId === 'all' && <TableHead>Shop</TableHead>}
+                                <TableHead>Role</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {filteredEmployees.map((employee) => (
+                                <TableRow key={employee.id} className="transition-all duration-300 ease-out hover:shadow-md hover:border-primary border-y-2 border-transparent">
+                                    <TableCell>
+                                        <div className="flex items-center gap-3">
+                                            <Avatar>
+                                                <AvatarImage src={employee.imageUrl} alt={employee.name} />
+                                                <AvatarFallback>{employee.fallback}</AvatarFallback>
+                                            </Avatar>
+                                            <div>
+                                                <p className="font-medium">{employee.name}</p>
+                                                <p className="text-xs text-muted-foreground">{employee.phone || employee.email}</p>
+                                            </div>
+                                        </div>
+                                    </TableCell>
+                                    {selectedBranchId === 'all' && <TableCell>{employee.shopName}</TableCell>}
+                                    <TableCell>{employee.role}</TableCell>
+                                    <TableCell><Badge variant={getStatusVariant(employee.status)}>{employee.status}</Badge></TableCell>
+                                    <TableCell className="text-right">
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                                    <span className="sr-only">Open menu</span>
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                <DropdownMenuItem onClick={() => router.push(`/admin/employees/${employee.id}?branchId=${employee.shopId}`)}>
+                                                    <Eye className="mr-2 h-4 w-4"/>
+                                                    View Profile
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
                 </div>
             </>
-          )}
-          </>
-          )}
-      </Card>
-  </div>
+        )}
+    </div>
   );
 };
 
