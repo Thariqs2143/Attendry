@@ -2,14 +2,44 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { ArrowRight, BarChart3, QrCode, Users, ScanLine, FileText, UserPlus, ShieldCheck, Quote } from 'lucide-react';
+import { ArrowRight, BarChart3, QrCode, Users, Quote } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useRef } from 'react';
+import Autoplay from "embla-carousel-autoplay";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+} from "@/components/ui/carousel";
+
+
+const testimonials = [
+  { name: 'Ravi Sharma', role: 'Retail Store Owner', review: "Attendry has been a game-changer. Payroll used to take me hours, but now it's a matter of minutes. The reporting is fantastic and my staff love how easy it is to use.", seed: '1' },
+  { name: 'Priya Joshi', role: 'Cafe Manager', review: "Managing shifts in a busy cafe is chaotic. The dynamic QR code feature is genius - it ensures my team is actually on-site when they check in. It has significantly improved punctuality.", seed: '2' },
+  { name: 'Anil Verma', role: 'MSME Workshop Supervisor', review: "I run a small workshop and needed something simple. Attendry was the perfect fit. No expensive hardware, just a simple app that everyone understands. Highly recommended.", seed: '3' },
+  { name: 'Sunita Gupta', role: 'Boutique Owner', review: "The multi-branch feature is a lifesaver! I can finally see attendance for all my locations from one dashboard. It has made managing my teams so much easier.", seed: '4' },
+  { name: 'Rajesh Kumar', role: 'Restaurant Chain Head', review: "Switching to Attendry has saved us countless admin hours. The automated payroll report is accurate and saves us a headache every month.", seed: '5' },
+  { name: 'Deepika Singh', role: 'IT Services Firm HR', review: "Our employees love the rewards system. It's a fun way to encourage punctuality and has genuinely improved our on-time attendance rates.", seed: '6' },
+  { name: 'Vikram Patel', role: 'Construction Site Manager', review: "Tracking attendance for a mobile workforce was always tough. With Attendry, my crew can check in easily on-site. The data is always live and accurate.", seed: '7' },
+  { name: 'Meena Iyer', role: 'School Administrator', review: "We use Attendry for our non-teaching staff. It's reliable, easy to manage, and the support has been excellent. The leave management feature is also very helpful.", seed: '8' },
+  { name: 'Amit Desai', role: 'Food Truck Operator', review: "As a small, mobile business, I needed something flexible. The app is perfect. I can generate a QR code on my tablet and my team is good to go.", seed: '9' },
+  { name: 'Kavita Reddy', role: 'Gym Owner', review: "My trainers have variable schedules. The shift management and attendance tracking in Attendry handle it all perfectly. It has simplified our operations.", seed: '10' },
+  { name: 'Harish Mehta', role: 'Manufacturing Plant Foreman', review: "The muster roll generation is a key feature for our compliance needs. What used to be a manual task is now automated and error-free.", seed: '11' },
+  { name: 'Nisha Agarwal', role: 'Supermarket Owner', review: "The AI-powered weekly briefing gives me a quick snapshot of my staff's performance without having to dig through reports. It's a fantastic time-saver.", seed: '12' },
+  { name: 'Sanjay Kapoor', role: 'Logistics Head', review: "We have multiple warehouses. The ability to transfer staff profiles between branches in the app is a simple but incredibly useful feature for us.", seed: '13' },
+  { name: 'Pooja Nair', role: 'Event Management Company', review: "For temporary staff at events, Attendry is perfect. We can quickly add them, track their hours, and process payments accurately. It's very efficient.", seed: '14' },
+  { name: 'Arun Singh', role: 'Automobile Service Center', review: "The system just works. It's reliable, my mechanics find it easy to use, and I get all the data I need without any fuss. I'm very happy with it.", seed: '15' },
+];
 
 
 export default function LandingPage() {
+  const plugin = useRef(
+    Autoplay({ delay: 3000, stopOnInteraction: true, stopOnMouseEnter: true })
+  );
+
   return (
     <div className="flex flex-col min-h-dvh bg-background">
       <header className="px-4 lg:px-6 h-16 flex items-center shadow-sm sticky top-0 z-50 bg-background/80 backdrop-blur-sm">
@@ -166,56 +196,39 @@ export default function LandingPage() {
                         </p>
                     </div>
                 </div>
-                <div className="mx-auto grid max-w-5xl grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-12">
-                    <Card className="border-2 border-border hover:border-primary hover:shadow-lg transition-all">
-                        <CardHeader className="flex-row gap-4 items-center">
-                            <Avatar>
-                                <AvatarImage src="https://picsum.photos/seed/1/100/100" />
-                                <AvatarFallback>RS</AvatarFallback>
-                            </Avatar>
-                            <div>
-                                <CardTitle>Ravi Sharma</CardTitle>
-                                <p className="text-sm text-muted-foreground">Retail Store Owner</p>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <Quote className="h-6 w-6 text-primary mb-2" />
-                            <p className="text-muted-foreground">"Attendry has been a game-changer for my store. Payroll used to take me hours, but now it's a matter of minutes. The reporting is fantastic and my staff love how easy it is to use."</p>
-                        </CardContent>
-                    </Card>
-                    <Card className="border-2 border-border hover:border-primary hover:shadow-lg transition-all">
-                        <CardHeader className="flex-row gap-4 items-center">
-                            <Avatar>
-                                <AvatarImage src="https://picsum.photos/seed/2/100/100" />
-                                <AvatarFallback>PJ</AvatarFallback>
-                            </Avatar>
-                            <div>
-                                <CardTitle>Priya Joshi</CardTitle>
-                                <p className="text-sm text-muted-foreground">Cafe Manager</p>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <Quote className="h-6 w-6 text-primary mb-2" />
-                            <p className="text-muted-foreground">"Managing shifts in a busy cafe is chaotic. The dynamic QR code feature is genius - it ensures my team is actually on-site when they check in. It has significantly improved punctuality."</p>
-                        </CardContent>
-                    </Card>
-                    <Card className="border-2 border-border hover:border-primary hover:shadow-lg transition-all">
-                        <CardHeader className="flex-row gap-4 items-center">
-                            <Avatar>
-                                <AvatarImage src="https://picsum.photos/seed/3/100/100" />
-                                <AvatarFallback>AV</AvatarFallback>
-                            </Avatar>
-                            <div>
-                                <CardTitle>Anil Verma</CardTitle>
-                                <p className="text-sm text-muted-foreground">MSME Workshop Supervisor</p>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                             <Quote className="h-6 w-6 text-primary mb-2" />
-                            <p className="text-muted-foreground">"I run a small workshop and needed something simple. Attendry was the perfect fit. No expensive hardware, just a simple app that everyone understands. Highly recommended."</p>
-                        </CardContent>
-                    </Card>
-                </div>
+                <Carousel
+                  opts={{
+                    align: "start",
+                    loop: true,
+                  }}
+                  plugins={[plugin.current]}
+                  className="w-full max-w-6xl mx-auto mt-12"
+                >
+                  <CarouselContent>
+                    {testimonials.map((testimonial, index) => (
+                      <CarouselItem key={index} className="md:basis-1/2 lg:basis-1/3">
+                        <div className="p-1">
+                          <Card className="h-full border-2 border-border hover:border-primary hover:shadow-lg transition-all flex flex-col">
+                              <CardHeader className="flex-row gap-4 items-center">
+                                  <Avatar>
+                                      <AvatarImage src={`https://picsum.photos/seed/${testimonial.seed}/100/100`} />
+                                      <AvatarFallback>{testimonial.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                      <CardTitle>{testimonial.name}</CardTitle>
+                                      <p className="text-sm text-muted-foreground">{testimonial.role}</p>
+                                  </div>
+                              </CardHeader>
+                              <CardContent className="flex-1">
+                                  <Quote className="h-6 w-6 text-primary mb-2" />
+                                  <p className="text-muted-foreground">{testimonial.review}</p>
+                              </CardContent>
+                          </Card>
+                        </div>
+                      </CarouselItem>
+                    ))}
+                  </CarouselContent>
+                </Carousel>
             </div>
         </section>
         
@@ -255,3 +268,5 @@ export default function LandingPage() {
     </div>
   );
 }
+
+    
