@@ -9,9 +9,9 @@ import { ArrowLeft, UserPlus, Loader2, ChevronsUpDown } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { collection, query, where, getDocs, doc, setDoc, writeBatch } from "firebase/firestore";
-import { db, auth } from "@/lib/firebase";
+import { db, auth, app as mainApp } from "@/lib/firebase";
 import { useState, useEffect } from "react";
-import { onAuthStateChanged, type User as AuthUser, createUserWithEmailAndPassword } from "firebase/auth";
+import { onAuthStateChanged, type User as AuthUser, createUserWithEmailAndPassword, initializeApp } from "firebase/auth";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { FirestorePermissionError } from '@/lib/errors';
@@ -22,6 +22,9 @@ type Branch = {
     shopName: string;
     ownerId: string;
 };
+
+// Create a unique name for the temporary app
+const secondaryAppName = 'employeeCreation';
 
 export default function AddEmployeePage() {
     const router = useRouter();
@@ -77,12 +80,17 @@ export default function AddEmployeePage() {
             setLoading(false);
             return;
         }
+
+        // --- Start of the fix ---
+        // Initialize a temporary, secondary Firebase app instance.
+        // This isolates the authentication state for user creation from the main app.
+        const secondaryApp = initializeApp(mainApp.options, secondaryAppName);
+        const secondaryAuth = getAuth(secondaryApp);
+        // --- End of the fix ---
         
         try {
-            // NOTE: This creates a temporary user account.
-            // For simplicity, we create the user directly. In a real app, you might use a cloud function.
-            // This approach requires temporary sign-out/sign-in of the admin, which can be disruptive.
-            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            // Create the new user with the temporary auth instance
+            const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
             const newEmployeeUser = userCredential.user;
 
             const newEmployeeProfile = {
@@ -111,6 +119,7 @@ export default function AddEmployeePage() {
             const shopEmployeeDocRef = doc(db, 'shops', selectedBranch.id, 'employees', newEmployeeUser.uid);
             batch.set(shopEmployeeDocRef, newEmployeeProfile);
 
+            // This commit is now performed by the logged-in admin, not the new employee
             await batch.commit()
               .catch(async (serverError) => {
                   const permissionError = new FirestorePermissionError({
@@ -144,15 +153,8 @@ export default function AddEmployeePage() {
                 variant: "destructive",
             });
         } finally {
-            // This is important for UX. After creating a new user, the auth state changes.
-            // We need to sign out the temporary user and restore the admin's session.
-            // A truly robust solution would use a backend function to create users.
-            // For this project, we'll alert the admin they might need to log in again.
-            if(auth.currentUser?.uid !== authUser.uid) {
-                await auth.signOut();
-                console.log("Admin session was interrupted by new user creation. Please log in again if you are signed out.");
-                // We don't force a redirect, as the auth state listener in the layout should handle it.
-            }
+            // Sign out from the temporary app instance to clean up
+            await signOut(secondaryAuth);
             setLoading(false);
         }
     };
@@ -254,5 +256,3 @@ export default function AddEmployeePage() {
         </div>
     );
 }
-
-    
