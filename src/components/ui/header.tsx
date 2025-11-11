@@ -23,10 +23,11 @@ export function Header({ hasBanner }: { hasBanner: boolean }) {
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50);
+      // Trigger the change slightly after scrolling starts
+      setIsScrolled(window.scrollY > 20);
     };
 
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => {
       window.removeEventListener('scroll', handleScroll);
     };
@@ -37,81 +38,89 @@ export function Header({ hasBanner }: { hasBanner: boolean }) {
       className={cn(
         "sticky z-40 w-full transition-all duration-300",
         hasBanner ? "top-[var(--banner-height)]" : "top-0",
-        isScrolled ? "bg-background/80 backdrop-blur-sm border-b" : "bg-transparent"
       )}
-      style={{ height: 'var(--header-height)'}}
     >
-      <div className="container flex h-full max-w-screen-2xl items-center justify-between">
-        {/* Logo */}
-        <Link href="/" className="flex items-center" prefetch={false}>
-          <span className="font-bold text-2xl text-primary tracking-wider">
-            Attendry
-          </span>
-        </Link>
-        
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-6">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={cn("text-sm font-medium transition-colors",
-                pathname === link.href ? "text-primary font-bold" : "text-muted-foreground hover:text-primary"
-              )}
-              prefetch={false}
-            >
-              {link.label}
+      <div className={cn(
+          "transition-all duration-300 ease-in-out mx-auto",
+          isScrolled ? "max-w-5xl" : "max-w-screen-2xl"
+      )}>
+        <div
+          className={cn(
+            "flex h-16 items-center justify-between transition-all duration-300 ease-in-out",
+            isScrolled ? "mt-2 px-6 rounded-full border bg-background/80 backdrop-blur-sm shadow-lg" : "px-4 md:px-6"
+          )}
+        >
+          {/* Logo */}
+          <Link href="/" className="flex items-center" prefetch={false}>
+            <span className="font-bold text-2xl text-primary tracking-wider">
+              Attendry
+            </span>
+          </Link>
+          
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center gap-6">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={cn("text-sm font-medium transition-colors",
+                  pathname === link.href ? "text-primary font-bold" : "text-muted-foreground hover:text-primary"
+                )}
+                prefetch={false}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+          
+          {/* Desktop Action Buttons */}
+          <div className="hidden md:flex items-center gap-2">
+            <Link href="/login">
+              <Button size="sm" className="rounded-full">Get Started</Button>
             </Link>
-          ))}
-        </nav>
-        
-        {/* Desktop Action Buttons */}
-        <div className="hidden md:flex items-center gap-2">
-          <Link href="/login">
-            <Button size="sm" className="rounded-full">Get Started</Button>
-          </Link>
-          <Link href="/pricing">
-            <Button size="sm" variant="outline" className="rounded-full">Go Pro</Button>
-          </Link>
-        </div>
+            <Link href="/pricing">
+              <Button size="sm" variant="outline" className="rounded-full">Go Pro</Button>
+            </Link>
+          </div>
 
-        {/* Mobile Navigation */}
-        <div className="flex items-center md:hidden">
-            <Sheet>
-            <SheetTrigger asChild>
-                <Button variant="outline" size="icon">
-                <Menu className="h-6 w-6" />
-                <span className="sr-only">Toggle navigation menu</span>
-                </Button>
-            </SheetTrigger>
-            <SheetContent side="left">
-                <div className="flex flex-col gap-8 p-6">
-                <Link href="/" className="flex items-center" prefetch={false}>
-                    <span className="font-bold text-2xl text-primary tracking-wider">Attendry</span>
-                </Link>
-                <nav className="grid gap-4 text-lg">
-                    {navLinks.map((link) => (
-                    <Link
-                        key={link.href}
-                        href={link.href}
-                        className="font-medium hover:text-primary"
-                        prefetch={false}
-                    >
-                        {link.label}
-                    </Link>
-                    ))}
-                </nav>
-                <div className="flex flex-col gap-4">
-                    <Link href="/login">
-                        <Button className="w-full">Get Started</Button>
-                    </Link>
-                    <Link href="/pricing">
-                        <Button variant="outline" className="w-full">Go Pro</Button>
-                    </Link>
-                </div>
-                </div>
-            </SheetContent>
-            </Sheet>
+          {/* Mobile Navigation */}
+          <div className="flex items-center md:hidden">
+              <Sheet>
+              <SheetTrigger asChild>
+                  <Button variant="outline" size="icon">
+                  <Menu className="h-6 w-6" />
+                  <span className="sr-only">Toggle navigation menu</span>
+                  </Button>
+              </SheetTrigger>
+              <SheetContent side="left">
+                  <div className="flex flex-col gap-8 p-6">
+                  <Link href="/" className="flex items-center" prefetch={false}>
+                      <span className="font-bold text-2xl text-primary tracking-wider">Attendry</span>
+                  </Link>
+                  <nav className="grid gap-4 text-lg">
+                      {navLinks.map((link) => (
+                      <Link
+                          key={link.href}
+                          href={link.href}
+                          className="font-medium hover:text-primary"
+                          prefetch={false}
+                      >
+                          {link.label}
+                      </Link>
+                      ))}
+                  </nav>
+                  <div className="flex flex-col gap-4">
+                      <Link href="/login">
+                          <Button className="w-full">Get Started</Button>
+                      </Link>
+                      <Link href="/pricing">
+                          <Button variant="outline" className="w-full">Go Pro</Button>
+                      </Link>
+                  </div>
+                  </div>
+              </SheetContent>
+              </Sheet>
+          </div>
         </div>
       </div>
     </header>
