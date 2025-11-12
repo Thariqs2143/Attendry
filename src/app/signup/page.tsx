@@ -13,6 +13,7 @@ import { db, auth } from '@/lib/firebase';
 import type { User } from '@/app/admin/employees/page';
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import Link from 'next/link';
 
 function SignUpPage() {
     const router = useRouter();
@@ -216,5 +217,3 @@ export default function SuspendedSignUpPage() {
         </Suspense>
     )
 }
-
-    
