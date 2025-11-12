@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { Loader2, Search, User, Store, Download } from "lucide-react";
+import { Loader2, Search, User, Store, Download, Phone, Mail, Calendar } from "lucide-react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import jsPDF from "jspdf";
 import "jspdf-autotable";
+import { format } from 'date-fns';
 
 // Extend jsPDF with autoTable
 declare module 'jspdf' {
@@ -82,7 +83,7 @@ export default function SuperAdminEmployeesPage() {
             return;
         }
 
-        const headers = ["Employee Name", "Shop Name", "Role", "Status", "Phone", "Email"];
+        const headers = ["Employee Name", "Shop Name", "Role", "Status", "Phone", "Email", "Join Date"];
         let csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\r\n";
 
         filteredEmployees.forEach(emp => {
@@ -92,7 +93,8 @@ export default function SuperAdminEmployeesPage() {
                 `"${emp.role || ''}"`,
                 `"${emp.status || ''}"`,
                 `"${emp.phone || ''}"`,
-                `"${emp.email || ''}"`
+                `"${emp.email || ''}"`,
+                 `"${emp.joinDate || ''}"`
             ].join(",");
             csvContent += row + "\r\n";
         });
@@ -186,6 +188,18 @@ export default function SuperAdminEmployeesPage() {
                                                 <User className="h-3 w-3 shrink-0" />
                                                 <span>{emp.role}</span>
                                             </div>
+                                            <div className="flex items-center gap-2">
+                                                <Phone className="h-3 w-3 shrink-0" />
+                                                <span>{emp.phone || 'No phone'}</span>
+                                            </div>
+                                             <div className="flex items-center gap-2">
+                                                <Mail className="h-3 w-3 shrink-0" />
+                                                <span className="truncate">{emp.email || 'No email'}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Calendar className="h-3 w-3 shrink-0" />
+                                                <span>Joined: {emp.joinDate ? format(new Date(emp.joinDate), 'dd MMM, yyyy') : 'N/A'}</span>
+                                            </div>
                                         </div>
                                     </Card>
                                 ))}
@@ -199,6 +213,8 @@ export default function SuperAdminEmployeesPage() {
                                             <TableHead>Employee Name</TableHead>
                                             <TableHead>Shop</TableHead>
                                             <TableHead>Role</TableHead>
+                                            <TableHead>Phone</TableHead>
+                                            <TableHead>Joined</TableHead>
                                             <TableHead>Status</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -208,6 +224,8 @@ export default function SuperAdminEmployeesPage() {
                                                 <TableCell className="font-medium">{emp.name}</TableCell>
                                                 <TableCell>{emp.shopName}</TableCell>
                                                 <TableCell>{emp.role}</TableCell>
+                                                <TableCell>{emp.phone || 'N/A'}</TableCell>
+                                                <TableCell>{emp.joinDate ? format(new Date(emp.joinDate), 'dd MMM, yyyy') : 'N/A'}</TableCell>
                                                 <TableCell>
                                                     <Badge variant={getStatusVariant(emp.status)}>
                                                         {emp.status}
