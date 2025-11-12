@@ -68,7 +68,7 @@ export default function ProfilePage() {
         const userDocRef = doc(db, "users", user.uid);
         const userDocSnap = await getDoc(userDocRef);
 
-        if (userDocSnap.exists() && userDocSnap.data().role === 'Employee') {
+        if (userDocSnap.exists()) {
             const profile = { id: userDocSnap.id, ...userDocSnap.data() } as AppUser;
             setUserProfile(profile);
             setEditableProfile(profile);
