@@ -8,34 +8,29 @@ service cloud.firestore {
     //                      HELPER FUNCTIONS                           //
     // ----------------------------------------------------------------//
 
-    // Returns true if the user is signed in.
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Returns true if the requesting user's UID matches the provided userId.
     function isSelf(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Returns true if the user is the owner of the shop document.
-    // The owner's UID is used as the shop's document ID.
     function isShopOwner(shopId) {
-      return isSignedIn() && request.auth.uid == shopId;
+      return isSignedIn() &&
+        (request.auth.uid == shopId ||
+         (exists(/databases/$(database)/documents/shops/$(shopId)) && 
+          get(/databases/$(database)/documents/shops/$(shopId)).data.ownerId == request.auth.uid));
     }
     
-    // Returns true if the user is listed in the specified shop's 'employees' subcollection.
     function isEmployee(shopId) {
       return isSignedIn() && exists(/databases/$(database)/documents/shops/$(shopId)/employees/$(request.auth.uid));
     }
     
-    // Returns true if the user has either owner or employee permissions for a given shop.
     function isOwnerOrEmployee(shopId) {
       return isShopOwner(shopId) || isEmployee(shopId);
     }
     
-    // Returns true if a user making a write request is the owner of the shop
-    // that the resource belongs to. Used for collectionGroup queries.
     function isOwnerOfResourceShop() {
       let shopId = request.resource.data.shopId;
       return shopId != null && isShopOwner(shopId);
@@ -45,15 +40,10 @@ service cloud.firestore {
     //                          GLOBAL RULES                           //
     // ----------------------------------------------------------------//
 
-    // The 'users' collection stores a global profile for every user, admin or employee.
     match /users/{userId} {
       allow read: if isSelf(userId) || isShopOwner(resource.data.shopId);
-      // A user can create their own document (for owners).
-      // A shop owner can create a document for a new employee.
-      allow create: if isSignedIn();
-      // A user can update their own profile.
+      allow create: if request.auth.token.email == request.resource.data.email;
       allow update: if isSelf(userId);
-      // A user can delete their own account.
       allow delete: if isSelf(userId);
     }
     
@@ -67,46 +57,28 @@ service cloud.firestore {
     // ----------------------------------------------------------------//
     
     match /shops/{shopId} {
-      // An owner can read their own shop, employees can read the shop they belong to.
       allow get: if isOwnerOrEmployee(shopId);
-      // Authenticated users can list shops to find theirs, but rules on shop data secure the content.
       allow list: if isSignedIn();
-      // An owner can create their own shop document.
       allow create: if isSelf(shopId) && request.resource.data.ownerId == request.auth.uid;
-      // Only the shop owner can update or delete their shop.
       allow update, delete: if isShopOwner(shopId);
 
-      // Employees are stored in a subcollection under their respective shop.
       match /employees/{employeeId} {
-        // A shop owner can create new employee records (invites).
         allow create: if isShopOwner(shopId);
-        // An owner or any employee of the same shop can view employee profiles.
-        // A user can also view their own profile.
         allow read: if isOwnerOrEmployee(shopId) || isSelf(employeeId);
-        
-        // An owner can update any employee. An employee can update their own profile.
         allow update: if isShopOwner(shopId) || isSelf(employeeId);
-        // Only the owner can delete an employee.
         allow delete: if isShopOwner(shopId);
       }
 
       match /attendance/{attendanceId} {
-        // An employee of the shop can create an attendance record for themselves.
         allow create: if isEmployee(shopId) && request.resource.data.userId == request.auth.uid;
-        // Any owner or employee of the shop can read attendance records.
         allow read, list: if isOwnerOrEmployee(shopId);
-        // An owner can update any record. An employee can only update their own record (e.g., checkout).
         allow update: if isShopOwner(shopId) || (isEmployee(shopId) && resource.data.userId == request.auth.uid);
-        // Only the owner can delete records.
         allow delete: if isShopOwner(shopId);
       }
       
       match /leaveRequests/{leaveId} {
-          // An employee can create a leave request for themselves.
           allow create: if isEmployee(shopId) && request.resource.data.userId == request.auth.uid;
-          // Owner or employee can read leave requests for the shop.
           allow read, list: if isOwnerOrEmployee(shopId);
-          // Only the owner can approve, deny (update), or delete leave requests.
           allow update, delete: if isShopOwner(shopId);
       }
 
@@ -119,20 +91,21 @@ service cloud.firestore {
       match /shifts/{shiftId} {
         allow read, write: if isShopOwner(shopId);
       }
+      match /invites/{inviteId} {
+          allow read: if true;
+          allow create: if isShopOwner(shopId);
+          allow update: if request.auth.token.email == resource.data.email;
+      }
     }
     
     // ----------------------------------------------------------------//
     //                  COLLECTION GROUP QUERIES                       //
     // ----------------------------------------------------------------//
     
-    // This allows the "All Branches" view to work by letting a shop owner
-    // query the 'employees' collection group, but only for documents
-    // where the 'shopId' field matches a shop they own.
     match /{path=**}/employees/{employeeId} {
       allow list: if isSignedIn() && isShopOwner(resource.data.shopId);
     }
     
-    // Rule for other cross-branch queries (attendance, leave)
     match /{path=**}/attendance/{attendanceId} {
       allow list: if isSignedIn() && isShopOwner(resource.data.shopId);
     }
@@ -141,3 +114,5 @@ service cloud.firestore {
     }
   }
 }
+
+    
