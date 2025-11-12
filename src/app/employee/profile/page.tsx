@@ -18,6 +18,7 @@ import { useRouter } from 'next/navigation';
 import { ThemeSwitcher } from '@/components/theme-switcher';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 
 type Suggestion = {
     place_id: number;
@@ -297,7 +298,7 @@ export default function ProfilePage() {
 
   const renderProfileView = () => (
     <div className="space-y-6">
-        <Card className="w-full max-w-3xl mx-auto border-2 border-foreground/20 hover:border-primary">
+        <Card className="w-full max-w-3xl mx-auto border-2 border-foreground/20 hover:border-primary dark:border-border dark:hover:border-primary">
             <CardContent className="pt-6">
                  <div className="flex items-center gap-6">
                     <Avatar className="h-24 w-24 border-2 border-primary flex-shrink-0">
@@ -312,7 +313,7 @@ export default function ProfilePage() {
                 </div>
             </CardContent>
         </Card>
-        <Card className="border-2 border-foreground/20 hover:border-primary">
+        <Card className="border-2 border-foreground/20 hover:border-primary dark:border-border dark:hover:border-primary">
             <CardHeader>
                 <CardTitle>Your Information</CardTitle>
             </CardHeader>
@@ -325,7 +326,7 @@ export default function ProfilePage() {
                     <Label>Email Address</Label>
                     <p className="font-medium text-muted-foreground">{userProfile.email}</p>
                 </div>
-                <div className="space-y-1">
+                 <div className="space-y-1">
                     <Label>Phone Number</Label>
                     <p className="font-medium text-muted-foreground">{userProfile.phone || 'Not Provided'}</p>
                 </div>
@@ -353,18 +354,18 @@ export default function ProfilePage() {
 
   const renderProfileEdit = () => (
      <div className="space-y-6">
-        <Card className="w-full max-w-3xl mx-auto border-2 border-foreground/20 hover:border-primary">
+        <Card className="w-full max-w-3xl mx-auto border-2 border-foreground/20 hover:border-primary dark:border-border dark:hover:border-primary">
             <CardContent className="pt-6">
-                 <div className="flex items-center gap-6">
+                 <div className="flex flex-col sm:flex-row items-center gap-6">
                     <Avatar className="h-24 w-24 border-2 border-primary flex-shrink-0">
                         <AvatarImage src={editableProfile.imageUrl} alt={userProfile.name} />
                         <AvatarFallback>{userProfile.fallback}</AvatarFallback>
                     </Avatar>
-                    <div className="space-y-1 flex-1">
-                        <h2 className="text-2xl font-bold">{userProfile.name}</h2>
-                        <p className="text-muted-foreground">{userProfile.employeeId}</p>
+                    <div className="space-y-2 flex-1 w-full">
+                        <h2 className="text-2xl font-bold text-center sm:text-left">{userProfile.name}</h2>
+                        <p className="text-muted-foreground text-center sm:text-left">{userProfile.employeeId}</p>
                         <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" className="hidden" />
-                        <Button variant="outline" className="w-full mt-2" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                        <Button variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
                           {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Upload className="mr-2 h-4 w-4"/>}
                           Change Photo
                         </Button>
@@ -372,7 +373,7 @@ export default function ProfilePage() {
                 </div>
             </CardContent>
         </Card>
-      <Card className="border-2 border-foreground/20 hover:border-primary">
+      <Card className="border-2 border-foreground/20 hover:border-primary dark:border-border dark:hover:border-primary">
         <CardHeader>
           <CardTitle>Edit Information</CardTitle>
           <CardDescription>Update your contact details and password.</CardDescription>
@@ -442,8 +443,16 @@ export default function ProfilePage() {
             <h1 className="text-3xl font-bold tracking-tight">My Profile</h1>
             <p className="text-muted-foreground">View and update your personal information.</p>
         </div>
-        <Tabs defaultValue="profile" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+        <Tabs defaultValue="profile" className="w-full md:grid md:grid-cols-[250px_1fr] md:gap-8">
+            <TabsList className="hidden md:flex md:flex-col md:h-auto md:items-start md:gap-2 md:bg-transparent md:p-0">
+                <TabsTrigger value="profile" className="w-full justify-start data-[state=active]:bg-muted data-[state=active]:text-foreground text-base py-3 px-4 rounded-lg">
+                    <UserIcon className="mr-2 h-5 w-5" /> Profile
+                </TabsTrigger>
+                <TabsTrigger value="settings" className="w-full justify-start data-[state=active]:bg-muted data-[state=active]:text-foreground text-base py-3 px-4 rounded-lg">
+                    <Settings className="mr-2 h-5 w-5" /> Settings
+                </TabsTrigger>
+            </TabsList>
+             <TabsList className="grid w-full grid-cols-2 md:hidden">
                 <TabsTrigger value="profile">
                     <UserIcon className="mr-2 h-4 w-4" /> Profile
                 </TabsTrigger>
@@ -451,54 +460,56 @@ export default function ProfilePage() {
                     <Settings className="mr-2 h-4 w-4" /> Settings
                 </TabsTrigger>
             </TabsList>
-            <TabsContent value="profile" className="mt-6">
-                {isEditing ? renderProfileEdit() : renderProfileView()}
-            </TabsContent>
-            <TabsContent value="settings" className="mt-6 space-y-6">
-                 <Card className="border-2 border-foreground/20 hover:border-primary">
-                    <CardHeader>
-                        <CardTitle>Appearance</CardTitle>
-                        <CardDescription>Customize the look and feel of the application.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex items-center justify-between">
-                        <Label htmlFor="theme-switcher" className="font-medium">Theme</Label>
-                        <ThemeSwitcher />
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="border-2 border-foreground/20 hover:border-primary">
-                    <CardHeader>
-                        <CardTitle>Notification Settings</CardTitle>
-                        <CardDescription>Enable or disable reminders and alerts.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="rounded-lg border p-4">
+            <div className="mt-6 md:mt-0">
+                <TabsContent value="profile">
+                    {isEditing ? renderProfileEdit() : renderProfileView()}
+                </TabsContent>
+                <TabsContent value="settings" className="space-y-6">
+                     <Card className="border-2 border-foreground/20 hover:border-primary dark:border-border dark:hover:border-primary">
+                        <CardHeader>
+                            <CardTitle>Appearance</CardTitle>
+                            <CardDescription>Customize the look and feel of the application.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
                             <div className="flex items-center justify-between">
-                                <div className="space-y-1">
-                                    <h4 className="font-semibold">Enable Browser Notifications</h4>
-                                    <p className="text-xs text-muted-foreground">Allow notifications to get check-in/out reminders.</p>
-                                </div>
-                                <Button variant="secondary" onClick={handleEnableNotifications} disabled={notifLoading}>
-                                    {notifLoading ? <Loader2 className="mr-2 animate-spin"/> : <Bell className="mr-2"/>}
-                                    Enable
-                                </Button>
+                            <Label htmlFor="theme-switcher" className="font-medium">Theme</Label>
+                            <ThemeSwitcher />
                             </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="border-destructive hover:border-destructive">
-                    <CardHeader>
-                        <CardTitle>Account Actions</CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex justify-center">
-                        <Button variant="destructive" className="w-full max-w-xs" onClick={handleLogout}>
-                            <LogOut className="mr-2 h-4 w-4"/>
-                            Logout
-                        </Button>
-                    </CardContent>
-                </Card>
-            </TabsContent>
+                        </CardContent>
+                    </Card>
+                    <Card className="border-2 border-foreground/20 hover:border-primary dark:border-border dark:hover:border-primary">
+                        <CardHeader>
+                            <CardTitle>Notification Settings</CardTitle>
+                            <CardDescription>Enable or disable reminders and alerts.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="rounded-lg border p-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-1">
+                                        <h4 className="font-semibold">Enable Browser Notifications</h4>
+                                        <p className="text-xs text-muted-foreground">Allow notifications to get check-in/out reminders.</p>
+                                    </div>
+                                    <Button variant="secondary" onClick={handleEnableNotifications} disabled={notifLoading}>
+                                        {notifLoading ? <Loader2 className="mr-2 animate-spin"/> : <Bell className="mr-2"/>}
+                                        Enable
+                                    </Button>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card className="border-destructive hover:border-destructive">
+                        <CardHeader>
+                            <CardTitle>Account Actions</CardTitle>
+                        </CardHeader>
+                        <CardContent className="flex justify-center">
+                            <Button variant="destructive" className="w-full max-w-xs" onClick={handleLogout}>
+                                <LogOut className="mr-2 h-4 w-4"/>
+                                Logout
+                            </Button>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+            </div>
         </Tabs>
     </div>
   );
