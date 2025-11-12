@@ -50,7 +50,7 @@ service cloud.firestore {
       allow read: if isSelf(userId) || isShopOwner(resource.data.shopId);
       // A user can create their own document (for owners).
       // A shop owner can create a document for a new employee.
-      allow create: if isSignedIn();
+      allow create: if isSelf(userId) || (isSignedIn() && request.resource.data.shopId != null && isShopOwner(request.resource.data.shopId));
       // A user can update their own profile.
       allow update: if isSelf(userId);
       // A user can delete their own account.
