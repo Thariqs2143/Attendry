@@ -664,3 +664,4 @@ export default function ManageEmployeesPage() {
     </div>
   );
 }
+
