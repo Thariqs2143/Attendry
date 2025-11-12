@@ -356,14 +356,14 @@ export default function ProfilePage() {
      <div className="space-y-6">
         <Card className="w-full max-w-3xl mx-auto border-2 border-foreground/20 hover:border-primary dark:border-border dark:hover:border-primary">
             <CardContent className="pt-6">
-                 <div className="flex flex-col sm:flex-row items-center gap-6">
+                 <div className="flex items-center gap-6">
                     <Avatar className="h-24 w-24 border-2 border-primary flex-shrink-0">
                         <AvatarImage src={editableProfile.imageUrl} alt={userProfile.name} />
                         <AvatarFallback>{userProfile.fallback}</AvatarFallback>
                     </Avatar>
                     <div className="space-y-2 flex-1 w-full">
-                        <h2 className="text-2xl font-bold text-center sm:text-left">{userProfile.name}</h2>
-                        <p className="text-muted-foreground text-center sm:text-left">{userProfile.employeeId}</p>
+                        <h2 className="text-2xl font-bold">{userProfile.name}</h2>
+                        <p className="text-muted-foreground">{userProfile.employeeId}</p>
                         <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" className="hidden" />
                         <Button variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
                           {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Upload className="mr-2 h-4 w-4"/>}
