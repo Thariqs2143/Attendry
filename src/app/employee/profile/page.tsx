@@ -274,6 +274,10 @@ export default function ProfilePage() {
                     <p className="font-medium text-muted-foreground">{userProfile.email}</p>
                 </div>
                 <div className="space-y-1">
+                    <Label>Phone Number</Label>
+                    <p className="font-medium text-muted-foreground">{userProfile.phone || 'Not Provided'}</p>
+                </div>
+                <div className="space-y-1">
                     <Label>Aadhaar Number</Label>
                     <p className="font-medium text-muted-foreground">{userProfile.aadhaar || 'Not Provided'}</p>
                 </div>
@@ -349,6 +353,10 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-6">
+        <div className="hidden md:block">
+            <h1 className="text-3xl font-bold tracking-tight">My Profile</h1>
+            <p className="text-muted-foreground">View and update your personal information.</p>
+        </div>
         <Tabs defaultValue="profile" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="profile">
