@@ -33,7 +33,7 @@ export default function EmployeeLoginPage() {
             const userDocRef = doc(db, 'users', user.uid);
             const userDocSnap = await getDoc(userDocRef);
             
-            if (userDocSnap.exists() && (userDocSnap.data().role === 'Employee' || userDocSnap.data().role === 'Admin')) {
+            if (userDocSnap.exists() && userDocSnap.data().role !== 'Admin') {
                 const shopId = userDocSnap.data().shopId;
                 const shopDocRef = doc(db, 'shops', shopId);
                 const shopDocSnap = await getDoc(shopDocRef);
