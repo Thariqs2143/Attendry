@@ -41,6 +41,7 @@ export type User = {
   joinDate: string;
   phone?: string;
   aadhaar?: string;
+  address?: string;
   imageUrl?: string;
   isProfileComplete?: boolean;
   shopId?: string; // Links user to a shop
@@ -664,4 +665,3 @@ export default function ManageEmployeesPage() {
     </div>
   );
 }
-

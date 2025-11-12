@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,12 @@ import { Loader2, LogOut, Upload, Bell, Edit, Save, X, User as UserIcon, Setting
 import { useRouter } from 'next/navigation';
 import { ThemeSwitcher } from '@/components/theme-switcher';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+
+type Suggestion = {
+    place_id: number;
+    display_name: string;
+};
 
 const calculateTenure = (joinDate: string | undefined) => {
     if (!joinDate) return 'N/A';
@@ -51,6 +57,7 @@ export default function ProfilePage() {
       name: '',
       aadhaar: '',
       imageUrl: '',
+      address: '',
   });
   const [newPassword, setNewPassword] = useState('');
   const [tenure, setTenure] = useState('');
@@ -60,6 +67,12 @@ export default function ProfilePage() {
   const [notifLoading, setNotifLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isEditing, setIsEditing] = useState(false);
+
+  // State for address autocomplete
+  const [address, setAddress] = useState('');
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -73,6 +86,7 @@ export default function ProfilePage() {
             const profile = { id: userDocSnap.id, ...userDocSnap.data() } as AppUser;
             setUserProfile(profile);
             setEditableProfile(profile);
+            setAddress(profile.address || ''); // Initialize address state
         } else {
             router.push('/employee/login');
         }
@@ -90,6 +104,41 @@ export default function ProfilePage() {
     }
   }, [userProfile]);
 
+  const fetchSuggestions = useCallback(async (query: string) => {
+      if (query.length < 3) {
+          setSuggestions([]);
+          return;
+      }
+      setIsSearching(true);
+      try {
+          const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&countrycodes=in&limit=5`);
+          const data: Suggestion[] = await response.json();
+          setSuggestions(data);
+      } catch (error) {
+          console.error("Failed to fetch address suggestions:", error);
+          setSuggestions([]);
+      } finally {
+          setIsSearching(false);
+      }
+  }, []);
+
+  const handleAddressChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const value = e.target.value;
+      setAddress(value);
+
+      if (debounceTimeoutRef.current) {
+          clearTimeout(debounceTimeoutRef.current);
+      }
+
+      debounceTimeoutRef.current = setTimeout(() => {
+          fetchSuggestions(value);
+      }, 500);
+  };
+
+  const handleSuggestionClick = (suggestion: Suggestion) => {
+      setAddress(suggestion.display_name);
+      setSuggestions([]);
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
@@ -111,9 +160,10 @@ export default function ProfilePage() {
             setNewPassword(''); 
         }
 
-        const updateData = {
+        const updateData: Partial<AppUser> = {
             name: editableProfile.name,
             aadhaar: editableProfile.aadhaar,
+            address: address, // Save address from state
             fallback: editableProfile.name?.split(' ').map(n => n[0]).join('')
         };
 
@@ -247,14 +297,14 @@ export default function ProfilePage() {
     <div className="space-y-6">
         <Card className="w-full max-w-3xl mx-auto">
             <CardContent className="pt-6">
-                 <div className="flex items-center gap-4">
-                    <Avatar className="h-16 w-16 sm:h-20 sm:w-20 border-2 border-primary flex-shrink-0">
+                 <div className="flex items-center gap-6">
+                    <Avatar className="h-24 w-24 border-2 border-primary flex-shrink-0">
                         <AvatarImage src={userProfile.imageUrl} alt={userProfile.name} />
                         <AvatarFallback>{userProfile.fallback}</AvatarFallback>
                     </Avatar>
-                    <div className="text-left space-y-1">
-                        <h2 className="text-xl sm:text-2xl font-bold">{userProfile.name}</h2>
-                        <p className="text-sm text-muted-foreground">{userProfile.employeeId}</p>
+                    <div className="space-y-1">
+                        <h2 className="text-2xl font-bold">{userProfile.name}</h2>
+                        <p className="text-muted-foreground">{userProfile.employeeId}</p>
                         {tenure && <p className="text-sm text-primary font-medium mt-1">Tenure: {tenure}</p>}
                     </div>
                 </div>
@@ -282,6 +332,10 @@ export default function ProfilePage() {
                     <p className="font-medium text-muted-foreground">{userProfile.aadhaar || 'Not Provided'}</p>
                 </div>
                  <div className="space-y-1">
+                    <Label>Address</Label>
+                    <p className="font-medium text-muted-foreground">{userProfile.address || 'Not Provided'}</p>
+                </div>
+                 <div className="space-y-1">
                     <Label>Date Joined</Label>
                     <p className="font-medium text-muted-foreground">{userProfile.joinDate || 'N/A'}</p>
                 </div>
@@ -299,15 +353,15 @@ export default function ProfilePage() {
      <div className="space-y-6">
         <Card className="w-full max-w-3xl mx-auto">
             <CardContent className="pt-6">
-                 <div className="flex items-center gap-4">
-                    <Avatar className="h-16 w-16 sm:h-20 sm:w-20 border-2 border-primary flex-shrink-0">
+                 <div className="flex items-center gap-6">
+                    <Avatar className="h-24 w-24 border-2 border-primary flex-shrink-0">
                         <AvatarImage src={editableProfile.imageUrl} alt={userProfile.name} />
                         <AvatarFallback>{userProfile.fallback}</AvatarFallback>
                     </Avatar>
-                    <div className="text-left space-y-1 flex-1">
-                        <h2 className="text-xl sm:text-2xl font-bold">{userProfile.name}</h2>
-                        <p className="text-sm text-muted-foreground">{userProfile.employeeId}</p>
-                         <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" className="hidden" />
+                    <div className="space-y-1 flex-1">
+                        <h2 className="text-2xl font-bold">{userProfile.name}</h2>
+                        <p className="text-muted-foreground">{userProfile.employeeId}</p>
+                        <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" className="hidden" />
                         <Button variant="outline" className="w-full mt-2" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
                           {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Upload className="mr-2 h-4 w-4"/>}
                           Change Photo
@@ -331,18 +385,43 @@ export default function ProfilePage() {
               <Label htmlFor="aadhaar">Aadhaar Number</Label>
               <Input id="aadhaar" value={editableProfile.aadhaar || ''} onChange={handleInputChange} />
             </div>
-            <div className="space-y-2 md:col-span-2">
+          </div>
+           <div className="relative space-y-2">
+              <Label htmlFor="address">Address</Label>
+              <Textarea id="address" placeholder="Start typing your address..." value={address} onChange={handleAddressChange} />
+               {isSearching && (
+                  <div className="absolute top-full left-0 w-full p-2 z-10">
+                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  </div>
+              )}
+              {suggestions.length > 0 && (
+                  <Card className="absolute top-full left-0 w-full max-h-60 overflow-y-auto z-10 shadow-lg">
+                      <CardContent className="p-2">
+                          {suggestions.map(suggestion => (
+                              <button
+                                  key={suggestion.place_id}
+                                  type="button"
+                                  className="w-full text-left p-2 rounded-md hover:bg-accent text-sm"
+                                  onClick={() => handleSuggestionClick(suggestion)}
+                              >
+                                  {suggestion.display_name}
+                              </button>
+                          ))}
+                      </CardContent>
+                  </Card>
+              )}
+          </div>
+           <div className="space-y-2">
                 <Label htmlFor="newPassword">New Password</Label>
                 <Input id="newPassword" type="password" placeholder="Leave blank to keep current password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
             </div>
-          </div>
         </CardContent>
         <CardFooter className="border-t pt-6 flex flex-col sm:flex-row gap-2">
             <Button onClick={handleSaveChanges} disabled={saving} className="w-full sm:w-auto">
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4" />}
                 Save Changes
             </Button>
-            <Button variant="outline" onClick={() => { setIsEditing(false); setEditableProfile(userProfile); }} className="w-full sm:w-auto">
+            <Button variant="outline" onClick={() => { setIsEditing(false); setEditableProfile(userProfile); setAddress(userProfile.address || ''); }} className="w-full sm:w-auto">
                 <X className="mr-2 h-4 w-4"/>
                 Cancel
             </Button>
