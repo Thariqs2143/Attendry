@@ -247,11 +247,11 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-8">
-        <div>
+        <div className="hidden md:block">
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight">My Profile</h1>
             <p className="text-muted-foreground">View and update your personal information.</p>
         </div>
-        <Separator/>
+        <Separator className="hidden md:block"/>
         <Card className="w-full max-w-3xl mx-auto transition-all duration-300 ease-out hover:shadow-lg border-2 border-foreground hover:border-primary">
             <CardContent className="pt-6">
             <div className="flex flex-col sm:flex-row items-center gap-6">
