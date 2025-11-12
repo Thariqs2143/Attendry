@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import { IndianFlagIcon } from "@/components/ui/indian-flag-icon";
@@ -18,12 +18,14 @@ import { Label } from "@/components/ui/label";
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [isNewUser, setIsNewUser] = useState(false);
   
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const referredBy = searchParams.get('ref');
 
 
   const handleAuthAction = async (e: React.FormEvent) => {
@@ -50,14 +52,21 @@ export default function LoginPage() {
         localStorage.setItem('adminEmail', user.email || email);
         localStorage.setItem('adminName', name);
 
-        await setDoc(doc(db, "users", user.uid), {
+        const userData: {[key: string]: any} = {
             uid: user.uid,
             email: user.email || email,
             name: name,
             role: 'Admin',
             isProfileComplete: false,
             joinDate: new Date().toISOString().split('T')[0],
-        }, { merge: true });
+        };
+        
+        await setDoc(doc(db, "users", user.uid), userData, { merge: true });
+
+        // If there's a referral code, store it on the shop document placeholder
+        if(referredBy) {
+            await setDoc(doc(db, "shops", user.uid), { referredBy: referredBy }, { merge: true });
+        }
         
         toast({ title: "Account Created!", description: "Please complete your shop profile to continue." });
         router.push('/admin/complete-profile');
@@ -71,21 +80,18 @@ export default function LoginPage() {
         const userDocSnap = await getDoc(userDocRef);
 
         if (userDocSnap.exists() && userDocSnap.data().isProfileComplete) {
-            // This is a critical step for the direct employee creation flow:
-            // We save the owner's password in local storage so we can re-authenticate them
-            // after they create a new employee. This is a simplification for this specific context.
-            // In a production app, a more secure token-based method would be used.
-            localStorage.setItem('userPass', password);
-
             toast({ title: "Login Successful!", description: "Redirecting to dashboard..." });
             router.push('/admin');
-        } else {
+        } else if (userDocSnap.exists() && userDocSnap.data().role === 'Admin') {
              // This case handles users who signed up but didn't complete their profile
              localStorage.setItem('adminUID', user.uid);
              localStorage.setItem('adminEmail', user.email || email);
              localStorage.setItem('adminName', userDocSnap.data()?.name || '');
              toast({ title: "Welcome Back!", description: "Please complete your shop profile." });
              router.push('/admin/complete-profile');
+        } else {
+            toast({ title: "Not Authorized", description: "This account does not have admin privileges.", variant: "destructive"});
+            await auth.signOut();
         }
       }
     } catch (error: any) {

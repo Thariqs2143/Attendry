@@ -5,20 +5,32 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, UserPlus, Loader2, ChevronsUpDown, Copy } from "lucide-react";
+import { ArrowLeft, UserPlus, Loader2, ChevronsUpDown } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { collection, query, where, getDocs, doc, writeBatch, serverTimestamp } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, writeBatch } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase";
 import { useState, useEffect } from "react";
-import { onAuthStateChanged, type User as AuthUser, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
+import { onAuthStateChanged, type User as AuthUser, createUserWithEmailAndPassword } from "firebase/auth";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { initializeApp, getApps, getApp, deleteApp } from "firebase/app";
 
 type Branch = {
     id: string;
     shopName: string;
     ownerId: string;
+};
+
+// Re-use the config from the main firebase setup
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
 
@@ -27,7 +39,6 @@ export default function AddEmployeePage() {
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
     const [authUser, setAuthUser] = useState<AuthUser | null>(null);
-    const [ownerCredentials, setOwnerCredentials] = useState<{email: string, pass: string} | null>(null);
     const [branches, setBranches] = useState<Branch[]>([]);
     const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
     const [openBranchSelector, setOpenBranchSelector] = useState(false);
@@ -36,12 +47,6 @@ export default function AddEmployeePage() {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             if (user) {
                 setAuthUser(user);
-                 // Store owner credentials for re-login
-                const ownerEmail = user.email;
-                const ownerPass = localStorage.getItem('userPass'); // Assume password is saved securely after login
-                if (ownerEmail && ownerPass) {
-                    setOwnerCredentials({ email: ownerEmail, pass: ownerPass });
-                }
                 
                 const branchesQuery = query(collection(db, "shops"), where("ownerId", "==", user.uid));
                 const branchesSnapshot = await getDocs(branchesQuery);
@@ -59,7 +64,7 @@ export default function AddEmployeePage() {
 
     const handleCreateEmployee = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        if (!authUser || !selectedBranch || !ownerCredentials) {
+        if (!authUser || !selectedBranch) {
              toast({ title: "Session Error", description: "Your session has expired. Please log in again.", variant: "destructive" });
              return;
         }
@@ -78,17 +83,20 @@ export default function AddEmployeePage() {
             setLoading(false);
             return;
         }
+        
+        // --- Start of the new, corrected logic ---
+        const tempAppName = `temp-employee-creation-${Date.now()}`;
+        const tempApp = initializeApp(firebaseConfig, tempAppName);
+        const { getAuth } = await import("firebase/auth");
+        const tempAuth = getAuth(tempApp);
 
         try {
-            // Step 1: Create the new employee user in Firebase Auth.
-            // This will unfortunately log out the admin.
-            const employeeCredential = await createUserWithEmailAndPassword(auth, email, password);
+            // Step 1: Create the new employee user in Firebase Auth using the temporary app.
+            // This does NOT affect the shop owner's login session.
+            const employeeCredential = await createUserWithEmailAndPassword(tempAuth, email, password);
             const newEmployeeUser = employeeCredential.user;
-
-            // Step 2: Immediately log the admin back in to restore their session and permissions.
-            await signInWithEmailAndPassword(auth, ownerCredentials.email, ownerCredentials.pass);
             
-            // Step 3: Now, as the authenticated admin, write the employee's data to Firestore.
+            // Step 2: As the currently logged-in admin, write the employee's data to Firestore.
             const newEmployeeProfile = {
                 uid: newEmployeeUser.uid,
                 name,
@@ -125,13 +133,6 @@ export default function AddEmployeePage() {
            
         } catch (error: any) {
             console.error("Error creating employee:", error);
-            // Attempt to log admin back in case of failure after logout
-            if (auth.currentUser?.email !== ownerCredentials.email) {
-                 await signInWithEmailAndPassword(auth, ownerCredentials.email, ownerCredentials.pass).catch(reloginError => {
-                    console.error("Failed to re-login admin after error:", reloginError);
-                    router.push('/login'); // Force full re-login
-                });
-            }
             let description = "Could not create the employee account. Please try again.";
             if (error.code === 'auth/email-already-in-use') {
                 description = "This email is already registered. Please use a different email."
@@ -140,8 +141,11 @@ export default function AddEmployeePage() {
             }
             toast({ title: "Error Creating Employee", description, variant: "destructive" });
         } finally {
+            // Step 3: Clean up the temporary Firebase app instance.
+            await deleteApp(tempApp);
             setLoading(false);
         }
+        // --- End of the new, corrected logic ---
     };
 
     return (
@@ -241,3 +245,5 @@ export default function AddEmployeePage() {
         </div>
     );
 }
+
+    
