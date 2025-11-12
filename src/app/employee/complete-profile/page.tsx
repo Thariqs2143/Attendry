@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from '@/hooks/use-toast';
 import { UserCheck, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { doc, updateDoc, getDoc } from 'firebase/firestore';
+import { doc, updateDoc, getDoc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { User } from '@/app/admin/employees/page';
 import { getAuth, onAuthStateChanged, updatePassword } from 'firebase/auth';
@@ -20,8 +20,10 @@ export default function CompleteProfilePage() {
     const [profile, setProfile] = useState<Partial<User>>({});
     const [uid, setUid] = useState('');
     const [shopId, setShopId] = useState('');
-    const [password, setPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [phone, setPhone] = useState('');
+
 
     useEffect(() => {
         const userUID = localStorage.getItem('newUserUID');
@@ -41,8 +43,24 @@ export default function CompleteProfilePage() {
             fetchProfile();
 
         } else {
-            toast({ title: "Error", description: "Could not find your invitation. Please contact your shop owner.", variant: "destructive"});
-            router.replace('/employee/login');
+            // If no local storage, check auth state
+            const auth = getAuth();
+            const unsubscribe = onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    const userDocRef = doc(db, 'users', user.uid);
+                    const userDocSnap = await getDoc(userDocRef);
+                    if(userDocSnap.exists() && !userDocSnap.data().isProfileComplete){
+                         setUid(user.uid);
+                         setShopId(userDocSnap.data().shopId);
+                         setProfile(userDocSnap.data());
+                    } else {
+                         router.replace('/employee/login');
+                    }
+                } else {
+                    router.replace('/employee/login');
+                }
+            });
+            return () => unsubscribe();
         }
     }, [router, toast]);
 
@@ -54,13 +72,7 @@ export default function CompleteProfilePage() {
         const formData = new FormData(e.currentTarget);
         const aadhaar = formData.get('aadhaar') as string;
 
-        if (!aadhaar) {
-             toast({ title: "Error", description: "Please enter your Aadhaar number.", variant: "destructive" });
-             setLoading(false);
-             return;
-        }
-
-        if (password && password !== confirmPassword) {
+        if (newPassword && newPassword !== confirmPassword) {
             toast({ title: "Error", description: "Passwords do not match.", variant: "destructive" });
             setLoading(false);
             return;
@@ -70,19 +82,33 @@ export default function CompleteProfilePage() {
             const auth = getAuth();
             const currentUser = auth.currentUser;
 
-            if (password && currentUser) {
-                await updatePassword(currentUser, password);
+            if (newPassword && currentUser) {
+                if(newPassword.length < 6) {
+                    toast({ title: "Weak Password", description: "New password must be at least 6 characters.", variant: "destructive" });
+                    setLoading(false);
+                    return;
+                }
+                await updatePassword(currentUser, newPassword);
                  toast({ title: "Password Updated!", description: "Your new password has been set." });
             }
 
             const updatedProfile: Partial<User> = {
-                aadhaar,
+                aadhaar: aadhaar || '',
+                phone: phone ? `+91${phone}`: '',
                 status: 'Active',
                 isProfileComplete: true,
             };
             
-            const employeeDocRef = doc(db, "users", uid);
-            await updateDoc(employeeDocRef, updatedProfile);
+            const batch = writeBatch(db);
+            
+            const userDocRef = doc(db, "users", uid);
+            batch.update(userDocRef, updatedProfile);
+
+            const shopEmployeeDocRef = doc(db, 'shops', shopId, 'employees', uid);
+            batch.update(shopEmployeeDocRef, updatedProfile);
+
+
+            await batch.commit();
 
             toast({
                 title: "Profile Complete!",
@@ -92,15 +118,15 @@ export default function CompleteProfilePage() {
             localStorage.removeItem('newUserUID');
             localStorage.removeItem('newUserShopId');
             
-            setTimeout(() => {
-                router.push('/employee');
-            }, 1500);
+            router.push('/employee');
 
         } catch (error: any) {
             console.error("Error updating profile:", error);
             let description = "Could not save your profile. Please try again.";
             if (error.code === 'auth/weak-password') {
                 description = "Password is too weak. It must be at least 6 characters long.";
+            } else if (error.code === 'auth/requires-recent-login') {
+                description = "This action is sensitive. Please log out and log back in to set a new password."
             }
             toast({ title: "Error", description, variant: "destructive" });
         } finally {
@@ -141,16 +167,20 @@ export default function CompleteProfilePage() {
                         <Input id="email" name="email" value={profile.email || ''} readOnly disabled />
                     </div>
                      <div className="space-y-2">
-                        <Label htmlFor="password">Set New Password</Label>
-                        <Input id="password" name="password" type="password" placeholder="Must be at least 6 characters" value={password} onChange={(e) => setPassword(e.target.value)} />
+                        <Label htmlFor="newPassword">Set New Password</Label>
+                        <Input id="newPassword" name="newPassword" type="password" placeholder="Min. 6 characters" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
                     </div>
                      <div className="space-y-2">
                         <Label htmlFor="confirmPassword">Confirm New Password</Label>
                         <Input id="confirmPassword" name="confirmPassword" type="password" placeholder="Re-enter your new password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
                     </div>
-                    <div className="space-y-2 md:col-span-2">
-                        <Label htmlFor="aadhaar">Aadhaar Number *</Label>
-                        <Input id="aadhaar" name="aadhaar" type="text" inputMode="numeric" placeholder="e.g. 1234 5678 9012" required maxLength={12} pattern="\d{12}" title="Aadhaar must be 12 digits" />
+                     <div className="space-y-2">
+                        <Label htmlFor="phone">Phone Number</Label>
+                         <Input id="phone" name="phone" type="tel" placeholder="10-digit mobile number" maxLength={10} pattern="[0-9]{10}" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="aadhaar">Aadhaar Number</Label>
+                        <Input id="aadhaar" name="aadhaar" type="text" inputMode="numeric" placeholder="e.g. 1234 5678 9012" maxLength={12} pattern="\d{12}" title="Aadhaar must be 12 digits" />
                     </div>
                 </div>
             </div>

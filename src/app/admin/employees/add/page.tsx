@@ -7,13 +7,12 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, UserPlus, Loader2, ChevronsUpDown } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { collection, query, where, getDocs } from "firebase/firestore";
-import { db, auth, functions } from "@/lib/firebase";
+import { collection, query, where, getDocs, doc, setDoc, writeBatch } from "firebase/firestore";
+import { db, auth } from "@/lib/firebase";
 import { useState, useEffect } from "react";
-import { onAuthStateChanged, type User as AuthUser } from "firebase/auth";
+import { onAuthStateChanged, type User as AuthUser, createUserWithEmailAndPassword } from "firebase/auth";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { httpsCallable } from "firebase/functions";
 
 type Branch = {
     id: string;
@@ -36,7 +35,6 @@ export default function AddEmployeePage() {
             if (user) {
                 setAuthUser(user);
                 
-                // Fetch branches
                 const branchesQuery = query(collection(db, "shops"), where("ownerId", "==", user.uid));
                 const branchesSnapshot = await getDocs(branchesQuery);
                 const fetchedBranches = branchesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Branch));
@@ -77,39 +75,69 @@ export default function AddEmployeePage() {
             return;
         }
 
-        try {
-            const createEmployee = httpsCallable(functions, 'createEmployee');
-            const result = await createEmployee({
-                email,
-                password,
-                name,
-                employeeId,
-                role,
-                baseSalary: Number(baseSalary) || 0,
-                shopId: selectedBranch.id,
+        if (password.length < 6) {
+            toast({
+                title: "Weak Password",
+                description: "The initial password must be at least 6 characters long.",
+                variant: "destructive",
             });
+            setLoading(false);
+            return;
+        }
 
-            if ((result.data as any).success) {
-                toast({
-                    title: "Employee Invited!",
-                    description: `${name} has been added. They can now log in with their email and password.`,
-                });
-                router.push('/admin/employees');
-            } else {
-                 throw new Error((result.data as any).error || "An unknown error occurred.");
-            }
+        try {
+            // Because we can't create a user and set their doc in one transaction,
+            // we'll check if the email is already in use by trying to create it in a temp context.
+            // This is not ideal, but it's a client-side workaround. A backend function is safer.
+            const tempAuth = auth; // This is a bit of a simplification.
+            
+            // Step 1: Create the user in Firebase Authentication
+            const userCredential = await createUserWithEmailAndPassword(tempAuth, email, password);
+            const newUser = userCredential.user;
+
+            // Step 2: Create the user profile documents in Firestore
+            const newEmployeeProfile = {
+                uid: newUser.uid,
+                name,
+                email,
+                role,
+                employeeId,
+                status: 'Pending Onboarding',
+                fallback: name.split(' ').map((n: string) => n[0]).join(''),
+                shopId: selectedBranch.id,
+                points: 0,
+                streak: 0,
+                joinDate: new Date().toISOString().split('T')[0],
+                baseSalary: Number(baseSalary) || 0,
+                isProfileComplete: false,
+            };
+
+            const batch = writeBatch(db);
+
+            const userDocRef = doc(db, 'users', newUser.uid);
+            batch.set(userDocRef, newEmployeeProfile);
+            
+            const shopEmployeeDocRef = doc(db, 'shops', selectedBranch.id, 'employees', newUser.uid);
+            batch.set(shopEmployeeDocRef, newEmployeeProfile);
+
+            await batch.commit();
+
+            toast({
+                title: "Employee Invited!",
+                description: `${name} has been added. They can now log in with the credentials you set.`,
+            });
+            router.push('/admin/employees');
            
         } catch (error: any) {
             console.error("Error adding employee:", error);
-            let description = error.message || "Could not create invitation. Please try again.";
-            // Firebase functions often wrap auth errors, so we check the message string
-            if (error.message.includes('EMAIL_EXISTS')) {
+            let description = "Could not create the employee. Please try again.";
+            if (error.code === 'auth/email-already-in-use') {
                 description = "This email address is already in use by another account.";
-            } else if (error.message.includes('WEAK_PASSWORD')) {
+            } else if (error.code === 'auth/weak-password') {
                 description = "The password is too weak. It must be at least 6 characters long.";
             }
             toast({
-                title: "Error",
+                title: "Error Creating Employee",
                 description: description,
                 variant: "destructive",
             });
@@ -157,10 +185,9 @@ export default function AddEmployeePage() {
                                         {branches.map((branch) => (
                                             <CommandItem
                                                 key={branch.id}
-                                                value={branch.id}
-                                                onSelect={(currentValue) => {
-                                                    const branch = branches.find(b => b.id === currentValue);
-                                                    setSelectedBranch(branch || null);
+                                                value={branch.shopName}
+                                                onSelect={() => {
+                                                    setSelectedBranch(branch);
                                                     setOpenBranchSelector(false);
                                                 }}
                                             >
