@@ -8,12 +8,13 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, UserPlus, Loader2, ChevronsUpDown } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { collection, query, where, getDocs, doc, setDoc, writeBatch } from "firebase/firestore";
-import { db, auth } from "@/lib/firebase";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { db, auth, functions } from "@/lib/firebase";
 import { useState, useEffect } from "react";
-import { onAuthStateChanged, type User as AuthUser, createUserWithEmailAndPassword } from "firebase/auth";
+import { onAuthStateChanged, type User as AuthUser } from "firebase/auth";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { httpsCallable } from "firebase/functions";
 
 type Branch = {
     id: string;
@@ -86,40 +87,17 @@ export default function AddEmployeePage() {
             return;
         }
         
-        let newUser: AuthUser | null = null;
         try {
-            // Because we can't create a user and set their doc in one transaction,
-            // we'll check if the email is already in use by trying to create it in a temp context.
-            // This is not ideal, but it's a client-side workaround. A backend function is safer.
-            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-            newUser = userCredential.user;
-
-            // Step 2: Create the user profile documents in Firestore
-            const newEmployeeProfile = {
-                uid: newUser.uid,
+            const createEmployee = httpsCallable(functions, 'createEmployee');
+            await createEmployee({
                 name,
                 email,
+                password,
                 role,
                 employeeId,
-                status: 'Pending Onboarding',
-                fallback: name.split(' ').map((n: string) => n[0]).join(''),
-                shopId: selectedBranch.id,
-                points: 0,
-                streak: 0,
-                joinDate: new Date().toISOString().split('T')[0],
                 baseSalary: Number(baseSalary) || 0,
-                isProfileComplete: false,
-            };
-
-            const batch = writeBatch(db);
-
-            const userDocRef = doc(db, 'users', newUser.uid);
-            batch.set(userDocRef, newEmployeeProfile);
-            
-            const shopEmployeeDocRef = doc(db, 'shops', selectedBranch.id, 'employees', newUser.uid);
-            batch.set(shopEmployeeDocRef, newEmployeeProfile);
-
-            await batch.commit();
+                shopId: selectedBranch.id,
+            });
 
             toast({
                 title: "Employee Invited!",
@@ -130,23 +108,13 @@ export default function AddEmployeePage() {
         } catch (error: any) {
             console.error("Error adding employee:", error);
             
-            // If the user was created in Auth but the database write failed, we should try to delete the user.
-            if (newUser) {
-                try {
-                    await newUser.delete();
-                } catch (deleteError) {
-                    console.error("Failed to clean up newly created user in Auth:", deleteError);
-                }
+            let description = "Could not create the employee. Please try again.";
+            if (error.message.includes('auth/email-already-exists')) {
+                description = "This email address is already in use by another account.";
+            } else if (error.message.includes('auth/weak-password')) {
+                description = "The password is too weak. It must be at least 6 characters long.";
             }
             
-            let description = "Could not create the employee. Please try again.";
-            if (error.code === 'auth/email-already-in-use') {
-                description = "This email address is already in use by another account.";
-            } else if (error.code === 'auth/weak-password') {
-                description = "The password is too weak. It must be at least 6 characters long.";
-            } else if (error.code === 'permission-denied') {
-                 description = "Permission denied. Check your Firestore security rules.";
-            }
             toast({
                 title: "Error Creating Employee",
                 description: description,
