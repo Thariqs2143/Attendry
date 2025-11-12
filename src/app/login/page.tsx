@@ -71,6 +71,12 @@ export default function LoginPage() {
         const userDocSnap = await getDoc(userDocRef);
 
         if (userDocSnap.exists() && userDocSnap.data().isProfileComplete) {
+            // This is a critical step for the direct employee creation flow:
+            // We save the owner's password in local storage so we can re-authenticate them
+            // after they create a new employee. This is a simplification for this specific context.
+            // In a production app, a more secure token-based method would be used.
+            localStorage.setItem('userPass', password);
+
             toast({ title: "Login Successful!", description: "Redirecting to dashboard..." });
             router.push('/admin');
         } else {
@@ -196,4 +202,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

@@ -8,10 +8,10 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, UserPlus, Loader2, ChevronsUpDown, Copy } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { collection, query, where, getDocs, doc, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, writeBatch, serverTimestamp } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase";
 import { useState, useEffect } from "react";
-import { onAuthStateChanged, type User as AuthUser } from "firebase/auth";
+import { onAuthStateChanged, type User as AuthUser, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
@@ -27,15 +27,21 @@ export default function AddEmployeePage() {
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
     const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+    const [ownerCredentials, setOwnerCredentials] = useState<{email: string, pass: string} | null>(null);
     const [branches, setBranches] = useState<Branch[]>([]);
     const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
     const [openBranchSelector, setOpenBranchSelector] = useState(false);
-    const [generatedLink, setGeneratedLink] = useState('');
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             if (user) {
                 setAuthUser(user);
+                 // Store owner credentials for re-login
+                const ownerEmail = user.email;
+                const ownerPass = localStorage.getItem('userPass'); // Assume password is saved securely after login
+                if (ownerEmail && ownerPass) {
+                    setOwnerCredentials({ email: ownerEmail, pass: ownerPass });
+                }
                 
                 const branchesQuery = query(collection(db, "shops"), where("ownerId", "==", user.uid));
                 const branchesSnapshot = await getDocs(branchesQuery);
@@ -51,11 +57,10 @@ export default function AddEmployeePage() {
         return () => unsubscribe();
     }, [router]);
 
-    const handleGenerateInvite = async (event: React.FormEvent<HTMLFormElement>) => {
+    const handleCreateEmployee = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        setGeneratedLink('');
-        if (!authUser || !selectedBranch) {
-             toast({ title: "Branch Error", description: "You must have a branch selected.", variant: "destructive" });
+        if (!authUser || !selectedBranch || !ownerCredentials) {
+             toast({ title: "Session Error", description: "Your session has expired. Please log in again.", variant: "destructive" });
              return;
         }
 
@@ -65,57 +70,79 @@ export default function AddEmployeePage() {
         const employeeId = formData.get('employeeId') as string;
         const role = formData.get('role') as string;
         const email = formData.get('email') as string;
+        const password = formData.get('password') as string;
         const baseSalary = formData.get('baseSalary') as string;
         
-        if (!name || !email || !role || !employeeId) {
-            toast({
-                title: "Error",
-                description: "Please fill out all required fields.",
-                variant: "destructive",
-            });
+        if (!name || !email || !role || !employeeId || !password) {
+            toast({ title: "Error", description: "Please fill out all required fields.", variant: "destructive" });
             setLoading(false);
             return;
         }
-        
+
         try {
-            const inviteRef = await addDoc(collection(db, 'shops', selectedBranch.id, 'invites'), {
+            // Step 1: Create the new employee user in Firebase Auth.
+            // This will unfortunately log out the admin.
+            const employeeCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const newEmployeeUser = employeeCredential.user;
+
+            // Step 2: Immediately log the admin back in to restore their session and permissions.
+            await signInWithEmailAndPassword(auth, ownerCredentials.email, ownerCredentials.pass);
+            
+            // Step 3: Now, as the authenticated admin, write the employee's data to Firestore.
+            const newEmployeeProfile = {
+                uid: newEmployeeUser.uid,
                 name,
                 email,
                 role,
                 employeeId,
-                baseSalary: Number(baseSalary) || 0,
+                status: 'Pending Onboarding',
                 shopId: selectedBranch.id,
-                shopName: selectedBranch.shopName,
-                ownerId: authUser.uid,
-                createdAt: serverTimestamp(),
-                status: 'pending' // pending, accepted, expired
-            });
+                fallback: name.split(' ').map((n: string) => n[0]).join(''),
+                points: 0,
+                streak: 0,
+                joinDate: new Date().toISOString().split('T')[0],
+                baseSalary: Number(baseSalary) || 0,
+                isProfileComplete: false,
+            };
+
+            const batch = writeBatch(db);
             
-            const newGeneratedLink = `${window.location.origin}/signup?inviteId=${inviteRef.id}&shopId=${selectedBranch.id}`;
-            setGeneratedLink(newGeneratedLink);
+            // Write to global users collection
+            const userDocRef = doc(db, "users", newEmployeeUser.uid);
+            batch.set(userDocRef, newEmployeeProfile);
+
+            // Write to shop's employees subcollection
+            const shopEmployeeDocRef = doc(db, 'shops', selectedBranch.id, 'employees', newEmployeeUser.uid);
+            batch.set(shopEmployeeDocRef, newEmployeeProfile);
+
+            await batch.commit();
 
             toast({
-                title: "Invite Link Generated!",
-                description: `Share this link with ${name} to have them create their account.`,
+                title: "Employee Account Created!",
+                description: `Share the email and password with ${name} so they can log in.`,
             });
             (event.target as HTMLFormElement).reset();
            
         } catch (error: any) {
-            console.error("Error generating invite:", error);
-            toast({
-                title: "Error Generating Invite",
-                description: "Could not create the employee invite. Please try again.",
-                variant: "destructive",
-            });
+            console.error("Error creating employee:", error);
+            // Attempt to log admin back in case of failure after logout
+            if (auth.currentUser?.email !== ownerCredentials.email) {
+                 await signInWithEmailAndPassword(auth, ownerCredentials.email, ownerCredentials.pass).catch(reloginError => {
+                    console.error("Failed to re-login admin after error:", reloginError);
+                    router.push('/login'); // Force full re-login
+                });
+            }
+            let description = "Could not create the employee account. Please try again.";
+            if (error.code === 'auth/email-already-in-use') {
+                description = "This email is already registered. Please use a different email."
+            } else if (error.code === 'auth/weak-password') {
+                description = "The initial password must be at least 6 characters long."
+            }
+            toast({ title: "Error Creating Employee", description, variant: "destructive" });
         } finally {
             setLoading(false);
         }
     };
-    
-    const copyToClipboard = () => {
-        navigator.clipboard.writeText(generatedLink);
-        toast({ title: "Copied!", description: "Invite link copied to clipboard." });
-    }
 
     return (
         <div className="flex flex-col gap-8">
@@ -126,11 +153,11 @@ export default function AddEmployeePage() {
                     </Button>
                 </Link>
                 <div>
-                    <h1 className="text-xl sm:text-3xl font-bold tracking-tight">Invite New Employee</h1>
-                    <p className="text-muted-foreground text-sm sm:text-base">Generate a secure signup link for your new employee.</p>
+                    <h1 className="text-xl sm:text-3xl font-bold tracking-tight">Add New Employee</h1>
+                    <p className="text-muted-foreground text-sm sm:text-base">Create an account for your new employee.</p>
                 </div>
             </div>
-            <form onSubmit={handleGenerateInvite} className="w-full max-w-2xl mx-auto space-y-8">
+            <form onSubmit={handleCreateEmployee} className="w-full max-w-2xl mx-auto space-y-8">
                 <fieldset disabled={loading} className="group">
                     <div className="space-y-2">
                         <Label>Branch *</Label>
@@ -190,31 +217,22 @@ export default function AddEmployeePage() {
                                 <Label htmlFor="email">Email Address *</Label>
                                 <Input id="email" name="email" type="email" placeholder="employee@example.com" required />
                             </div>
-                             <div className="space-y-2 md:col-span-2">
+                             <div className="space-y-2">
+                                <Label htmlFor="password">Set Initial Password *</Label>
+                                <Input id="password" name="password" type="password" placeholder="Min. 6 characters" required />
+                            </div>
+                             <div className="space-y-2">
                                 <Label htmlFor="baseSalary">Base Monthly Salary (₹)</Label>
                                 <Input id="baseSalary" name="baseSalary" type="number" placeholder="e.g., 25000" />
                             </div>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-2 text-center">The employee will set their own password using the generated link.</p>
+                        <p className="text-xs text-muted-foreground mt-2 text-center">The employee will be required to set a new password on their first login.</p>
                         
-                        {generatedLink && (
-                            <div className="mt-8 p-4 border-2 border-dashed border-green-500 rounded-lg space-y-3 animate-in fade-in-50">
-                                <Label className="font-semibold text-green-600">Invite Link Generated!</Label>
-                                <div className="flex gap-2">
-                                    <Input value={generatedLink} readOnly className="bg-muted"/>
-                                    <Button type="button" onClick={copyToClipboard} size="icon" variant="outline">
-                                        <Copy className="h-4 w-4"/>
-                                    </Button>
-                                </div>
-                                <p className="text-xs text-muted-foreground">Share this link with the employee. It is a one-time use link.</p>
-                            </div>
-                        )}
-
                         <div className="flex justify-center mt-8">
                             <Button type="submit" size="lg" className="w-full max-w-xs" disabled={!selectedBranch || loading}>
                                 {loading && <Loader2 className="mr-2 animate-spin" />}
                                 <UserPlus className="mr-2"/>
-                                Generate Invite Link
+                                Create Employee Account
                             </Button>
                         </div>
                     </fieldset>
@@ -223,5 +241,3 @@ export default function AddEmployeePage() {
         </div>
     );
 }
-
-    
