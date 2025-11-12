@@ -3,20 +3,20 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
 import { differenceInMonths, differenceInYears } from 'date-fns';
 import { auth, db, requestForToken } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { onAuthStateChanged, signOut, type User as AuthUser, updatePassword } from 'firebase/auth';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import type { User as AppUser } from '@/app/admin/employees/page';
-import { Loader2, LogOut, Upload, Bell } from 'lucide-react';
+import { Loader2, LogOut, Upload, Bell, Edit, Save, X, User as UserIcon, Settings } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ThemeSwitcher } from '@/components/theme-switcher';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const calculateTenure = (joinDate: string | undefined) => {
     if (!joinDate) return 'N/A';
@@ -59,6 +59,7 @@ export default function ProfilePage() {
   const [uploading, setUploading] = useState(false);
   const [notifLoading, setNotifLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -100,7 +101,6 @@ export default function ProfilePage() {
     setSaving(true);
     const userDocRef = doc(db, 'users', userProfile.id);
     try {
-        // Update password if a new one is provided
         if (newPassword) {
             if (newPassword.length < 6) {
                 toast({ title: "Error", description: "Password must be at least 6 characters long.", variant: "destructive" });
@@ -108,28 +108,26 @@ export default function ProfilePage() {
                 return;
             }
             await updatePassword(authUser, newPassword);
-            setNewPassword(''); // Clear after successful update
+            setNewPassword(''); 
         }
 
-        // Update profile details
-        await updateDoc(userDocRef, {
+        const updateData = {
             name: editableProfile.name,
             aadhaar: editableProfile.aadhaar,
             fallback: editableProfile.name?.split(' ').map(n => n[0]).join('')
-        });
+        };
+
+        await updateDoc(userDocRef, updateData);
         
-        // Also update the mirrored document in the shop's subcollection
         if(userProfile.shopId) {
             const shopEmployeeDocRef = doc(db, 'shops', userProfile.shopId, 'employees', userProfile.id);
-            await updateDoc(shopEmployeeDocRef, {
-                 name: editableProfile.name,
-                 aadhaar: editableProfile.aadhaar,
-                 fallback: editableProfile.name?.split(' ').map(n => n[0]).join('')
-            });
+            await updateDoc(shopEmployeeDocRef, updateData);
         }
 
-        setUserProfile(prev => ({...prev!, ...editableProfile}));
+        setUserProfile(prev => ({...prev!, ...updateData, imageUrl: editableProfile.imageUrl}));
+        setEditableProfile(prev => ({...prev, ...updateData}));
         toast({ title: "Success", description: "Your profile has been updated." });
+        setIsEditing(false);
     } catch (error: any) {
         console.error("Error updating profile:", error);
         let description = "Could not update your profile.";
@@ -213,7 +211,6 @@ export default function ProfilePage() {
       if (data.secure_url) {
           const imageUrl = data.secure_url;
           
-          setUserProfile(prev => ({...(prev as AppUser), imageUrl: imageUrl }));
           setEditableProfile(prev => ({ ...prev, imageUrl: imageUrl }));
           
           const userDocRef = doc(db, 'users', userProfile.id);
@@ -223,6 +220,7 @@ export default function ProfilePage() {
                 await updateDoc(shopEmployeeDocRef, { imageUrl: imageUrl });
             }
           
+          setUserProfile(prev => ({...(prev as AppUser), imageUrl: imageUrl }));
           toast({ title: "Photo Updated!", description: "Your new profile photo has been saved." });
       } else {
           console.error("Cloudinary upload failed:", data);
@@ -245,40 +243,79 @@ export default function ProfilePage() {
     );
   }
 
-  return (
-    <div className="space-y-8">
-        <div className="hidden md:block">
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">My Profile</h1>
-            <p className="text-muted-foreground">View and update your personal information.</p>
-        </div>
-        <Separator className="hidden md:block"/>
-        <Card className="w-full max-w-3xl mx-auto transition-all duration-300 ease-out hover:shadow-lg border-2 border-foreground hover:border-primary">
+  const renderProfileView = () => (
+    <div className="space-y-6">
+        <Card className="w-full max-w-3xl mx-auto">
             <CardContent className="pt-6">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="flex w-full items-center gap-4">
-                        <Avatar className="h-16 w-16 sm:h-20 sm:w-20 border-2 border-primary flex-shrink-0">
-                            <AvatarImage src={editableProfile.imageUrl} alt={userProfile.name} />
-                            <AvatarFallback>{userProfile.fallback}</AvatarFallback>
-                        </Avatar>
-                        <div className="text-left">
-                            <h2 className="text-xl sm:text-2xl font-bold">{userProfile.name}</h2>
-                            <p className="text-sm text-muted-foreground">{userProfile.employeeId}</p>
-                            {tenure ? <p className="text-sm text-primary font-medium mt-1">Tenure: {tenure}</p> : <div className="h-5 w-32 bg-muted rounded mt-1 animate-pulse" />}
-                        </div>
+                 <div className="flex items-center gap-4">
+                    <Avatar className="h-16 w-16 sm:h-20 sm:w-20 border-2 border-primary flex-shrink-0">
+                        <AvatarImage src={userProfile.imageUrl} alt={userProfile.name} />
+                        <AvatarFallback>{userProfile.fallback}</AvatarFallback>
+                    </Avatar>
+                    <div className="text-left space-y-1">
+                        <h2 className="text-xl sm:text-2xl font-bold">{userProfile.name}</h2>
+                        <p className="text-sm text-muted-foreground">{userProfile.employeeId}</p>
+                        {tenure && <p className="text-sm text-primary font-medium mt-1">Tenure: {tenure}</p>}
                     </div>
-                    <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" className="hidden" />
-                    <Button variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-                      {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Upload className="mr-2 h-4 w-4"/>}
-                      Change Photo
-                    </Button>
                 </div>
             </CardContent>
         </Card>
+        <Card>
+            <CardHeader>
+                <CardTitle>Your Information</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                 <div className="space-y-1">
+                    <Label>Full Name</Label>
+                    <p className="font-medium text-muted-foreground">{userProfile.name}</p>
+                </div>
+                <div className="space-y-1">
+                    <Label>Email Address</Label>
+                    <p className="font-medium text-muted-foreground">{userProfile.email}</p>
+                </div>
+                <div className="space-y-1">
+                    <Label>Aadhaar Number</Label>
+                    <p className="font-medium text-muted-foreground">{userProfile.aadhaar || 'Not Provided'}</p>
+                </div>
+                 <div className="space-y-1">
+                    <Label>Date Joined</Label>
+                    <p className="font-medium text-muted-foreground">{userProfile.joinDate || 'N/A'}</p>
+                </div>
+            </CardContent>
+             <CardFooter>
+                <Button onClick={() => setIsEditing(true)} className="w-full">
+                    <Edit className="mr-2 h-4 w-4" /> Edit Profile
+                </Button>
+            </CardFooter>
+        </Card>
+    </div>
+  );
 
-      <Card className="transition-all duration-300 ease-out hover:shadow-lg border-2 border-foreground hover:border-primary">
+  const renderProfileEdit = () => (
+     <div className="space-y-6">
+        <Card className="w-full max-w-3xl mx-auto">
+            <CardContent className="pt-6">
+                 <div className="flex items-center gap-4">
+                    <Avatar className="h-16 w-16 sm:h-20 sm:w-20 border-2 border-primary flex-shrink-0">
+                        <AvatarImage src={editableProfile.imageUrl} alt={userProfile.name} />
+                        <AvatarFallback>{userProfile.fallback}</AvatarFallback>
+                    </Avatar>
+                    <div className="text-left space-y-1 flex-1">
+                        <h2 className="text-xl sm:text-2xl font-bold">{userProfile.name}</h2>
+                        <p className="text-sm text-muted-foreground">{userProfile.employeeId}</p>
+                         <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" className="hidden" />
+                        <Button variant="outline" className="w-full mt-2" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                          {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Upload className="mr-2 h-4 w-4"/>}
+                          Change Photo
+                        </Button>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+      <Card>
         <CardHeader>
-          <CardTitle>Contact Information</CardTitle>
-          <CardDescription>Ensure your contact details are up to date.</CardDescription>
+          <CardTitle>Edit Information</CardTitle>
+          <CardDescription>Update your contact details and password.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -286,82 +323,90 @@ export default function ProfilePage() {
               <Label htmlFor="name">Full Name</Label>
               <Input id="name" value={editableProfile.name || ''} onChange={handleInputChange} />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="employeeId">Employee ID</Label>
-              <Input id="employeeId" value={editableProfile.employeeId || ''} readOnly disabled />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
-              <Input id="email" type="email" value={userProfile.email || ''} readOnly disabled />
-            </div>
              <div className="space-y-2">
               <Label htmlFor="aadhaar">Aadhaar Number</Label>
               <Input id="aadhaar" value={editableProfile.aadhaar || ''} onChange={handleInputChange} />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="newPassword">New Password</Label>
                 <Input id="newPassword" type="password" placeholder="Leave blank to keep current password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
             </div>
-            <div className="space-y-2">
-                <Label htmlFor="joinDate">Date Joined</Label>
-                <Input id="joinDate" type="date" value={editableProfile.joinDate || ''} readOnly disabled/>
-            </div>
           </div>
         </CardContent>
-        <CardFooter className="border-t pt-6">
-            <Button onClick={handleSaveChanges} disabled={saving}>
-                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+        <CardFooter className="border-t pt-6 flex flex-col sm:flex-row gap-2">
+            <Button onClick={handleSaveChanges} disabled={saving} className="w-full sm:w-auto">
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4" />}
                 Save Changes
+            </Button>
+            <Button variant="outline" onClick={() => { setIsEditing(false); setEditableProfile(userProfile); }} className="w-full sm:w-auto">
+                <X className="mr-2 h-4 w-4"/>
+                Cancel
             </Button>
         </CardFooter>
       </Card>
+     </div>
+  );
 
-      <Card className="transition-all duration-300 ease-out hover:shadow-lg border-2 border-foreground hover:border-primary">
-        <CardHeader>
-            <CardTitle>Appearance</CardTitle>
-             <CardDescription>Customize the look and feel of the application.</CardDescription>
-        </CardHeader>
-         <CardContent>
-             <div className="flex items-center justify-between">
-              <Label htmlFor="theme-switcher" className="font-medium">Theme</Label>
-              <ThemeSwitcher />
-            </div>
-         </CardContent>
-      </Card>
-      
-      <Card className="transition-all duration-300 ease-out hover:shadow-lg border-2 border-foreground hover:border-primary">
-        <CardHeader>
-            <CardTitle>Notification Settings</CardTitle>
-            <CardDescription>Enable or disable reminders and alerts.</CardDescription>
-        </CardHeader>
-         <CardContent>
-             <div className="rounded-lg border p-4">
-                <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                        <h4 className="font-semibold">Enable Browser Notifications</h4>
-                        <p className="text-xs text-muted-foreground">Allow notifications to get check-in/out reminders.</p>
-                    </div>
-                    <Button variant="secondary" onClick={handleEnableNotifications} disabled={notifLoading}>
-                        {notifLoading ? <Loader2 className="mr-2 animate-spin"/> : <Bell className="mr-2"/>}
-                        Enable
-                    </Button>
-                </div>
-            </div>
-         </CardContent>
-      </Card>
-
-
-      <Card className="transition-all duration-300 ease-out hover:shadow-lg border-2 border-foreground hover:border-destructive">
-        <CardHeader>
-            <CardTitle>Account Actions</CardTitle>
-        </CardHeader>
-         <CardContent className="flex justify-center">
-            <Button variant="destructive" className="w-full max-w-xs" onClick={handleLogout}>
-                <LogOut className="mr-2 h-4 w-4"/>
-                Logout
-            </Button>
-         </CardContent>
-      </Card>
+  return (
+    <div className="space-y-6">
+        <Tabs defaultValue="profile" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="profile">
+                    <UserIcon className="mr-2 h-4 w-4" /> Profile
+                </TabsTrigger>
+                <TabsTrigger value="settings">
+                    <Settings className="mr-2 h-4 w-4" /> Settings
+                </TabsTrigger>
+            </TabsList>
+            <TabsContent value="profile" className="mt-6">
+                {isEditing ? renderProfileEdit() : renderProfileView()}
+            </TabsContent>
+            <TabsContent value="settings" className="mt-6 space-y-6">
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>Appearance</CardTitle>
+                        <CardDescription>Customize the look and feel of the application.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex items-center justify-between">
+                        <Label htmlFor="theme-switcher" className="font-medium">Theme</Label>
+                        <ThemeSwitcher />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Notification Settings</CardTitle>
+                        <CardDescription>Enable or disable reminders and alerts.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="rounded-lg border p-4">
+                            <div className="flex items-center justify-between">
+                                <div className="space-y-1">
+                                    <h4 className="font-semibold">Enable Browser Notifications</h4>
+                                    <p className="text-xs text-muted-foreground">Allow notifications to get check-in/out reminders.</p>
+                                </div>
+                                <Button variant="secondary" onClick={handleEnableNotifications} disabled={notifLoading}>
+                                    {notifLoading ? <Loader2 className="mr-2 animate-spin"/> : <Bell className="mr-2"/>}
+                                    Enable
+                                </Button>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="border-destructive">
+                    <CardHeader>
+                        <CardTitle>Account Actions</CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex justify-center">
+                        <Button variant="destructive" className="w-full max-w-xs" onClick={handleLogout}>
+                            <LogOut className="mr-2 h-4 w-4"/>
+                            Logout
+                        </Button>
+                    </CardContent>
+                </Card>
+            </TabsContent>
+        </Tabs>
     </div>
   );
 }
