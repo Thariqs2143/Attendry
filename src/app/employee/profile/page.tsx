@@ -254,22 +254,24 @@ export default function ProfilePage() {
         <Separator className="hidden md:block"/>
         <Card className="w-full max-w-3xl mx-auto transition-all duration-300 ease-out hover:shadow-lg border-2 border-foreground hover:border-primary">
             <CardContent className="pt-6">
-            <div className="flex flex-col items-center gap-4">
-                <Avatar className="h-24 w-24 border-2 border-primary">
-                  <AvatarImage src={editableProfile.imageUrl} alt={userProfile.name} />
-                  <AvatarFallback>{userProfile.fallback}</AvatarFallback>
-                </Avatar>
-                <div className="text-center">
-                    <h2 className="text-2xl font-bold">{userProfile.name}</h2>
-                    <p className="text-muted-foreground">{userProfile.employeeId}</p>
-                    {tenure ? <p className="text-sm text-primary font-medium mt-1">Tenure: {tenure}</p> : <div className="h-5 w-32 bg-muted rounded mt-1 animate-pulse" />}
+                <div className="flex flex-col items-center gap-4">
+                    <div className="flex w-full items-center gap-4">
+                        <Avatar className="h-16 w-16 sm:h-20 sm:w-20 border-2 border-primary flex-shrink-0">
+                            <AvatarImage src={editableProfile.imageUrl} alt={userProfile.name} />
+                            <AvatarFallback>{userProfile.fallback}</AvatarFallback>
+                        </Avatar>
+                        <div className="text-left">
+                            <h2 className="text-xl sm:text-2xl font-bold">{userProfile.name}</h2>
+                            <p className="text-sm text-muted-foreground">{userProfile.employeeId}</p>
+                            {tenure ? <p className="text-sm text-primary font-medium mt-1">Tenure: {tenure}</p> : <div className="h-5 w-32 bg-muted rounded mt-1 animate-pulse" />}
+                        </div>
+                    </div>
+                    <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" className="hidden" />
+                    <Button variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                      {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Upload className="mr-2 h-4 w-4"/>}
+                      Change Photo
+                    </Button>
                 </div>
-                <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" className="hidden" />
-                <Button variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-                  {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Upload className="mr-2 h-4 w-4"/>}
-                  Change Photo
-                </Button>
-            </div>
             </CardContent>
         </Card>
 
