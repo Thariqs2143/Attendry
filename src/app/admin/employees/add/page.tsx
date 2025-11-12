@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -84,16 +85,14 @@ export default function AddEmployeePage() {
             setLoading(false);
             return;
         }
-
+        
+        let newUser: AuthUser | null = null;
         try {
             // Because we can't create a user and set their doc in one transaction,
             // we'll check if the email is already in use by trying to create it in a temp context.
             // This is not ideal, but it's a client-side workaround. A backend function is safer.
-            const tempAuth = auth; // This is a bit of a simplification.
-            
-            // Step 1: Create the user in Firebase Authentication
-            const userCredential = await createUserWithEmailAndPassword(tempAuth, email, password);
-            const newUser = userCredential.user;
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            newUser = userCredential.user;
 
             // Step 2: Create the user profile documents in Firestore
             const newEmployeeProfile = {
@@ -130,11 +129,23 @@ export default function AddEmployeePage() {
            
         } catch (error: any) {
             console.error("Error adding employee:", error);
+            
+            // If the user was created in Auth but the database write failed, we should try to delete the user.
+            if (newUser) {
+                try {
+                    await newUser.delete();
+                } catch (deleteError) {
+                    console.error("Failed to clean up newly created user in Auth:", deleteError);
+                }
+            }
+            
             let description = "Could not create the employee. Please try again.";
             if (error.code === 'auth/email-already-in-use') {
                 description = "This email address is already in use by another account.";
             } else if (error.code === 'auth/weak-password') {
                 description = "The password is too weak. It must be at least 6 characters long.";
+            } else if (error.code === 'permission-denied') {
+                 description = "Permission denied. Check your Firestore security rules.";
             }
             toast({
                 title: "Error Creating Employee",
