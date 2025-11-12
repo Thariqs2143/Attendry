@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -54,12 +55,6 @@ service cloud.firestore {
       allow update: if isSelf(userId);
       // A user can delete their own account.
       allow delete: if isSelf(userId);
-    }
-    
-    // This collection is no longer needed with email/password auth.
-    // Kept here with locked-down rules for safety in case of old client versions.
-    match /employee_phone_to_shop_lookup/{phone} {
-      allow read, write: if false;
     }
     
     match /platform_config/{docId} {

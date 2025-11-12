@@ -208,15 +208,6 @@ export default function AdminCompleteProfilePage() {
                     });
                 }
             }
-            
-            const phoneLookupRef = doc(db, 'employee_phone_to_shop_lookup', `+91${phone}`);
-            batch.set(phoneLookupRef, {
-                shopId: newShopRef.id,
-                employeeDocId: uid,
-                isAdmin: true,
-                isProfileComplete: true
-            });
-
 
             await batch.commit();
 
