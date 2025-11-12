@@ -58,6 +58,7 @@ export default function ProfilePage() {
       aadhaar: '',
       imageUrl: '',
       address: '',
+      phone: '',
   });
   const [newPassword, setNewPassword] = useState('');
   const [tenure, setTenure] = useState('');
@@ -164,6 +165,7 @@ export default function ProfilePage() {
             name: editableProfile.name,
             aadhaar: editableProfile.aadhaar,
             address: address, // Save address from state
+            phone: editableProfile.phone,
             fallback: editableProfile.name?.split(' ').map(n => n[0]).join('')
         };
 
@@ -295,7 +297,7 @@ export default function ProfilePage() {
 
   const renderProfileView = () => (
     <div className="space-y-6">
-        <Card className="w-full max-w-3xl mx-auto">
+        <Card className="w-full max-w-3xl mx-auto border-2 border-foreground/20 hover:border-primary">
             <CardContent className="pt-6">
                  <div className="flex items-center gap-6">
                     <Avatar className="h-24 w-24 border-2 border-primary flex-shrink-0">
@@ -310,7 +312,7 @@ export default function ProfilePage() {
                 </div>
             </CardContent>
         </Card>
-        <Card>
+        <Card className="border-2 border-foreground/20 hover:border-primary">
             <CardHeader>
                 <CardTitle>Your Information</CardTitle>
             </CardHeader>
@@ -351,7 +353,7 @@ export default function ProfilePage() {
 
   const renderProfileEdit = () => (
      <div className="space-y-6">
-        <Card className="w-full max-w-3xl mx-auto">
+        <Card className="w-full max-w-3xl mx-auto border-2 border-foreground/20 hover:border-primary">
             <CardContent className="pt-6">
                  <div className="flex items-center gap-6">
                     <Avatar className="h-24 w-24 border-2 border-primary flex-shrink-0">
@@ -370,7 +372,7 @@ export default function ProfilePage() {
                 </div>
             </CardContent>
         </Card>
-      <Card>
+      <Card className="border-2 border-foreground/20 hover:border-primary">
         <CardHeader>
           <CardTitle>Edit Information</CardTitle>
           <CardDescription>Update your contact details and password.</CardDescription>
@@ -384,6 +386,10 @@ export default function ProfilePage() {
              <div className="space-y-2">
               <Label htmlFor="aadhaar">Aadhaar Number</Label>
               <Input id="aadhaar" value={editableProfile.aadhaar || ''} onChange={handleInputChange} />
+            </div>
+             <div className="space-y-2">
+              <Label htmlFor="phone">Phone Number</Label>
+              <Input id="phone" value={editableProfile.phone || ''} onChange={handleInputChange} />
             </div>
           </div>
            <div className="relative space-y-2">
@@ -449,7 +455,7 @@ export default function ProfilePage() {
                 {isEditing ? renderProfileEdit() : renderProfileView()}
             </TabsContent>
             <TabsContent value="settings" className="mt-6 space-y-6">
-                 <Card>
+                 <Card className="border-2 border-foreground/20 hover:border-primary">
                     <CardHeader>
                         <CardTitle>Appearance</CardTitle>
                         <CardDescription>Customize the look and feel of the application.</CardDescription>
@@ -461,7 +467,7 @@ export default function ProfilePage() {
                         </div>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="border-2 border-foreground/20 hover:border-primary">
                     <CardHeader>
                         <CardTitle>Notification Settings</CardTitle>
                         <CardDescription>Enable or disable reminders and alerts.</CardDescription>
@@ -481,7 +487,7 @@ export default function ProfilePage() {
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-destructive">
+                <Card className="border-destructive hover:border-destructive">
                     <CardHeader>
                         <CardTitle>Account Actions</CardTitle>
                     </CardHeader>
