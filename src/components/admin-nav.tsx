@@ -78,7 +78,7 @@ export function AdminNav({ navItems, profile, isDesktop }: AdminNavProps) {
             onClick={() => handleNavigate('/admin')}
             className="flex items-center gap-2 font-semibold"
             >
-            <Image src="/sidebar-logo.png" alt="Attendry Logo" width={150} height={40} priority />
+            <Image src="/header-logo.png" alt="Attendry Logo" width={150} height={40} priority />
             </button>
         </div>
 
