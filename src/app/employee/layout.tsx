@@ -13,6 +13,7 @@ import { onAuthStateChanged, type User as AuthUser } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import type { User as AppUser } from '@/app/admin/employees/page';
+import Image from 'next/image';
 
 const employeeNavItems: NavItem[] = [
   { href: '/employee', label: 'Scan', iconName: 'ScanLine' },
@@ -96,7 +97,9 @@ export default function EmployeeLayout({ children }: PropsWithChildren) {
       <div className="flex flex-col flex-1 md:ml-64">
         {/* Mobile top header */}
         <header className="flex h-14 items-center gap-4 border-b bg-background px-4 md:hidden sticky top-0 z-40">
-          <h1 className="font-bold text-xl text-primary">Attendry Staffs</h1>
+          <Link href="/employee">
+            <Image src="/header-logo.png" alt="Attendry Logo" width={120} height={32} />
+          </Link>
           <div className="ml-auto flex items-center gap-2">
             <Link href="/employee/notifications">
               <Button variant="ghost" size="icon">

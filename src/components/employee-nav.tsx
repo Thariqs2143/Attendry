@@ -21,6 +21,7 @@ import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import type { User } from '@/app/admin/employees/page';
 import Link from 'next/link';
+import Image from 'next/image';
 
 const iconMap: Record<string, LucideIcon> = {
   ScanLine,
@@ -61,10 +62,7 @@ export function EmployeeNav({ navItems, profile }: EmployeeNavProps) {
           onClick={() => handleNavigate('/employee')}
           className="flex items-center gap-2 font-semibold"
         >
-          <UserIcon className="h-8 w-8 text-primary" />
-          <span className="font-bold text-2xl text-primary tracking-wider">
-            Attendry
-          </span>
+          <Image src="/header-logo.png" alt="Attendry Logo" width={150} height={40} priority />
         </button>
       </div>
 
