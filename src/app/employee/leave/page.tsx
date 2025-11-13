@@ -165,7 +165,7 @@ export default function LeavePage() {
         <p className="text-muted-foreground">Request time off and view your request history.</p>
       </div>
 
-      <Card className="transition-all duration-300 ease-out hover:shadow-lg border-2 border-foreground hover:border-primary">
+      <Card className="transition-all duration-300 ease-out hover:shadow-lg border-2 border-foreground/20 hover:border-primary">
         <CardHeader>
           <CardTitle>Submit a New Request</CardTitle>
           <CardDescription>Select the dates and provide a reason for your absence.</CardDescription>
@@ -177,7 +177,7 @@ export default function LeavePage() {
                 control={form.control}
                 name="isPartialDay"
                 render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border-2 border-border p-4 hover:border-primary">
                         <div className="space-y-0.5">
                             <FormLabel className="text-base">Request for a few hours?</FormLabel>
                             <FormDescription>
@@ -239,7 +239,7 @@ export default function LeavePage() {
                                 field.onChange(date as DateRange);
                             }
                           }}
-                          numberOfMonths={isPartialDay ? 1 : 2}
+                          numberOfMonths={1}
                           disabled={{ before: new Date() }}
                         />
                       </PopoverContent>
@@ -307,7 +307,7 @@ export default function LeavePage() {
         </CardContent>
       </Card>
 
-      <Card className="transition-all duration-300 ease-out hover:shadow-lg border-2 border-foreground hover:border-primary">
+      <Card className="transition-all duration-300 ease-out hover:shadow-lg border-2 border-foreground/20 hover:border-primary">
         <CardHeader>
           <CardTitle>Request History</CardTitle>
           <CardDescription>The status of your past leave requests.</CardDescription>
@@ -325,7 +325,7 @@ export default function LeavePage() {
           ) : (
             <div className="space-y-4">
                 {leaveHistory.map(req => (
-                    <div key={req.id} className="p-3 rounded-lg border bg-muted/50 flex justify-between items-center">
+                    <div key={req.id} className="p-3 rounded-lg border-2 border-border flex justify-between items-center hover:border-primary">
                         <div>
                              <p className="font-semibold">
                                 {req.startTime && req.endTime
