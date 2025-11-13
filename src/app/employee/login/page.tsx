@@ -1,3 +1,4 @@
+
 'use client';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,11 +72,7 @@ export default function EmployeeLoginPage() {
     return (
         <div className="flex min-h-screen flex-col items-center justify-start bg-background p-4 pt-20 sm:pt-28">
             <div className="w-full max-w-sm text-center">
-                <div className="flex justify-center mb-6">
-                    <div className="p-4 bg-primary/10 rounded-full">
-                        <User className="h-12 w-12 text-primary"/>
-                    </div>
-                </div>
+                
                 <h1 className="text-3xl font-bold">Employee Login</h1>
                 <p className="text-muted-foreground mt-2 mb-8">
                    Enter your registered email and password.
