@@ -22,6 +22,7 @@ import type { User as AppUser } from '@/app/admin/employees/page';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
+import type { DateRange } from 'react-day-picker';
 
 const leaveFormSchema = z.object({
   dateRange: z.object({
@@ -230,8 +231,14 @@ export default function LeavePage() {
                           initialFocus
                           mode={isPartialDay ? 'single' : 'range'}
                           defaultMonth={field.value?.from}
-                          selected={isPartialDay ? field.value?.from : { from: field.value?.from, to: field.value?.to }}
-                          onSelect={isPartialDay ? (day) => field.onChange({from: day, to: day}) : field.onChange}
+                          selected={field.value}
+                          onSelect={(date) => {
+                            if (isPartialDay) {
+                                field.onChange({ from: date as Date, to: date as Date });
+                            } else {
+                                field.onChange(date as DateRange);
+                            }
+                          }}
                           numberOfMonths={isPartialDay ? 1 : 2}
                           disabled={{ before: new Date() }}
                         />
