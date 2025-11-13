@@ -16,6 +16,7 @@ import { auth, db } from '@/lib/firebase';
 import type { User as AppUser } from './employees/page';
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { SubscriptionProvider } from '@/context/SubscriptionContext';
+import Image from 'next/image';
 
 
 const adminNavItems: NavItem[] = [
@@ -118,7 +119,9 @@ export default function AdminLayout({ children }: PropsWithChildren) {
                   <AdminNav navItems={adminNavItems} profile={profile} isDesktop={false} />
                   </SheetContent>
               </Sheet>
-              <h1 className="font-bold text-xl text-primary">Attendry</h1>
+              <Link href="/admin">
+                <Image src="/sidebar-logo.png" alt="Attendry Logo" width={120} height={32} />
+              </Link>
               <div className="ml-auto flex items-center gap-2">
                   <Link href="/admin/notifications">
                   <Button variant="ghost" size="icon">

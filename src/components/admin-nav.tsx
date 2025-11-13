@@ -24,6 +24,7 @@ import { auth } from '@/lib/firebase';
 import { useMemo } from 'react';
 import type { User as AppUser } from '@/app/admin/employees/page';
 import { SheetClose } from '@/components/ui/sheet';
+import Image from 'next/image';
 
 const iconMap: { [key: string]: any } = {
   LayoutDashboard,
@@ -77,9 +78,7 @@ export function AdminNav({ navItems, profile, isDesktop }: AdminNavProps) {
             onClick={() => handleNavigate('/admin')}
             className="flex items-center gap-2 font-semibold"
             >
-            <span className="font-bold text-2xl text-primary tracking-wider">
-                Attendry
-            </span>
+            <Image src="/sidebar-logo.png" alt="Attendry Logo" width={150} height={40} priority />
             </button>
         </div>
 

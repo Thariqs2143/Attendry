@@ -145,7 +145,7 @@ export default function LoginPage() {
         <div className="w-full max-w-sm space-y-6 p-6">
             <div className="text-center mb-8">
             <h1 className="text-3xl font-bold tracking-tight leading-tight">
-                India’s #1 QR Powered Staff Attendance App
+                QR Powered Staff Attendance Tracker
             </h1>
             <div className="flex items-center my-4">
                 <hr className="w-full border-muted-foreground/20" />
