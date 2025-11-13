@@ -21,10 +21,11 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import type { User as AppUser } from '@/app/admin/employees/page';
 import { SheetClose } from '@/components/ui/sheet';
 import Image from 'next/image';
+import { useTheme } from 'next-themes';
 
 const iconMap: { [key: string]: any } = {
   LayoutDashboard,
@@ -47,6 +48,16 @@ export function AdminNav({ navItems, profile, isDesktop }: AdminNavProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
+  const { theme, systemTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const currentTheme = theme === 'system' ? systemTheme : theme;
+  const logoSrc = mounted && currentTheme === 'dark' ? '/header-logo-dark.png' : '/header-logo-light.png';
+
 
   const handleNavigate = (href: string) => {
     router.push(href);
@@ -78,7 +89,11 @@ export function AdminNav({ navItems, profile, isDesktop }: AdminNavProps) {
             onClick={() => handleNavigate('/admin')}
             className="flex items-center gap-2 font-semibold"
             >
-            <Image src="/header-logo.png" alt="Attendry Logo" width={150} height={40} priority />
+            {mounted ? (
+                <Image src={logoSrc} alt="Attendry Logo" width={150} height={40} priority />
+            ) : (
+                <div style={{width: 150, height: 40}} />
+            )}
             </button>
         </div>
 

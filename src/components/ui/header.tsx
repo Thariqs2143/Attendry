@@ -9,6 +9,7 @@ import { Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
+import { useTheme } from 'next-themes';
 
 const navLinks = [
   { href: '/', label: 'Home' },
@@ -21,8 +22,11 @@ const navLinks = [
 export function Header({ hasBanner }: { hasBanner: boolean }) {
   const pathname = usePathname();
   const [isScrolled, setIsScrolled] = useState(false);
+  const { theme, systemTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const handleScroll = () => {
       // Trigger the change slightly after scrolling starts
       setIsScrolled(window.scrollY > 20);
@@ -33,6 +37,9 @@ export function Header({ hasBanner }: { hasBanner: boolean }) {
       window.removeEventListener('scroll', handleScroll);
     };
   }, []);
+
+  const currentTheme = theme === 'system' ? systemTheme : theme;
+  const logoSrc = mounted && currentTheme === 'dark' ? '/header-logo-dark.png' : '/header-logo-light.png';
 
   return (
     <header 
@@ -53,7 +60,11 @@ export function Header({ hasBanner }: { hasBanner: boolean }) {
         >
           {/* Logo */}
           <Link href="/" className="flex items-center" prefetch={false}>
-            <Image src="/header-logo.png" alt="Attendry Logo" width={150} height={40} priority />
+            {mounted ? (
+              <Image src={logoSrc} alt="Attendry Logo" width={150} height={40} priority />
+            ) : (
+              <div style={{ width: 150, height: 40 }} />
+            )}
           </Link>
           
           {/* Desktop Navigation */}
@@ -95,7 +106,11 @@ export function Header({ hasBanner }: { hasBanner: boolean }) {
                   <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
                   <div className="flex flex-col gap-8 p-6">
                   <Link href="/" className="flex items-center" prefetch={false}>
-                      <Image src="/header-logo.png" alt="Attendry Logo" width={150} height={40} priority />
+                    {mounted ? (
+                      <Image src={logoSrc} alt="Attendry Logo" width={150} height={40} priority />
+                    ) : (
+                      <div style={{ width: 150, height: 40 }} />
+                    )}
                   </Link>
                   <nav className="grid gap-4 text-lg">
                       {navLinks.map((link) => (

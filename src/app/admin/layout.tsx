@@ -17,6 +17,7 @@ import type { User as AppUser } from './employees/page';
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { SubscriptionProvider } from '@/context/SubscriptionContext';
 import Image from 'next/image';
+import { useTheme } from 'next-themes';
 
 
 const adminNavItems: NavItem[] = [
@@ -48,6 +49,15 @@ export default function AdminLayout({ children }: PropsWithChildren) {
   const router = useRouter();
   const [profile, setProfile] = useState<Partial<FullProfile>>({});
   const [loading, setLoading] = useState(true);
+  const { theme, systemTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const currentTheme = theme === 'system' ? systemTheme : theme;
+  const logoSrc = mounted && currentTheme === 'dark' ? '/header-logo-dark.png' : '/header-logo-light.png';
 
   const isAuthPage =
     pathname === '/login' ||
@@ -120,7 +130,11 @@ export default function AdminLayout({ children }: PropsWithChildren) {
                   </SheetContent>
               </Sheet>
               <Link href="/admin">
-                <Image src="/header-logo.png" alt="Attendry Logo" width={120} height={32} />
+                {mounted ? (
+                  <Image src={logoSrc} alt="Attendry Logo" width={120} height={32} />
+                ) : (
+                  <div style={{width: 120, height: 32}} />
+                )}
               </Link>
               <div className="ml-auto flex items-center gap-2">
                   <Link href="/admin/notifications">

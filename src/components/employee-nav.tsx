@@ -22,6 +22,8 @@ import { auth } from '@/lib/firebase';
 import type { User } from '@/app/admin/employees/page';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useTheme } from 'next-themes';
+import { useState, useEffect } from 'react';
 
 const iconMap: Record<string, LucideIcon> = {
   ScanLine,
@@ -41,6 +43,15 @@ export function EmployeeNav({ navItems, profile }: EmployeeNavProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
+  const { theme, systemTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const currentTheme = theme === 'system' ? systemTheme : theme;
+  const logoSrc = mounted && currentTheme === 'dark' ? '/header-logo-dark.png' : '/header-logo-light.png';
 
   const handleNavigate = (href: string) => router.push(href);
 
@@ -62,7 +73,11 @@ export function EmployeeNav({ navItems, profile }: EmployeeNavProps) {
           onClick={() => handleNavigate('/employee')}
           className="flex items-center gap-2 font-semibold"
         >
-          <Image src="/header-logo.png" alt="Attendry Logo" width={150} height={40} priority />
+          {mounted ? (
+            <Image src={logoSrc} alt="Attendry Logo" width={150} height={40} priority />
+          ) : (
+            <div style={{width: 150, height: 40}} />
+          )}
         </button>
       </div>
 

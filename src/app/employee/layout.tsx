@@ -14,6 +14,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import type { User as AppUser } from '@/app/admin/employees/page';
 import Image from 'next/image';
+import { useTheme } from 'next-themes';
 
 const employeeNavItems: NavItem[] = [
   { href: '/employee', label: 'Scan', iconName: 'ScanLine' },
@@ -28,6 +29,15 @@ export default function EmployeeLayout({ children }: PropsWithChildren) {
   const router = useRouter();
   const [userProfile, setUserProfile] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const { theme, systemTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const currentTheme = theme === 'system' ? systemTheme : theme;
+  const logoSrc = mounted && currentTheme === 'dark' ? '/header-logo-dark.png' : '/header-logo-light.png';
 
   // Skip nav for auth/onboarding pages
   const isAuthPage =
@@ -98,7 +108,11 @@ export default function EmployeeLayout({ children }: PropsWithChildren) {
         {/* Mobile top header */}
         <header className="flex h-14 items-center gap-4 border-b bg-background px-4 md:hidden sticky top-0 z-40">
           <Link href="/employee">
-            <Image src="/header-logo.png" alt="Attendry Logo" width={120} height={32} />
+            {mounted ? (
+              <Image src={logoSrc} alt="Attendry Logo" width={120} height={32} />
+            ) : (
+              <div style={{width: 120, height: 32}} />
+            )}
           </Link>
           <div className="ml-auto flex items-center gap-2">
             <Link href="/employee/notifications">
