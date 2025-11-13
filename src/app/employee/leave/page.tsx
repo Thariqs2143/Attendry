@@ -233,6 +233,7 @@ export default function LeavePage() {
                           selected={isPartialDay ? field.value?.from : { from: field.value?.from, to: field.value?.to }}
                           onSelect={isPartialDay ? (day) => field.onChange({from: day, to: day}) : field.onChange}
                           numberOfMonths={isPartialDay ? 1 : 2}
+                          disabled={{ before: new Date() }}
                         />
                       </PopoverContent>
                     </Popover>
