@@ -298,7 +298,7 @@ export default function ProfilePage() {
 
   const renderProfileView = () => (
     <div className="space-y-6">
-        <Card className="w-full max-w-3xl mx-auto border-2 border-foreground/20 hover:border-primary dark:border-border dark:hover:border-primary">
+        <Card className="w-full max-w-3xl mx-auto border-black dark:border-white hover:border-blue-500">
             <CardContent className="pt-6">
                  <div className="flex items-center gap-6">
                     <Avatar className="h-24 w-24 border-2 border-primary flex-shrink-0">
@@ -313,7 +313,7 @@ export default function ProfilePage() {
                 </div>
             </CardContent>
         </Card>
-        <Card className="border-2 border-foreground/20 hover:border-primary dark:border-border dark:hover:border-primary">
+        <Card className="border-black dark:border-white hover:border-blue-500">
             <CardHeader>
                 <CardTitle>Your Information</CardTitle>
             </CardHeader>
@@ -354,7 +354,7 @@ export default function ProfilePage() {
 
   const renderProfileEdit = () => (
      <div className="space-y-6">
-        <Card className="w-full max-w-3xl mx-auto border-2 border-foreground/20 hover:border-primary dark:border-border dark:hover:border-primary">
+        <Card className="w-full max-w-3xl mx-auto border-black dark:border-white hover:border-blue-500">
             <CardContent className="pt-6">
                  <div className="flex items-center gap-6">
                     <Avatar className="h-24 w-24 border-2 border-primary flex-shrink-0">
@@ -373,7 +373,7 @@ export default function ProfilePage() {
                 </div>
             </CardContent>
         </Card>
-      <Card className="border-2 border-foreground/20 hover:border-primary dark:border-border dark:hover:border-primary">
+      <Card className="border-black dark:border-white hover:border-blue-500">
         <CardHeader>
           <CardTitle>Edit Information</CardTitle>
           <CardDescription>Update your contact details and password.</CardDescription>
@@ -443,8 +443,13 @@ export default function ProfilePage() {
             <h1 className="text-3xl font-bold tracking-tight">My Profile</h1>
             <p className="text-muted-foreground">View and update your personal information.</p>
         </div>
-        <Tabs defaultValue="profile" className="w-full md:grid md:grid-cols-[250px_1fr] md:gap-8">
-            <TabsList className="hidden md:flex md:flex-col md:h-auto md:items-start md:gap-2 md:bg-transparent md:p-0">
+        <Tabs
+  defaultValue="profile"
+  className="w-full md:grid md:grid-cols-[minmax(180px,220px)_1fr] md:gap-8 md:items-start"
+>
+
+        <TabsList className="hidden md:flex md:flex-col md:h-auto md:items-start md:gap-2 md:bg-transparent md:p-0 md:self-start">
+
                 <TabsTrigger value="profile" className="w-full justify-start data-[state=active]:bg-muted data-[state=active]:text-foreground text-base py-3 px-4 rounded-lg">
                     <UserIcon className="mr-2 h-5 w-5" /> Profile
                 </TabsTrigger>
@@ -465,7 +470,7 @@ export default function ProfilePage() {
                     {isEditing ? renderProfileEdit() : renderProfileView()}
                 </TabsContent>
                 <TabsContent value="settings" className="space-y-6">
-                     <Card className="border-2 border-foreground/20 hover:border-primary dark:border-border dark:hover:border-primary">
+                     <Card className="border-black dark:border-white hover:border-blue-500">
                         <CardHeader>
                             <CardTitle>Appearance</CardTitle>
                             <CardDescription>Customize the look and feel of the application.</CardDescription>
@@ -477,23 +482,21 @@ export default function ProfilePage() {
                             </div>
                         </CardContent>
                     </Card>
-                    <Card className="border-2 border-foreground/20 hover:border-primary dark:border-border dark:hover:border-primary">
+                    <Card className="border-black dark:border-white hover:border-blue-500">
                         <CardHeader>
                             <CardTitle>Notification Settings</CardTitle>
                             <CardDescription>Enable or disable reminders and alerts.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="rounded-lg border p-4">
-                                <div className="flex items-center justify-between">
-                                    <div className="space-y-1">
-                                        <h4 className="font-semibold">Enable Browser Notifications</h4>
-                                        <p className="text-xs text-muted-foreground">Allow notifications to get check-in/out reminders.</p>
-                                    </div>
-                                    <Button variant="secondary" onClick={handleEnableNotifications} disabled={notifLoading}>
-                                        {notifLoading ? <Loader2 className="mr-2 animate-spin"/> : <Bell className="mr-2"/>}
-                                        Enable
-                                    </Button>
+                            <div className="rounded-lg border p-4 space-y-4">
+                                <div className="space-y-1">
+                                    <h4 className="font-semibold">Enable Browser Notifications</h4>
+                                    <p className="text-xs text-muted-foreground">Allow notifications to get check-in/out reminders.</p>
                                 </div>
+                                <Button variant="secondary" className="w-full" onClick={handleEnableNotifications} disabled={notifLoading}>
+                                    {notifLoading ? <Loader2 className="mr-2 animate-spin"/> : <Bell className="mr-2"/>}
+                                    Enable
+                                </Button>
                             </div>
                         </CardContent>
                     </Card>
