@@ -299,7 +299,7 @@ export default function ProfilePage() {
 
   const renderProfileView = () => (
     <div className="space-y-6">
-        <Card className="w-full max-w-3xl mx-auto border-2 border-foreground/20 hover:border-primary">
+        <Card className="w-full max-w-3xl mx-auto border-black dark:border-white hover:border-blue-500">
             <CardContent className="pt-6">
                  <div className="flex items-center gap-6">
                     <Avatar className="h-24 w-24 border-2 border-primary flex-shrink-0">
@@ -314,7 +314,7 @@ export default function ProfilePage() {
                 </div>
             </CardContent>
         </Card>
-        <Card className="border-2 border-foreground/20 hover:border-primary">
+        <Card className="border-black dark:border-white hover:border-blue-500">
             <CardHeader>
                 <CardTitle>Your Information</CardTitle>
             </CardHeader>
@@ -350,7 +350,7 @@ export default function ProfilePage() {
 
   const renderProfileEdit = () => (
      <div className="space-y-6">
-        <Card className="w-full max-w-3xl mx-auto border-2 border-foreground/20 hover:border-primary">
+        <Card className="w-full max-w-3xl mx-auto border-black dark:border-white hover:border-blue-500">
             <CardContent className="pt-6">
                  <div className="flex items-center gap-6">
                     <Avatar className="h-24 w-24 border-2 border-primary flex-shrink-0">
@@ -369,7 +369,7 @@ export default function ProfilePage() {
                 </div>
             </CardContent>
         </Card>
-      <Card className="border-2 border-foreground/20 hover:border-primary">
+      <Card className="border-black dark:border-white hover:border-blue-500">
         <CardHeader>
           <CardTitle>Edit Information</CardTitle>
           <CardDescription>Update your contact details and password.</CardDescription>
@@ -444,24 +444,24 @@ export default function ProfilePage() {
             onValueChange={setActiveTab}
             className="w-full md:grid md:grid-cols-[minmax(180px,220px)_1fr] md:gap-8 md:items-start"
         >
-            <TabsList className="h-auto items-start justify-start rounded-md bg-muted p-1 text-muted-foreground hidden md:flex md:flex-col md:h-auto md:items-start md:gap-1 md:bg-transparent md:p-0 md:sticky top-20">
-                <TabsTrigger value="profile" className="w-full justify-start data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:font-semibold text-base py-3 px-4 rounded-lg">
+            <TabsList className="h-auto items-start justify-start rounded-md bg-transparent p-0 text-muted-foreground hidden md:flex md:flex-col md:h-auto md:items-start md:gap-1 md:bg-transparent md:p-0 md:sticky top-20">
+                <TabsTrigger value="profile" className="w-full justify-start data-[state=active]:bg-muted data-[state=active]:text-foreground data-[state=active]:font-semibold text-base py-3 px-4 rounded-lg border-2 border-transparent hover:bg-muted/50 hover:border-border transition-all duration-300 ease-out">
                     <UserIcon className="mr-2 h-5 w-5" /> Profile
                 </TabsTrigger>
-                 <TabsTrigger value="edit-profile" className="w-full justify-start data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:font-semibold text-base py-3 px-4 rounded-lg">
+                 <TabsTrigger value="edit-profile" className="w-full justify-start data-[state=active]:bg-muted data-[state=active]:text-foreground data-[state=active]:font-semibold text-base py-3 px-4 rounded-lg border-2 border-transparent hover:bg-muted/50 hover:border-border transition-all duration-300 ease-out">
                     <Edit className="mr-2 h-5 w-5" /> Edit Profile
                 </TabsTrigger>
-                <TabsTrigger value="settings" className="w-full justify-start data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:font-semibold text-base py-3 px-4 rounded-lg">
+                <TabsTrigger value="settings" className="w-full justify-start data-[state=active]:bg-muted data-[state=active]:text-foreground data-[state=active]:font-semibold text-base py-3 px-4 rounded-lg border-2 border-transparent hover:bg-muted/50 hover:border-border transition-all duration-300 ease-out">
                     <Settings className="mr-2 h-5 w-5" /> Settings
                 </TabsTrigger>
             </TabsList>
             
             <div className="md:hidden">
-              <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="profile" onClick={() => setActiveTab('profile')}>
+              <TabsList className="grid w-full grid-cols-2 border-2 border-border p-1 h-auto rounded-lg">
+                  <TabsTrigger value="profile" className="data-[state=active]:bg-muted data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-md py-2 transition-all duration-300">
                       <UserIcon className="mr-2 h-4 w-4" /> Profile
                   </TabsTrigger>
-                  <TabsTrigger value="settings" onClick={() => setActiveTab('settings')}>
+                  <TabsTrigger value="settings" className="data-[state=active]:bg-muted data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-md py-2 transition-all duration-300">
                       <Settings className="mr-2 h-4 w-4" /> Settings
                   </TabsTrigger>
               </TabsList>
@@ -475,7 +475,7 @@ export default function ProfilePage() {
                     {renderProfileEdit()}
                 </TabsContent>
                 <TabsContent value="settings" forceMount={true} className={cn(activeTab !== 'settings' && 'hidden')}>
-                     <Card className="border-2 border-foreground/20 hover:border-primary">
+                     <Card className="border-black dark:border-white hover:border-blue-500">
                         <CardHeader>
                             <CardTitle>Appearance</CardTitle>
                             <CardDescription>Customize the look and feel of the application.</CardDescription>
@@ -487,7 +487,7 @@ export default function ProfilePage() {
                             </div>
                         </CardContent>
                     </Card>
-                    <Card className="mt-6 border-2 border-foreground/20 hover:border-primary">
+                    <Card className="mt-6 border-black dark:border-white hover:border-blue-500">
                         <CardHeader>
                             <CardTitle>Notification Settings</CardTitle>
                             <CardDescription>Enable or disable reminders and alerts.</CardDescription>
@@ -506,12 +506,12 @@ export default function ProfilePage() {
                         </CardContent>
                     </Card>
                     <Card className="mt-6 border-destructive hover:border-destructive">
-                         <CardHeader className="flex flex-row items-center justify-between">
+                         <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                             <div>
                                 <CardTitle className="text-destructive">Account Actions</CardTitle>
                                 <CardDescription>This action will end your current session.</CardDescription>
                             </div>
-                            <Button variant="destructive" className="w-full max-w-xs" onClick={handleLogout}>
+                            <Button variant="destructive" className="w-full sm:w-auto" onClick={handleLogout}>
                                 <LogOut className="mr-2 h-4 w-4"/>
                                 Logout
                             </Button>
@@ -523,3 +523,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    
