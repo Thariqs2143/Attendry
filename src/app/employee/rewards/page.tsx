@@ -2,7 +2,7 @@
 'use client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Trophy, Award, Star, ShieldCheck, Flame, CalendarCheck, Loader2 } from "lucide-react";
+import { Trophy, Award, Star, ShieldCheck, Flame, CalendarCheck, Loader2, Landmark } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
 import { onAuthStateChanged, type User as AuthUser } from "firebase/auth";
@@ -10,12 +10,17 @@ import { auth, db } from "@/lib/firebase";
 import { doc, getDoc, collection, query, orderBy, getDocs, where } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import type { User as AppUser } from "@/app/admin/employees/page";
+import { differenceInYears } from "date-fns";
 
 const badges = [
-    { id: "streak", icon: <Flame className="h-8 w-8" />, name: "Hot Streak", description: "10-day on-time streak", unlocked: (user: AppUser) => user.streak >= 10 },
-    { id: "points", icon: <Trophy className="h-8 w-8" />, name: "Punctuality Pro", description: "1000 total points", unlocked: (user: AppUser) => user.points >= 1000 },
-    { id: "month", icon: <Award className="h-8 w-8" />, name: "Perfect Month", description: "No late check-ins for a month", unlocked: (user: AppUser) => false }, // Needs more complex logic
-    { id: "early", icon: <Star className="h-8 w-8" />, name: "Early Bird", description: "Check in before 8:30 AM", unlocked: (user: AppUser) => false }, // Needs more complex logic
+    { id: "streak", icon: <Flame className="h-8 w-8" />, name: "Hot Streak", description: "10-day on-time streak", unlocked: (user: AppUser, rank: number) => user.streak >= 10 },
+    { id: "points", icon: <Trophy className="h-8 w-8" />, name: "Punctuality Pro", description: "1000 total points", unlocked: (user: AppUser, rank: number) => user.points >= 1000 },
+    { id: "veteran", icon: <Landmark className="h-8 w-8" />, name: "Veteran", description: "1 year of service", unlocked: (user: AppUser, rank: number) => {
+        if (!user.joinDate) return false;
+        return differenceInYears(new Date(), new Date(user.joinDate)) >= 1;
+    }},
+    { id: "month", icon: <Award className="h-8 w-8" />, name: "Perfect Month", description: "No late check-ins for a month", unlocked: (user: AppUser, rank: number) => false }, // Needs more complex logic
+    { id: "early", icon: <Star className="h-8 w-8" />, name: "Early Bird", description: "Check in before 8:30 AM", unlocked: (user: AppUser, rank: number) => false }, // Needs more complex logic
     { id: "rank", icon: <ShieldCheck className="h-8 w-8" />, name: "Top Performer", description: "Reach #1 on the leaderboard", unlocked: (user: AppUser, rank: number) => rank === 1 },
 ];
 
@@ -114,7 +119,7 @@ export default function RewardsPage() {
         </CardContent>
       </Card>
       
-      <Card className="transition-all duration-300 ease-out hover:shadow-lg border-2 border-foreground hover:border-primary">
+      <Card className="transition-all duration-300 ease-out hover:shadow-lg border-2 border-foreground/20 dark:border-foreground/20 hover:border-primary">
         <CardHeader>
             <CardTitle>Achievement Badges</CardTitle>
             <CardDescription>Collect badges for your accomplishments.</CardDescription>
@@ -123,7 +128,7 @@ export default function RewardsPage() {
             {badges.map(badge => {
                 const isUnlocked = badge.unlocked(userProfile, rank);
                 return (
-                    <div key={badge.id} className={`flex flex-col items-center justify-start text-center p-4 border rounded-lg transition-all ${isUnlocked ? 'border-primary bg-primary/5' : 'border-dashed opacity-50'}`}>
+                    <div key={badge.id} className={`flex flex-col items-center justify-start text-center p-4 border-2 rounded-lg transition-all ${isUnlocked ? 'border-primary bg-primary/5' : 'border-dashed opacity-50'}`}>
                        <div className={`mb-3 text-primary ${!isUnlocked && 'grayscale'}`}>
                             {badge.icon}
                        </div>
