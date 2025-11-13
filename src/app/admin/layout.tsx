@@ -120,7 +120,7 @@ export default function AdminLayout({ children }: PropsWithChildren) {
                   </SheetContent>
               </Sheet>
               <Link href="/admin">
-                <Image src="/sidebar-logo.png" alt="Attendry Logo" width={120} height={32} />
+                <Image src="/header-logo.png" alt="Attendry Logo" width={120} height={32} />
               </Link>
               <div className="ml-auto flex items-center gap-2">
                   <Link href="/admin/notifications">

@@ -8,6 +8,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/s
 import { Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePathname } from 'next/navigation';
+import Image from 'next/image';
 
 const navLinks = [
   { href: '/', label: 'Home' },
@@ -52,9 +53,7 @@ export function Header({ hasBanner }: { hasBanner: boolean }) {
         >
           {/* Logo */}
           <Link href="/" className="flex items-center" prefetch={false}>
-            <span className="font-bold text-2xl text-primary tracking-wider">
-              Attendry
-            </span>
+            <Image src="/header-logo.png" alt="Attendry Logo" width={150} height={40} priority />
           </Link>
           
           {/* Desktop Navigation */}
@@ -96,7 +95,7 @@ export function Header({ hasBanner }: { hasBanner: boolean }) {
                   <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
                   <div className="flex flex-col gap-8 p-6">
                   <Link href="/" className="flex items-center" prefetch={false}>
-                      <span className="font-bold text-2xl text-primary tracking-wider">Attendry</span>
+                      <Image src="/header-logo.png" alt="Attendry Logo" width={150} height={40} priority />
                   </Link>
                   <nav className="grid gap-4 text-lg">
                       {navLinks.map((link) => (
