@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -218,13 +219,18 @@ const PricingPlans = () => {
                 <span className={cn(currency === 'usd' ? 'text-primary' : 'text-gray-500 dark:text-gray-400')}>USD ($)</span>
             </div>
             <Separator orientation="vertical" className="h-6 hidden sm:block" />
-             <Tabs value={billingCycle} onValueChange={(value) => setBillingCycle(value as any)} className="w-full sm:w-auto">
-                <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="monthly">Monthly</TabsTrigger>
-                    <TabsTrigger value="yearly">Yearly <Badge variant="secondary" className="ml-2 bg-green-100 text-green-700">Save 20%</Badge></TabsTrigger>
-                    <TabsTrigger value="threeYearly">3-Year <Badge variant="secondary" className="ml-2 bg-green-100 text-green-700">Save 40%</Badge></TabsTrigger>
-                </TabsList>
-            </Tabs>
+             <div className="w-full sm:w-auto sm:max-w-xs">
+                <Select value={billingCycle} onValueChange={(value) => setBillingCycle(value as any)}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Select billing cycle" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="monthly">Monthly</SelectItem>
+                        <SelectItem value="yearly">Yearly (Save 20%)</SelectItem>
+                        <SelectItem value="threeYearly">3-Year (Save 40%)</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
         </div>
       </div>
       
@@ -339,7 +345,7 @@ const PricingPlans = () => {
       <div className="mt-16 bg-slate-900 text-white p-4 md:p-8 rounded-2xl">
         <h2 className="text-3xl font-bold text-center mb-8">Full Feature Comparison</h2>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-left">
+          <table className="w-full text-left">
             <thead>
               <tr className="border-b border-slate-700">
                 <th className="py-4 px-2 md:px-4 font-semibold text-slate-300 min-w-[200px] md:min-w-[250px]">Feature</th>
