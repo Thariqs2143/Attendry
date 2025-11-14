@@ -11,7 +11,7 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { collection, onSnapshot, query, where, Timestamp, orderBy, limit, updateDoc, doc, getDocs, collectionGroup } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import type { User, LeaveRequest } from "./employees/page";
-import { subDays, startOfDay, formatDistanceToNow, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
+import { subDays, startOfDay, formatDistanceToNow, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, isWithinInterval } from 'date-fns';
 import { AttendanceChart, type ChartData } from '@/components/attendance-chart';
 import { onAuthStateChanged, type User as AuthUser } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -238,6 +238,7 @@ export default function AdminDashboard() {
   const [openBranchSelector, setOpenBranchSelector] = useState(false);
   const router = useRouter();
   const [statFilter, setStatFilter] = useState<StatFilter>('today');
+  const [onLeaveCount, setOnLeaveCount] = useState(0);
   
   const { canAccessFeature } = useSubscription();
   const addBranchLocked = !canAccessFeature('MULTI_BRANCH');
@@ -479,6 +480,31 @@ export default function AdminDashboard() {
         }
     });
 
+    // --- On Leave Count ---
+    const todayDate = new Date();
+    const leaveQuery = isAllBranches
+        ? query(collectionGroup(db, 'leaveRequests'), where('shopId', 'in', targetShopIds), where('status', '==', 'approved'))
+        : query(collection(db, 'shops', selectedBranchId, 'leaveRequests'), where('status', '==', 'approved'));
+    
+    const unsubscribeLeave = onSnapshot(leaveQuery, (snapshot) => {
+        let onLeaveTodayCount = 0;
+        const processedUsers = new Set(); // To avoid double counting
+        snapshot.forEach(doc => {
+            const request = doc.data() as LeaveRequest;
+            const startDate = new Date(request.startDate);
+            const endDate = new Date(request.endDate);
+            endDate.setHours(23, 59, 59, 999); // Include the whole end day
+
+            if (isWithinInterval(todayDate, { start: startDate, end: endDate })) {
+                if (!processedUsers.has(request.userId)) {
+                    onLeaveTodayCount++;
+                    processedUsers.add(request.userId);
+                }
+            }
+        });
+        setOnLeaveCount(onLeaveTodayCount);
+    });
+
     // --- Weekly Chart Data Fetching ---
     const sevenDaysAgo = startOfDay(subDays(new Date(), 6));
     const sevenDaysAgoTimestamp = Timestamp.fromDate(sevenDaysAgo);
@@ -509,12 +535,9 @@ export default function AdminDashboard() {
         if (unsubscribeFeed) unsubscribeFeed();
         unsubscribeTodayAttendance(); 
         unsubscribeWeekAttendance(); 
+        unsubscribeLeave();
     };
   }, [selectedBranchId, authUser, allBranchIds, employees.length, statFilter]); 
-
-  const onLeaveCount = useMemo(() => {
-    return staffEmployees.filter(e => e.status === 'Inactive').length;
-  }, [staffEmployees]);
   
   if (initialLoading) {
       return (
