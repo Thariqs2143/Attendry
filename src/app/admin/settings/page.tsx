@@ -4,8 +4,8 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
 import { Trophy, LogOut, Save, Loader2, Bell, Edit, Building, Mail, Check, Crown, ArrowRight, CalendarDays, ShieldCheck, Gift, Upload, Copy, Share2, CheckCircle, Users, Briefcase, MapPin, Percent, Phone, User as UserIcon, Settings as SettingsIcon, PlusCircle, Trash2, Clock, X, XCircle } from "lucide-react";
@@ -91,6 +91,27 @@ declare global {
     Razorpay: any;
   }
 }
+
+// Defaults
+const defaultHours: BusinessHours = {
+    monday: { startTime: '09:00', endTime: '17:00', isOpen: true },
+    tuesday: { startTime: '09:00', endTime: '17:00', isOpen: true },
+    wednesday: { startTime: '09:00', endTime: '17:00', isOpen: true },
+    thursday: { startTime: '09:00', endTime: '17:00', isOpen: true },
+    friday: { startTime: '09:00', endTime: '17:00', isOpen: true },
+    saturday: { startTime: '10:00', endTime: '14:00', isOpen: false },
+    sunday: { startTime: '10:00', endTime: '14:00', isOpen: false },
+};
+
+const defaultSettings: Settings = {
+  businessHours: defaultHours,
+  lateGracePeriodMinutes: 15,
+  monthlyPaidLeave: 4,
+  enableEmployeeReminders: true,
+  enableLateAlerts: false,
+  qrCodeMode: 'permanent',
+};
+
 
 const PricingPlans = ({ profile }: { profile: Partial<FullProfile> }) => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly' | 'threeYearly'>('yearly');
@@ -369,8 +390,8 @@ const PricingPlans = ({ profile }: { profile: Partial<FullProfile> }) => {
       
         <div className="mt-16 bg-slate-900 text-white p-4 md:p-8 rounded-2xl">
             <h2 className="text-3xl font-bold text-center mb-8">Full Feature Comparison</h2>
-            <Accordion type="single" collapsible className="w-full md:hidden">
-                 {featureComparison.map((feature, index) => (
+            <Accordion type="single" collapsible className="w-full">
+                {featureComparison.map((feature, index) => (
                     <AccordionItem key={index} value={`item-${index}`}>
                         <AccordionTrigger>{feature.name}</AccordionTrigger>
                         <AccordionContent>
@@ -396,37 +417,6 @@ const PricingPlans = ({ profile }: { profile: Partial<FullProfile> }) => {
                     </AccordionItem>
                 ))}
             </Accordion>
-            <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-left">
-                    <thead>
-                    <tr className="border-b border-slate-700">
-                        <th className="py-4 px-2 md:px-4 font-semibold text-slate-300 min-w-[200px] md:min-w-[250px]">Feature</th>
-                        {plans.map((p) => (
-                        <th key={p.id} className="py-4 px-2 md:px-4 font-semibold text-center text-slate-300">{p.name}</th>
-                        ))}
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {featureComparison.map((feature, index) => (
-                        <tr key={index} className="border-b border-slate-800">
-                        <td className="py-4 px-2 md:px-4 text-sm text-slate-400">{feature.name}</td>
-                        <td className="py-4 px-2 md:px-4 text-center">
-                            {feature.trial ? <CheckIcon /> : <XMark />}
-                        </td>
-                        <td className="py-4 px-2 md:px-4 text-center">
-                            {feature.starter ? <CheckIcon /> : <XMark />}
-                        </td>
-                        <td className="py-4 px-2 md:px-4 text-center">
-                            {feature.growth ? <CheckIcon /> : <XMark />}
-                        </td>
-                        <td className="py-4 px-2 md:px-4 text-center">
-                            {feature.pro ? <CheckIcon /> : <XMark />}
-                        </td>
-                        </tr>
-                    ))}
-                    </tbody>
-                </table>
-            </div>
             <p className="text-center text-sm text-slate-400 mt-8">Need a custom quote or on-premise version? <Link href="/contact" className="font-semibold text-primary hover:underline">Contact our team</Link> — we'll tailor it for your business.</p>
         </div>
 
@@ -749,7 +739,7 @@ function SettingsPageContent() {
                 </TabsContent>
 
                 <TabsContent value="subscription">
-                    {userProfile && <PricingPlans profile={userProfile} />}
+                    {userProfile && <PricingPlans />}
                 </TabsContent>
                 
                 <TabsContent value="shifts" className="space-y-6 mt-0">
