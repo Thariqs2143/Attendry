@@ -263,13 +263,18 @@ const PricingPlans = ({ profile }: { profile: FullProfile | null }) => {
                 <span className={cn(currency === 'usd' ? 'text-primary' : 'text-gray-500 dark:text-gray-400')}>USD ($)</span>
             </div>
             <Separator orientation="vertical" className="h-6 hidden sm:block" />
-             <Tabs value={billingCycle} onValueChange={(value) => setBillingCycle(value as any)} className="w-full sm:w-auto">
-                <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="monthly">Monthly</TabsTrigger>
-                    <TabsTrigger value="yearly">Yearly <Badge variant="secondary" className="ml-2 bg-green-100 text-green-700">Save 20%</Badge></TabsTrigger>
-                    <TabsTrigger value="threeYearly">3-Year <Badge variant="secondary" className="ml-2 bg-green-100 text-green-700">Save 40%</Badge></TabsTrigger>
-                </TabsList>
-            </Tabs>
+             <div className="w-full sm:w-auto">
+                <Select value={billingCycle} onValueChange={(value) => setBillingCycle(value as any)}>
+                    <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select billing cycle" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="monthly">Monthly</SelectItem>
+                        <SelectItem value="yearly">Yearly (Save 20%)</SelectItem>
+                        <SelectItem value="threeYearly">3-Year (Save 40%)</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
         </div>
       </div>
       
@@ -298,7 +303,7 @@ const PricingPlans = ({ profile }: { profile: FullProfile | null }) => {
           </CardContent>
       </Card>
 
-      <div className="grid gap-8 lg:grid-cols-2 xl:grid-cols-4 mb-14">
+      <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-4 mb-14">
         {plans.map((p) => {
             const pricePerStaff = p.price[billingCycle][currency];
             const maxEmployees = p.id === 'pro' || p.id === 'trial' ? Infinity : p.id === 'starter' ? 20 : 50;
@@ -307,16 +312,16 @@ const PricingPlans = ({ profile }: { profile: FullProfile | null }) => {
 
             return (
                 <div key={p.id} className={cn(
-                    'relative rounded-2xl p-6 flex flex-col h-full bg-slate-800 border-2 shadow-lg transition-all duration-300',
-                    !isWithinLimit && 'opacity-60 bg-slate-900',
-                    p.isPopular ? 'border-blue-500 shadow-blue-500/20' : 'border-slate-700',
-                    p.isBestValue ? 'border-green-500 shadow-green-500/20' : 'border-slate-700',
+                    'relative rounded-2xl p-6 flex flex-col h-full bg-card border-2 shadow-lg transition-all duration-300',
+                    !isWithinLimit && 'opacity-60 bg-muted/50',
+                    p.isPopular ? 'border-primary shadow-primary/20' : 'border-border',
+                    p.isBestValue ? 'border-green-500 shadow-green-500/20' : '',
                 )}>
-                  {p.isPopular && <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-10"><div className="px-4 py-1 text-sm font-semibold rounded-full bg-blue-500 text-white shadow-md">TOP CHOICE</div></div>}
+                  {p.isPopular && <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-10"><div className="px-4 py-1 text-sm font-semibold rounded-full bg-primary text-primary-foreground shadow-md">TOP CHOICE</div></div>}
                   {p.isBestValue && <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-10"><div className="px-4 py-1 text-sm font-semibold rounded-full bg-green-500 text-white shadow-md">SPECIAL OFFER</div></div>}
-                  <div className="flex-1 text-white">
+                  <div className="flex-1 text-card-foreground">
                       <h3 className="text-2xl font-semibold text-center">{p.name}</h3>
-                      <p className="text-sm text-slate-400 mt-2 mb-6 h-10 text-center">{p.highlight}</p>
+                      <p className="text-sm text-muted-foreground mt-2 mb-6 h-10 text-center">{p.highlight}</p>
                       
                       <div className="mb-6 text-center">
                           <div className="flex flex-col items-center">
@@ -331,18 +336,18 @@ const PricingPlans = ({ profile }: { profile: FullProfile | null }) => {
                                       <span className="break-all">{currency === 'inr' ? Math.round(finalPrice) : finalPrice.toFixed(2)}</span>
                                   </span>
                               )}
-                              <p className="text-sm text-slate-400">{cycleText}</p>
+                              <p className="text-sm text-muted-foreground">{cycleText}</p>
                           </div>
-                          {p.id !== 'trial' && <p className="text-xs text-slate-500 mt-1">(billed per employee)</p>}
+                          {p.id !== 'trial' && <p className="text-xs text-muted-foreground mt-1">(billed per employee)</p>}
                       </div>
                       
                       <Button
                         onClick={() => handlePayment(p)}
                         disabled={loadingPlan === p.id || p.id === 'trial' || !isWithinLimit}
                         className={cn(
-                          'w-full mt-auto py-3 rounded-lg font-semibold text-slate-900 transition-all shadow-md text-base',
-                          p.isPopular ? 'bg-blue-400 hover:bg-blue-500' : 'bg-slate-200 hover:bg-white',
-                          p.isBestValue ? 'bg-green-400 hover:bg-green-500' : '',
+                          'w-full mt-auto py-3 rounded-lg font-semibold text-base shadow-md',
+                          p.isPopular ? 'bg-primary hover:bg-primary/90 text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+                          p.isBestValue ? 'bg-green-600 hover:bg-green-700 text-white' : '',
                           (loadingPlan === p.id || !isWithinLimit) && 'opacity-50 cursor-not-allowed'
                         )}
                       >
@@ -350,26 +355,26 @@ const PricingPlans = ({ profile }: { profile: FullProfile | null }) => {
                           {!isWithinLimit ? 'Staff limit exceeded' : p.cta}
                       </Button>
 
-                      <Separator className="my-6 bg-slate-700" />
+                      <Separator className="my-6 bg-border" />
                       
                       <div className="space-y-2 text-sm">
-                          <p className="font-semibold text-slate-300">Features:</p>
+                          <p className="font-semibold text-foreground">Features:</p>
                           <ul className="space-y-3 text-sm mb-4">
                               {p.mainFeatures.map((feature, i) => (
-                                  <li key={i} className="flex items-start gap-x-3 text-slate-400">
-                                      <CheckIcon className="w-5 h-5 text-green-400 mt-0.5" />
+                                  <li key={i} className="flex items-start gap-x-3 text-muted-foreground">
+                                      <CheckIcon className="w-5 h-5 text-green-500 mt-0.5" />
                                       <span>{feature}</span>
                                   </li>
                               ))}
                           </ul>
-                          <Separator className="my-6 bg-slate-700" />
-                          <p className="font-semibold text-slate-300">Usage Limits:</p>
+                          <Separator className="my-6 bg-border" />
+                          <p className="font-semibold text-foreground">Usage Limits:</p>
                           <ul className="space-y-3 text-sm">
-                              <li className="flex items-start gap-x-3 text-slate-400">
+                              <li className="flex items-start gap-x-3 text-muted-foreground">
                                   <Users className="h-4 w-4 mt-1" />
                                   <span>{p.usageLimits.employees}</span>
                               </li>
-                              <li className="flex items-start gap-x-3 text-slate-400">
+                              <li className="flex items-start gap-x-3 text-muted-foreground">
                                   <Building className="h-4 w-4 mt-1"/>
                                   <span>{p.usageLimits.branches}</span>
                               </li>
@@ -381,22 +386,22 @@ const PricingPlans = ({ profile }: { profile: FullProfile | null }) => {
         })}
       </div>
       
-      <div className="mt-16 bg-slate-900 text-white p-4 md:p-8 rounded-2xl">
+      <div className="mt-16 bg-card text-card-foreground p-4 md:p-8 rounded-2xl border">
         <h2 className="text-3xl font-bold text-center mb-8">Full Feature Comparison</h2>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px] text-left">
             <thead>
-              <tr className="border-b border-slate-700">
-                <th className="py-4 px-2 md:px-4 font-semibold text-slate-300 min-w-[200px] md:min-w-[250px]">Feature</th>
+              <tr className="border-b">
+                <th className="py-4 px-2 md:px-4 font-semibold text-muted-foreground min-w-[200px] md:min-w-[250px]">Feature</th>
                 {plans.map((p) => (
-                  <th key={p.id} className="py-4 px-2 md:px-4 font-semibold text-center text-slate-300">{p.name}</th>
+                  <th key={p.id} className="py-4 px-2 md:px-4 font-semibold text-center text-muted-foreground">{p.name}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {featureComparison.map((feature, index) => (
-                <tr key={index} className="border-b border-slate-800">
-                  <td className="py-4 px-2 md:px-4 text-sm text-slate-400">{feature.name}</td>
+                <tr key={index} className="border-b">
+                  <td className="py-4 px-2 md:px-4 text-sm text-muted-foreground">{feature.name}</td>
                   <td className="py-4 px-2 md:px-4 text-center">
                     {feature.trial ? <CheckIcon /> : <XMark />}
                   </td>
@@ -414,7 +419,7 @@ const PricingPlans = ({ profile }: { profile: FullProfile | null }) => {
             </tbody>
           </table>
         </div>
-        <p className="text-center text-sm text-slate-400 mt-8">Need a custom quote or on-premise version? <Link href="/contact" className="font-semibold text-primary hover:underline">Contact our team</Link> — we'll tailor it for your business.</p>
+        <p className="text-center text-sm text-muted-foreground mt-8">Need a custom quote or on-premise version? <Link href="/contact" className="font-semibold text-primary hover:underline">Contact our team</Link> — we'll tailor it for your business.</p>
       </div>
 
     </div>
@@ -932,10 +937,3 @@ export default function AdminSettingsPage() {
     </Suspense>
   );
 }
-
-
-    
-
-    
-
-    
