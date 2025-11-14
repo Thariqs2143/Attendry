@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Mail, Phone, Copy } from 'lucide-react';
+import { Mail, Phone } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const WhatsAppIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -22,26 +22,11 @@ export default function ContactPage() {
     const [email, setEmail] = useState('');
     const [subject, setSubject] = useState('');
     const [message, setMessage] = useState('');
-    const [isCopied, setIsCopied] = useState(false);
-    const { toast } = useToast();
 
-    const handleCopyEmail = () => {
-        const emailBody = `Name: ${name}\nEmail: ${email}\nSubject: ${subject}\n\nMessage:\n${message}`;
-        navigator.clipboard.writeText(emailBody).then(() => {
-            setIsCopied(true);
-            toast({
-                title: "Message Copied!",
-                description: "Paste it into an email to attendrys@gmail.com",
-            });
-            setTimeout(() => setIsCopied(false), 2000);
-        }, (err) => {
-            toast({
-                title: "Copy Failed",
-                description: "Could not copy message to clipboard.",
-                variant: "destructive",
-            });
-            console.error('Failed to copy text: ', err);
-        });
+    const handleComposeEmail = () => {
+        const emailBody = `Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`;
+        const mailtoLink = `mailto:attendrys@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
+        window.location.href = mailtoLink;
     };
     
     const handleSendWhatsApp = () => {
@@ -124,9 +109,9 @@ export default function ContactPage() {
                                 <Textarea id="message" placeholder="Your message..." className="min-h-[120px]" value={message} onChange={(e) => setMessage(e.target.value)} />
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                                <Button type="button" onClick={handleCopyEmail} className="w-full">
-                                    <Copy className="mr-2 h-4 w-4"/>
-                                    {isCopied ? 'Copied!' : 'Copy for Email'}
+                                <Button type="button" onClick={handleComposeEmail} className="w-full">
+                                    <Mail className="mr-2 h-4 w-4"/>
+                                    Compose Email
                                 </Button>
                                 <Button type="button" onClick={handleSendWhatsApp} className="w-full bg-green-600 hover:bg-green-700 text-white">
                                     <WhatsAppIcon className="mr-2 h-4 w-4"/>
