@@ -254,7 +254,7 @@ const PricingPlans = () => {
           </CardContent>
       </Card>
 
-      <div className="grid gap-8 lg:grid-cols-2 xl:grid-cols-4 mb-14">
+      <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-4 mb-14">
         {plans.map((p) => {
             const pricePerStaff = p.price[billingCycle][currency];
             const maxEmployees = p.id === 'pro' || p.id === 'trial' ? Infinity : p.id === 'starter' ? 20 : 50;
@@ -337,32 +337,32 @@ const PricingPlans = () => {
         })}
       </div>
       
-      <div className="mt-16 bg-slate-900 text-white p-8 rounded-2xl">
+      <div className="mt-16 bg-slate-900 text-white p-4 md:p-8 rounded-2xl">
         <h2 className="text-3xl font-bold text-center mb-8">Full Feature Comparison</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-slate-700">
-                <th className="py-4 px-4 font-semibold text-slate-300 min-w-[250px]">Feature</th>
+                <th className="py-4 px-2 md:px-4 font-semibold text-slate-300 min-w-[200px] md:min-w-[250px]">Feature</th>
                 {plans.map((p) => (
-                  <th key={p.id} className="py-4 px-4 font-semibold text-center text-slate-300">{p.name}</th>
+                  <th key={p.id} className="py-4 px-2 md:px-4 font-semibold text-center text-slate-300">{p.name}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {featureComparison.map((feature, index) => (
                 <tr key={index} className="border-b border-slate-800">
-                  <td className="py-4 px-4 text-sm text-slate-400">{feature.name}</td>
-                  <td className="py-4 px-4 text-center">
+                  <td className="py-4 px-2 md:px-4 text-sm text-slate-400">{feature.name}</td>
+                  <td className="py-4 px-2 md:px-4 text-center">
                     {feature.trial ? <CheckIcon /> : <XMark />}
                   </td>
-                   <td className="py-4 px-4 text-center">
+                   <td className="py-4 px-2 md:px-4 text-center">
                     {feature.starter ? <CheckIcon /> : <XMark />}
                   </td>
-                  <td className="py-4 px-4 text-center">
+                  <td className="py-4 px-2 md:px-4 text-center">
                     {feature.growth ? <CheckIcon /> : <XMark />}
                   </td>
-                  <td className="py-4 px-4 text-center">
+                  <td className="py-4 px-2 md:px-4 text-center">
                     {feature.pro ? <CheckIcon /> : <XMark />}
                   </td>
                 </tr>
@@ -387,5 +387,7 @@ export default function PricingPage() {
         </div>
     )
 }
+
+    
 
     

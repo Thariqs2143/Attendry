@@ -618,19 +618,19 @@ function SettingsPageContent() {
             
             <div className="sticky top-14 md:top-0 z-30 bg-background/80 backdrop-blur-sm -mx-6 px-6 py-4 mb-6 border-b">
                  <TabsList className="grid w-full grid-cols-5 h-auto p-1 border-2 border-border bg-muted">
-                    <TabsTrigger value="profile" className="text-xs sm:text-sm py-2 data-[state=active]:bg-background data-[state=active]:text-foreground rounded-md transition-all duration-300">
+                    <TabsTrigger value="profile" className="text-xs sm:text-sm py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md transition-all duration-300">
                         <UserIcon className="h-5 w-5 lg:mr-2" /><span className="hidden lg:inline">Profile</span>
                     </TabsTrigger>
-                     <TabsTrigger value="subscription" className="text-xs sm:text-sm py-2 data-[state=active]:bg-background data-[state=active]:text-foreground rounded-md transition-all duration-300">
+                     <TabsTrigger value="subscription" className="text-xs sm:text-sm py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md transition-all duration-300">
                         <Trophy className="h-5 w-5 lg:mr-2"/><span className="hidden lg:inline">Subscription</span>
                     </TabsTrigger>
-                    <TabsTrigger value="shifts" className="text-xs sm:text-sm py-2 data-[state=active]:bg-background data-[state=active]:text-foreground rounded-md transition-all duration-300">
+                    <TabsTrigger value="shifts" className="text-xs sm:text-sm py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md transition-all duration-300">
                         <Clock className="h-5 w-5 lg:mr-2"/><span className="hidden lg:inline">Shifts</span>
                     </TabsTrigger>
-                    <TabsTrigger value="business" className="text-xs sm:text-sm py-2 data-[state=active]:bg-background data-[state=active]:text-foreground rounded-md transition-all duration-300">
+                    <TabsTrigger value="business" className="text-xs sm:text-sm py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md transition-all duration-300">
                         <Building className="h-5 w-5 lg:mr-2"/><span className="hidden lg:inline">Business</span>
                     </TabsTrigger>
-                    <TabsTrigger value="general" className="text-xs sm:text-sm py-2 data-[state=active]:bg-background data-[state=active]:text-foreground rounded-md transition-all duration-300">
+                    <TabsTrigger value="general" className="text-xs sm:text-sm py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md transition-all duration-300">
                         <SettingsIcon className="h-5 w-5 lg:mr-2"/><span className="hidden lg:inline">General</span>
                     </TabsTrigger>
                 </TabsList>
@@ -933,6 +933,8 @@ export default function AdminSettingsPage() {
   );
 }
 
+
+    
 
     
 
