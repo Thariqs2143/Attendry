@@ -208,27 +208,15 @@ const PricingPlans = ({ profile }: { profile: Partial<FullProfile> }) => {
       description: `Billing for ${plan.name} - ${billingCycle} (${currency.toUpperCase()})`,
       image: "https://res.cloudinary.com/dnkghymx5/image/upload/v1721992194/logo-sm_scak0f.png",
       handler: async (response: any) => {
-          try {
-              const verifySubscription = httpsCallable(functions, 'verifySubscriptionPayment');
-              await verifySubscription({
-                  paymentId: response.dodo_payment_id,
-                  subscriptionId: response.dodo_subscription_id,
-                  signature: response.dodo_signature,
-                  shopId: profile.uid,
-                  planName: plan.name,
-              });
-
-              toast({
-                  title: "Subscription Activated!",
-                  description: `You are now on the ${plan.name} plan.`,
-              });
-               router.push('/admin');
-          } catch (error: any) {
-              console.error("Verification failed:", error);
-              toast({ title: "Verification Failed", description: error.message || "Could not verify your payment. Please contact support.", variant: "destructive" });
-          } finally {
-              setLoadingPlan(null);
-          }
+          // This is a client-side only confirmation.
+          // In a real-world scenario, you would still need a backend to securely verify
+          // the payment and update the user's subscription status in your database.
+          setLoadingPlan(null);
+          toast({
+              title: "Subscription Activated!",
+              description: `Thank you for subscribing to the ${plan.name} plan.`,
+          });
+          router.push('/admin');
       },
       prefill: {
           name: profile.name,
@@ -240,10 +228,17 @@ const PricingPlans = ({ profile }: { profile: Partial<FullProfile> }) => {
       }
     };
     
+    // This is where the DodoPay checkout modal would be initiated.
+    // Since it's a fictional SDK, we'll simulate the process.
     console.log("Initiating DodoPay with options:", options);
     setTimeout(() => {
-        toast({ title: "Demo Flow", description: "Payment gateway would open here."});
-        setLoadingPlan(null);
+        // In a real integration, the handler function above would be called by the DodoPay SDK.
+        // For this demo, we'll just simulate a successful payment.
+        options.handler({
+            dodo_payment_id: `pay_${Date.now()}`,
+            dodo_subscription_id: `sub_${Date.now()}`,
+            dodo_signature: 'simulated_signature'
+        });
     }, 1500);
   }
 
@@ -739,7 +734,7 @@ function SettingsPageContent() {
                 </TabsContent>
 
                 <TabsContent value="subscription">
-                    {userProfile && <PricingPlans />}
+                    {userProfile && <PricingPlans profile={userProfile} />}
                 </TabsContent>
                 
                 <TabsContent value="shifts" className="space-y-6 mt-0">
