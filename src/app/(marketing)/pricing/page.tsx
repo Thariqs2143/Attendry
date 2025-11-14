@@ -133,7 +133,7 @@ const PricingPlans = () => {
     { name: 'Easy Employee Onboarding', trial: true, starter: true, growth: true, pro: true },
     { name: 'Employee Profiles', trial: true, starter: true, growth: true, pro: true },
     { name: 'Detailed Attendance Reports', trial: true, starter: true, growth: true, pro: true },
-    { name: 'Export Reports (PDF / Excel)', trial: true, starter: true, growth: true, pro: true },
+    { name: 'Export Reports (PDF / Excel)', trial: false, starter: true, growth: true, pro: true },
     { name: 'Muster Roll Generation', trial: false, starter: false, growth: true, pro: true },
     { name: 'Automated Payroll Calculation', trial: false, starter: false, growth: true, pro: true },
     { name: 'Points & Rewards System', trial: false, starter: false, growth: true, pro: true },
@@ -156,6 +156,16 @@ const PricingPlans = () => {
     if (!planId) {
         toast({ title: "Error", description: "This plan is not available for purchase yet.", variant: "destructive" });
         return;
+    }
+
+    if (typeof window.DodoPay !== 'function') {
+      toast({
+        title: "Initializing Gateway...",
+        description: "The payment gateway is loading. Please wait a moment and try again.",
+        variant: "default"
+      });
+      setLoadingPlan(null);
+      return;
     }
 
     setLoadingPlan(plan.id);
@@ -390,5 +400,7 @@ export default function PricingPage() {
         </div>
     )
 }
+
+    
 
     

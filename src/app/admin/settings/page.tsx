@@ -198,6 +198,16 @@ const PricingPlans = ({ profile }: { profile: Partial<FullProfile> }) => {
         return;
     }
 
+    if (typeof window.DodoPay !== 'function') {
+      toast({
+        title: "Initializing Gateway...",
+        description: "The payment gateway is loading. Please wait a moment and try again.",
+        variant: "default"
+      });
+      setLoadingPlan(null);
+      return;
+    }
+
     setLoadingPlan(plan.id);
     
     const options = {
