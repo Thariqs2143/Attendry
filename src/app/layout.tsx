@@ -42,7 +42,7 @@ export default function RootLayout({
             {children}
             <Toaster />
         </ThemeProvider>
-         <Script id="dodo-checkout" src="https://checkout.dodo-payments.com/v1/checkout.js" />
+         <Script id="dodo-checkout" src="https://checkout.dodopayments.dev/v1/checkout.js" />
          <Script id="no-zoom" strategy="afterInteractive">
           {`
             document.addEventListener('keydown', (event) => {

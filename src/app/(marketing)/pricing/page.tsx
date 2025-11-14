@@ -53,6 +53,11 @@ type ShopProfile = {
 
 type FullProfile = AppUser & ShopProfile;
 
+declare global {
+  interface Window {
+    DodoPay: any;
+  }
+}
 
 const PricingPlans = () => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly' | 'threeYearly'>('yearly');
@@ -129,14 +134,14 @@ const PricingPlans = () => {
     { name: 'Employee Profiles', trial: true, starter: true, growth: true, pro: true },
     { name: 'Detailed Attendance Reports', trial: true, starter: true, growth: true, pro: true },
     { name: 'Export Reports (PDF / Excel)', trial: true, starter: true, growth: true, pro: true },
-    { name: 'Muster Roll Generation', trial: true, starter: true, growth: true, pro: true },
-    { name: 'Automated Payroll Calculation', trial: true, starter: true, growth: true, pro: true },
-    { name: 'Points & Rewards System', trial: true, starter: true, growth: true, pro: true },
-    { name: 'Punctuality Leaderboard', trial: true, starter: true, growth: true, pro: true },
+    { name: 'Muster Roll Generation', trial: false, starter: false, growth: true, pro: true },
+    { name: 'Automated Payroll Calculation', trial: false, starter: false, growth: true, pro: true },
+    { name: 'Points & Rewards System', trial: false, starter: false, growth: true, pro: true },
+    { name: 'Punctuality Leaderboard', trial: false, starter: false, growth: true, pro: true },
     { name: 'Multi-Branch Support', trial: false, starter: false, growth: true, pro: true },
     { name: 'Staff Transfer Between Branches', trial: false, starter: false, growth: true, pro: true },
-    { name: 'AI-Powered Weekly Briefing', trial: true, starter: false, growth: false, pro: true },
-    { name: 'Smart Staffing Advisor (AI)', trial: true, starter: false, growth: false, pro: true },
+    { name: 'AI-Powered Weekly Briefing', trial: false, starter: false, growth: false, pro: true },
+    { name: 'Smart Staffing Advisor (AI)', trial: false, starter: false, growth: false, pro: true },
     { name: 'Customizable Alerts & Notifications', trial: false, starter: false, growth: false, pro: true },
   ];
 
@@ -163,9 +168,6 @@ const PricingPlans = () => {
       description: `Billing for ${plan.name} - ${billingCycle} (${currency.toUpperCase()})`,
       image: "https://res.cloudinary.com/dnkghymx5/image/upload/v1721992194/logo-sm_scak0f.png",
       handler: async (response: any) => {
-          // This is a client-side only confirmation.
-          // In a real-world scenario, you would still need a backend to securely verify
-          // the payment and update the user's subscription status in your database.
           setLoadingPlan(null);
           toast({
               title: "Subscription Activated!",
@@ -180,21 +182,21 @@ const PricingPlans = () => {
       },
       theme: {
           color: "#0C2A6A"
+      },
+      modal: {
+        ondismiss: () => {
+          setLoadingPlan(null);
+          toast({
+            title: "Payment Cancelled",
+            description: "The payment process was cancelled.",
+            variant: "destructive"
+          })
+        }
       }
     };
     
-    // This is where the DodoPay checkout modal would be initiated.
-    // Since it's a fictional SDK, we'll simulate the process.
-    console.log("Initiating DodoPay with options:", options);
-    setTimeout(() => {
-        // In a real integration, the handler function above would be called by the DodoPay SDK.
-        // For this demo, we'll just simulate a successful payment.
-        options.handler({
-            dodo_payment_id: `pay_${Date.now()}`,
-            dodo_subscription_id: `sub_${Date.now()}`,
-            dodo_signature: 'simulated_signature'
-        });
-    }, 1500);
+    const dodo = new window.DodoPay(options);
+    dodo.open();
   }
 
   const currencySymbol = currency === 'inr' ? '₹' : '$';
@@ -388,7 +390,3 @@ export default function PricingPage() {
         </div>
     )
 }
-
-    
-
-    

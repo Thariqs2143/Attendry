@@ -88,7 +88,7 @@ type FullProfile = AppUser & ShopProfile;
 
 declare global {
   interface Window {
-    Razorpay: any;
+    DodoPay: any;
   }
 }
 
@@ -173,7 +173,7 @@ const PricingPlans = ({ profile }: { profile: Partial<FullProfile> }) => {
     { name: 'Easy Employee Onboarding', trial: true, starter: true, growth: true, pro: true },
     { name: 'Employee Profiles', trial: true, starter: true, growth: true, pro: true },
     { name: 'Detailed Attendance Reports', trial: true, starter: true, growth: true, pro: true },
-    { name: 'Export Reports (PDF / Excel)', trial: true, starter: true, growth: true, pro: true },
+    { name: 'Export Reports (PDF / Excel)', trial: false, starter: true, growth: true, pro: true },
     { name: 'Muster Roll Generation', trial: false, starter: false, growth: true, pro: true },
     { name: 'Automated Payroll Calculation', trial: false, starter: false, growth: true, pro: true },
     { name: 'Points & Rewards System', trial: false, starter: false, growth: true, pro: true },
@@ -208,9 +208,6 @@ const PricingPlans = ({ profile }: { profile: Partial<FullProfile> }) => {
       description: `Billing for ${plan.name} - ${billingCycle} (${currency.toUpperCase()})`,
       image: "https://res.cloudinary.com/dnkghymx5/image/upload/v1721992194/logo-sm_scak0f.png",
       handler: async (response: any) => {
-          // This is a client-side only confirmation.
-          // In a real-world scenario, you would still need a backend to securely verify
-          // the payment and update the user's subscription status in your database.
           setLoadingPlan(null);
           toast({
               title: "Subscription Activated!",
@@ -225,21 +222,21 @@ const PricingPlans = ({ profile }: { profile: Partial<FullProfile> }) => {
       },
       theme: {
           color: "#0C2A6A"
+      },
+      modal: {
+        ondismiss: () => {
+          setLoadingPlan(null);
+          toast({
+            title: "Payment Cancelled",
+            description: "The payment process was cancelled.",
+            variant: "destructive"
+          })
+        }
       }
     };
     
-    // This is where the DodoPay checkout modal would be initiated.
-    // Since it's a fictional SDK, we'll simulate the process.
-    console.log("Initiating DodoPay with options:", options);
-    setTimeout(() => {
-        // In a real integration, the handler function above would be called by the DodoPay SDK.
-        // For this demo, we'll just simulate a successful payment.
-        options.handler({
-            dodo_payment_id: `pay_${Date.now()}`,
-            dodo_subscription_id: `sub_${Date.now()}`,
-            dodo_signature: 'simulated_signature'
-        });
-    }, 1500);
+    const dodo = new window.DodoPay(options);
+    dodo.open();
   }
 
   const currencySymbol = currency === 'inr' ? '₹' : '$';
@@ -916,5 +913,3 @@ export default function AdminSettingsPage() {
     </Suspense>
   );
 }
-
-    
