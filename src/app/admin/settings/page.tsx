@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -152,14 +153,14 @@ const PricingPlans = ({ profile }: { profile: Partial<FullProfile> }) => {
     { name: 'Employee Profiles', trial: true, starter: true, growth: true, pro: true },
     { name: 'Detailed Attendance Reports', trial: true, starter: true, growth: true, pro: true },
     { name: 'Export Reports (PDF / Excel)', trial: true, starter: true, growth: true, pro: true },
-    { name: 'Muster Roll Generation', trial: true, starter: true, growth: true, pro: true },
-    { name: 'Automated Payroll Calculation', trial: true, starter: true, growth: true, pro: true },
-    { name: 'Points & Rewards System', trial: true, starter: true, growth: true, pro: true },
-    { name: 'Punctuality Leaderboard', trial: true, starter: true, growth: true, pro: true },
+    { name: 'Muster Roll Generation', trial: false, starter: false, growth: true, pro: true },
+    { name: 'Automated Payroll Calculation', trial: false, starter: false, growth: true, pro: true },
+    { name: 'Points & Rewards System', trial: false, starter: false, growth: true, pro: true },
+    { name: 'Punctuality Leaderboard', trial: false, starter: false, growth: true, pro: true },
     { name: 'Multi-Branch Support', trial: false, starter: false, growth: true, pro: true },
     { name: 'Staff Transfer Between Branches', trial: false, starter: false, growth: true, pro: true },
-    { name: 'AI-Powered Weekly Briefing', trial: true, starter: false, growth: false, pro: true },
-    { name: 'Smart Staffing Advisor (AI)', trial: true, starter: false, growth: false, pro: true },
+    { name: 'AI-Powered Weekly Briefing', trial: false, starter: false, growth: false, pro: true },
+    { name: 'Smart Staffing Advisor (AI)', trial: false, starter: false, growth: false, pro: true },
     { name: 'Customizable Alerts & Notifications', trial: false, starter: false, growth: false, pro: true },
   ];
 
@@ -365,64 +366,72 @@ const PricingPlans = ({ profile }: { profile: Partial<FullProfile> }) => {
             )
         })}
       </div>
-       <div className="mt-16 bg-slate-900 text-white p-4 md:p-8 rounded-2xl">
-        <h2 className="text-3xl font-bold text-center mb-8">Full Feature Comparison</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[600px] text-left">
-            <thead>
-              <tr className="border-b border-slate-700">
-                <th className="py-4 px-2 md:px-4 font-semibold text-slate-300 min-w-[200px] md:min-w-[250px]">Feature</th>
-                {plans.map((p) => (
-                  <th key={p.id} className="py-4 px-2 md:px-4 font-semibold text-center text-slate-300">{p.name}</th>
+      
+        <div className="mt-16 bg-slate-900 text-white p-4 md:p-8 rounded-2xl">
+            <h2 className="text-3xl font-bold text-center mb-8">Full Feature Comparison</h2>
+            <Accordion type="single" collapsible className="w-full md:hidden">
+                 {featureComparison.map((feature, index) => (
+                    <AccordionItem key={index} value={`item-${index}`}>
+                        <AccordionTrigger>{feature.name}</AccordionTrigger>
+                        <AccordionContent>
+                            <div className="grid grid-cols-2 gap-4 p-4">
+                                <div className="flex flex-col items-center gap-2 p-2 rounded-lg bg-slate-700">
+                                    <p className="font-semibold text-slate-300">Trial</p>
+                                    {feature.trial ? <CheckIcon className="text-green-400" /> : <XMark className="text-red-400" />}
+                                </div>
+                                <div className="flex flex-col items-center gap-2 p-2 rounded-lg bg-slate-700">
+                                    <p className="font-semibold text-slate-300">Starter</p>
+                                    {feature.starter ? <CheckIcon className="text-green-400" /> : <XMark className="text-red-400" />}
+                                </div>
+                                <div className="flex flex-col items-center gap-2 p-2 rounded-lg bg-slate-700">
+                                    <p className="font-semibold text-slate-300">Growth</p>
+                                    {feature.growth ? <CheckIcon className="text-green-400" /> : <XMark className="text-red-400" />}
+                                </div>
+                                <div className="flex flex-col items-center gap-2 p-2 rounded-lg bg-slate-700">
+                                    <p className="font-semibold text-slate-300">Pro</p>
+                                    {feature.pro ? <CheckIcon className="text-green-400" /> : <XMark className="text-red-400" />}
+                                </div>
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
                 ))}
-              </tr>
-            </thead>
-            <tbody>
-              {featureComparison.map((feature, index) => (
-                <tr key={index} className="border-b border-slate-800">
-                  <td className="py-4 px-2 md:px-4 text-sm text-slate-400">{feature.name}</td>
-                  <td className="py-4 px-2 md:px-4 text-center">
-                    {feature.trial ? <CheckIcon /> : <XMark />}
-                  </td>
-                   <td className="py-4 px-2 md:px-4 text-center">
-                    {feature.starter ? <CheckIcon /> : <XMark />}
-                  </td>
-                  <td className="py-4 px-2 md:px-4 text-center">
-                    {feature.growth ? <CheckIcon /> : <XMark />}
-                  </td>
-                  <td className="py-4 px-2 md:px-4 text-center">
-                    {feature.pro ? <CheckIcon /> : <XMark />}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            </Accordion>
+            <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left">
+                    <thead>
+                    <tr className="border-b border-slate-700">
+                        <th className="py-4 px-2 md:px-4 font-semibold text-slate-300 min-w-[200px] md:min-w-[250px]">Feature</th>
+                        {plans.map((p) => (
+                        <th key={p.id} className="py-4 px-2 md:px-4 font-semibold text-center text-slate-300">{p.name}</th>
+                        ))}
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {featureComparison.map((feature, index) => (
+                        <tr key={index} className="border-b border-slate-800">
+                        <td className="py-4 px-2 md:px-4 text-sm text-slate-400">{feature.name}</td>
+                        <td className="py-4 px-2 md:px-4 text-center">
+                            {feature.trial ? <CheckIcon /> : <XMark />}
+                        </td>
+                        <td className="py-4 px-2 md:px-4 text-center">
+                            {feature.starter ? <CheckIcon /> : <XMark />}
+                        </td>
+                        <td className="py-4 px-2 md:px-4 text-center">
+                            {feature.growth ? <CheckIcon /> : <XMark />}
+                        </td>
+                        <td className="py-4 px-2 md:px-4 text-center">
+                            {feature.pro ? <CheckIcon /> : <XMark />}
+                        </td>
+                        </tr>
+                    ))}
+                    </tbody>
+                </table>
+            </div>
+            <p className="text-center text-sm text-slate-400 mt-8">Need a custom quote or on-premise version? <Link href="/contact" className="font-semibold text-primary hover:underline">Contact our team</Link> — we'll tailor it for your business.</p>
         </div>
-        <p className="text-center text-sm text-slate-400 mt-8">Need a custom quote or on-premise version? <Link href="/contact" className="font-semibold text-primary hover:underline">Contact our team</Link> — we'll tailor it for your business.</p>
-      </div>
+
     </div>
   );
-};
-
-
-// Defaults
-const defaultHours: BusinessHours = {
-    monday: { startTime: '09:00', endTime: '17:00', isOpen: true },
-    tuesday: { startTime: '09:00', endTime: '17:00', isOpen: true },
-    wednesday: { startTime: '09:00', endTime: '17:00', isOpen: true },
-    thursday: { startTime: '09:00', endTime: '17:00', isOpen: true },
-    friday: { startTime: '09:00', endTime: '17:00', isOpen: true },
-    saturday: { startTime: '10:00', endTime: '14:00', isOpen: false },
-    sunday: { startTime: '10:00', endTime: '14:00', isOpen: false },
-};
-
-const defaultSettings: Settings = {
-  businessHours: defaultHours,
-  lateGracePeriodMinutes: 15,
-  monthlyPaidLeave: 4,
-  enableEmployeeReminders: true,
-  enableLateAlerts: false,
-  qrCodeMode: 'permanent',
 };
 
 
