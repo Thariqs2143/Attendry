@@ -23,12 +23,6 @@ export default function ContactPage() {
     const [subject, setSubject] = useState('');
     const [message, setMessage] = useState('');
 
-    const handleComposeEmail = () => {
-        const emailBody = `Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`;
-        const mailtoLink = `mailto:attendrys@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
-        window.location.href = mailtoLink;
-    };
-    
     const handleSendWhatsApp = () => {
         const whatsappMessage = `*Enquiry from Attendry Website*\n\n*Name:* ${name}\n*Email:* ${email}\n*Subject:* ${subject}\n\n*Message:*\n${message}`;
         const whatsappLink = `https://wa.me/919363200237?text=${encodeURIComponent(whatsappMessage)}`;
@@ -108,11 +102,7 @@ export default function ContactPage() {
                                 <Label htmlFor="message">Message</Label>
                                 <Textarea id="message" placeholder="Your message..." className="min-h-[120px]" value={message} onChange={(e) => setMessage(e.target.value)} />
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                                <Button type="button" onClick={handleComposeEmail} className="w-full">
-                                    <Mail className="mr-2 h-4 w-4"/>
-                                    Compose Email
-                                </Button>
+                            <div className="pt-2">
                                 <Button type="button" onClick={handleSendWhatsApp} className="w-full bg-green-600 hover:bg-green-700 text-white">
                                     <WhatsAppIcon className="mr-2 h-4 w-4"/>
                                     Send on WhatsApp
