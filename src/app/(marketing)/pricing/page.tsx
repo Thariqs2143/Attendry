@@ -195,7 +195,7 @@ const PricingPlans = () => {
       }
     };
     
-    const dodo = new window.DodoPay(options);
+    const dodo = window.DodoPay(options);
     dodo.open();
   }
 
@@ -390,3 +390,5 @@ export default function PricingPage() {
         </div>
     )
 }
+
+    

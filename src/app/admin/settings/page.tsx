@@ -235,7 +235,7 @@ const PricingPlans = ({ profile }: { profile: Partial<FullProfile> }) => {
       }
     };
     
-    const dodo = new window.DodoPay(options);
+    const dodo = window.DodoPay(options);
     dodo.open();
   }
 
@@ -913,3 +913,5 @@ export default function AdminSettingsPage() {
     </Suspense>
   );
 }
+
+    
