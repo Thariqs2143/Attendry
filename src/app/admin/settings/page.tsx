@@ -144,25 +144,6 @@ const PricingPlans = ({ profile }: { profile: Partial<FullProfile> }) => {
     }
   ];
 
-  const featureComparison = [
-    { name: 'QR Code Check-in/out', trial: true, starter: true, growth: true, pro: true },
-    { name: 'Manual Attendance Entry', trial: true, starter: true, growth: true, pro: true },
-    { name: 'Live Attendance Dashboard', trial: true, starter: true, growth: true, pro: true },
-    { name: 'Easy Employee Onboarding', trial: true, starter: true, growth: true, pro: true },
-    { name: 'Employee Profiles', trial: true, starter: true, growth: true, pro: true },
-    { name: 'Detailed Attendance Reports', trial: true, starter: true, growth: true, pro: true },
-    { name: 'Export Reports (PDF / Excel)', trial: true, starter: true, growth: true, pro: true },
-    { name: 'Muster Roll Generation', trial: true, starter: true, growth: true, pro: true },
-    { name: 'Automated Payroll Calculation', trial: true, starter: true, growth: true, pro: true },
-    { name: 'Points & Rewards System', trial: true, starter: true, growth: true, pro: true },
-    { name: 'Punctuality Leaderboard', trial: true, starter: true, growth: true, pro: true },
-    { name: 'Multi-Branch Support', trial: false, starter: false, growth: true, pro: true },
-    { name: 'Staff Transfer Between Branches', trial: false, starter: false, growth: true, pro: true },
-    { name: 'AI-Powered Weekly Briefing', trial: true, starter: false, growth: false, pro: true },
-    { name: 'Smart Staffing Advisor (AI)', trial: true, starter: false, growth: false, pro: true },
-    { name: 'Customizable Alerts & Notifications', trial: false, starter: false, growth: false, pro: true },
-  ];
-
   const handlePayment = async (plan: typeof plans[0]) => {
     if (!profile || !profile.uid) {
         toast({ title: "Please Login", description: "You must be logged in to subscribe.", variant: "destructive" });
@@ -227,8 +208,6 @@ const PricingPlans = ({ profile }: { profile: Partial<FullProfile> }) => {
 
   const currencySymbol = currency === 'inr' ? '₹' : '$';
   const cycleText = billingCycle === 'monthly' ? '/month' : billingCycle === 'yearly' ? '/year' : '/3-years';
-  const CheckIcon = ({ className = 'w-5 h-5' }) => <Check className={cn("text-emerald-500", className)} />;
-  const XMark = ({ className = 'w-5 h-5' }) => <X className={cn("text-gray-400 dark:text-gray-600", className)} />;
 
 
   return (
@@ -342,7 +321,7 @@ const PricingPlans = ({ profile }: { profile: Partial<FullProfile> }) => {
                           <ul className="space-y-3 text-sm mb-4">
                               {p.mainFeatures.map((feature, i) => (
                                   <li key={i} className="flex items-start gap-x-3 text-slate-400">
-                                      <CheckIcon className="w-5 h-5 text-green-400 mt-0.5" />
+                                      <Check className="w-5 h-5 text-green-400 mt-0.5" />
                                       <span>{feature}</span>
                                   </li>
                               ))}
@@ -364,42 +343,6 @@ const PricingPlans = ({ profile }: { profile: Partial<FullProfile> }) => {
                 </div>
             )
         })}
-      </div>
-      
-      <div className="mt-16 bg-slate-900 text-white p-4 md:p-8 rounded-2xl">
-        <h2 className="text-3xl font-bold text-center mb-8">Full Feature Comparison</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="border-b border-slate-700">
-                <th className="py-4 px-2 md:px-4 font-semibold text-slate-300 min-w-[200px] md:min-w-[250px]">Feature</th>
-                {plans.map((p) => (
-                  <th key={p.id} className="py-4 px-2 md:px-4 font-semibold text-center text-slate-300">{p.name}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {featureComparison.map((feature, index) => (
-                <tr key={index} className="border-b border-slate-800">
-                  <td className="py-4 px-2 md:px-4 text-sm text-slate-400">{feature.name}</td>
-                  <td className="py-4 px-2 md:px-4 text-center">
-                    {feature.trial ? <CheckIcon /> : <XMark />}
-                  </td>
-                   <td className="py-4 px-2 md:px-4 text-center">
-                    {feature.starter ? <CheckIcon /> : <XMark />}
-                  </td>
-                  <td className="py-4 px-2 md:px-4 text-center">
-                    {feature.growth ? <CheckIcon /> : <XMark />}
-                  </td>
-                  <td className="py-4 px-2 md:px-4 text-center">
-                    {feature.pro ? <CheckIcon /> : <XMark />}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="text-center text-sm text-slate-400 mt-8">Need a custom quote or on-premise version? <Link href="/contact" className="font-semibold text-primary hover:underline">Contact our team</Link> — we'll tailor it for your business.</p>
       </div>
     </div>
   );
@@ -741,7 +684,7 @@ function SettingsPageContent() {
                 </TabsContent>
 
                 <TabsContent value="subscription">
-                    {userProfile && <PricingPlans profile={userProfile} />}
+                    {userProfile && <PricingPlans />}
                 </TabsContent>
                 
                 <TabsContent value="shifts" className="space-y-6 mt-0">
