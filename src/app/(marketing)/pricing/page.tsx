@@ -340,7 +340,7 @@ const PricingPlans = () => {
       <div className="mt-16 bg-slate-900 text-white p-4 md:p-8 rounded-2xl">
         <h2 className="text-3xl font-bold text-center mb-8">Full Feature Comparison</h2>
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full min-w-[640px] text-left">
             <thead>
               <tr className="border-b border-slate-700">
                 <th className="py-4 px-2 md:px-4 font-semibold text-slate-300 min-w-[200px] md:min-w-[250px]">Feature</th>

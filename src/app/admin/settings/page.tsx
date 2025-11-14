@@ -381,32 +381,32 @@ const PricingPlans = ({ profile }: { profile: FullProfile | null }) => {
         })}
       </div>
       
-      <div className="mt-16 bg-slate-900 text-white p-8 rounded-2xl">
+      <div className="mt-16 bg-slate-900 text-white p-4 md:p-8 rounded-2xl">
         <h2 className="text-3xl font-bold text-center mb-8">Full Feature Comparison</h2>
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full min-w-[640px] text-left">
             <thead>
               <tr className="border-b border-slate-700">
-                <th className="py-4 px-4 font-semibold text-slate-300 min-w-[250px]">Feature</th>
+                <th className="py-4 px-2 md:px-4 font-semibold text-slate-300 min-w-[200px] md:min-w-[250px]">Feature</th>
                 {plans.map((p) => (
-                  <th key={p.id} className="py-4 px-4 font-semibold text-center text-slate-300">{p.name}</th>
+                  <th key={p.id} className="py-4 px-2 md:px-4 font-semibold text-center text-slate-300">{p.name}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {featureComparison.map((feature, index) => (
                 <tr key={index} className="border-b border-slate-800">
-                  <td className="py-4 px-4 text-sm text-slate-400">{feature.name}</td>
-                  <td className="py-4 px-4 text-center">
+                  <td className="py-4 px-2 md:px-4 text-sm text-slate-400">{feature.name}</td>
+                  <td className="py-4 px-2 md:px-4 text-center">
                     {feature.trial ? <CheckIcon /> : <XMark />}
                   </td>
-                   <td className="py-4 px-4 text-center">
+                   <td className="py-4 px-2 md:px-4 text-center">
                     {feature.starter ? <CheckIcon /> : <XMark />}
                   </td>
-                  <td className="py-4 px-4 text-center">
+                  <td className="py-4 px-2 md:px-4 text-center">
                     {feature.growth ? <CheckIcon /> : <XMark />}
                   </td>
-                  <td className="py-4 px-4 text-center">
+                  <td className="py-4 px-2 md:px-4 text-center">
                     {feature.pro ? <CheckIcon /> : <XMark />}
                   </td>
                 </tr>
@@ -617,7 +617,7 @@ function SettingsPageContent() {
             </div>
             
             <div className="sticky top-14 md:top-0 z-30 bg-background/80 backdrop-blur-sm -mx-6 px-6 py-4 mb-6 border-b">
-                 <TabsList className="grid w-full grid-cols-5 h-auto p-1 border-2 border-border bg-muted">
+                 <TabsList className="h-auto items-center justify-center rounded-md p-1 text-muted-foreground grid w-full grid-cols-5 bg-muted">
                     <TabsTrigger value="profile" className="text-xs sm:text-sm py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md transition-all duration-300">
                         <UserIcon className="h-5 w-5 lg:mr-2" /><span className="hidden lg:inline">Profile</span>
                     </TabsTrigger>
