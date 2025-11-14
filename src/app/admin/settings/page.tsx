@@ -278,9 +278,9 @@ const PricingPlans = () => {
                 <span className={cn(currency === 'usd' ? 'text-primary' : 'text-gray-500 dark:text-gray-400')}>USD ($)</span>
             </div>
             <Separator orientation="vertical" className="h-6 hidden sm:block" />
-             <div className="w-full sm:w-auto">
+             <div className="w-full sm:w-auto sm:max-w-xs">
                 <Select value={billingCycle} onValueChange={(value) => setBillingCycle(value as any)}>
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger>
                         <SelectValue placeholder="Select billing cycle" />
                     </SelectTrigger>
                     <SelectContent>
@@ -636,7 +636,7 @@ function SettingsPageContent() {
             </div>
             
             <div className="sticky top-14 md:top-0 z-30 bg-background/80 backdrop-blur-sm -mx-6 px-6 py-4 mb-6 border-b">
-                 <TabsList className="h-auto items-center justify-center rounded-md p-1 text-muted-foreground grid w-full grid-cols-5 bg-muted">
+                 <TabsList className="items-center justify-center rounded-md bg-muted p-1 text-muted-foreground grid w-full grid-cols-5 h-auto border-2 border-border">
                     <TabsTrigger value="profile" className="text-xs sm:text-sm py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md transition-all duration-300">
                         <UserIcon className="h-5 w-5 lg:mr-2" /><span className="hidden lg:inline">Profile</span>
                     </TabsTrigger>
@@ -951,5 +951,3 @@ export default function AdminSettingsPage() {
     </Suspense>
   );
 }
-
-    
