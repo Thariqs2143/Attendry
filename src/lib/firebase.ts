@@ -1,10 +1,10 @@
 
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
-import { getMessaging, getToken } from "firebase/messaging";
-import { getFunctions } from "firebase/functions";
+import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
+import { getAuth, type Auth } from "firebase/auth";
+import { getFirestore, type Firestore } from "firebase/firestore";
+import { getStorage, type FirebaseStorage } from "firebase/storage";
+import { getMessaging, getToken, type Messaging } from "firebase/messaging";
+import { getFunctions, type Functions } from "firebase/functions";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -16,21 +16,36 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-// Initialize Firebase only on the client side
-let app;
-if (typeof window !== 'undefined' && !getApps().length) {
-    app = initializeApp(firebaseConfig);
-} else if (typeof window !== 'undefined') {
-    app = getApp();
+// Singleton pattern to ensure only one instance of services
+let app: FirebaseApp;
+let auth: Auth;
+let db: Firestore;
+let storage: FirebaseStorage;
+let functions: Functions;
+let messaging: Messaging | null = null;
+
+
+// This function should only be called on the client side
+function initializeFirebase() {
+    if (typeof window !== 'undefined') {
+        if (!getApps().length) {
+            app = initializeApp(firebaseConfig);
+        } else {
+            app = getApp();
+        }
+        auth = getAuth(app);
+        db = getFirestore(app);
+        storage = getStorage(app);
+        functions = getFunctions(app);
+        if (typeof window !== 'undefined' && "Notification" in window) {
+           messaging = getMessaging(app);
+        }
+    }
 }
 
-const auth = getAuth(app);
-const db = getFirestore(app);
-const storage = getStorage(app);
-const functions = getFunctions(app);
-const messaging = typeof window !== 'undefined' && app ? getMessaging(app) : null;
+// Call initialization
+initializeFirebase();
 
-// Function to request permission and get token
 const requestForToken = async () => {
     if (!messaging) {
         console.log("Firebase Messaging is not available in this environment.");
@@ -46,10 +61,8 @@ const requestForToken = async () => {
     try {
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
-            console.log('Notification permission granted.');
             const currentToken = await getToken(messaging, { vapidKey });
             if (currentToken) {
-                console.log('current token for client: ', currentToken);
                 return currentToken;
             } else {
                 console.log('No registration token available. Request permission to generate one.');
@@ -64,6 +77,5 @@ const requestForToken = async () => {
         return null;
     }
 };
-
 
 export { app, auth, db, storage, functions, messaging, requestForToken };
