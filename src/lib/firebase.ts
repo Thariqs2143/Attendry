@@ -1,10 +1,10 @@
 
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
-import { getAuth, type Auth } from "firebase/auth";
-import { getFirestore, type Firestore } from "firebase/firestore";
-import { getStorage, type FirebaseStorage } from "firebase/storage";
-import { getMessaging, getToken, type Messaging } from "firebase/messaging";
-import { getFunctions, type Functions } from "firebase/functions";
+import { getAuth as getFirebaseAuth, type Auth } from "firebase/auth";
+import { getFirestore as getFirebaseFirestore, type Firestore } from "firebase/firestore";
+import { getStorage as getFirebaseStorage, type FirebaseStorage } from "firebase/storage";
+import { getMessaging as getFirebaseMessaging, getToken, type Messaging } from "firebase/messaging";
+import { getFunctions as getFirebaseFunctions, type Functions } from "firebase/functions";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -16,7 +16,6 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-// Singleton pattern to ensure only one instance of services
 let app: FirebaseApp;
 let auth: Auth;
 let db: Firestore;
@@ -24,26 +23,24 @@ let storage: FirebaseStorage;
 let functions: Functions;
 let messaging: Messaging | null = null;
 
-
-// This function should only be called on the client side
 function initializeFirebase() {
-    if (typeof window !== 'undefined') {
-        if (!getApps().length) {
-            app = initializeApp(firebaseConfig);
-        } else {
-            app = getApp();
-        }
-        auth = getAuth(app);
-        db = getFirestore(app);
-        storage = getStorage(app);
-        functions = getFunctions(app);
-        if (typeof window !== 'undefined' && "Notification" in window) {
-           messaging = getMessaging(app);
-        }
+  if (typeof window !== "undefined") {
+    if (!getApps().length) {
+      app = initializeApp(firebaseConfig);
+    } else {
+      app = getApp();
     }
+    auth = getFirebaseAuth(app);
+    db = getFirebaseFirestore(app);
+    storage = getFirebaseStorage(app);
+    functions = getFirebaseFunctions(app);
+    if (typeof window !== 'undefined' && "Notification" in window) {
+      messaging = getFirebaseMessaging(app);
+    }
+  }
 }
 
-// Call initialization
+// Initialize on load (client-side only)
 initializeFirebase();
 
 const requestForToken = async () => {
