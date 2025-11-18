@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Check, ArrowRight, Building, Users, X, Info } from "lucide-react";
+import { Check, ArrowRight, Building, Users, X } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
