@@ -12,7 +12,8 @@ import { signOut, onAuthStateChanged, type User as AuthUser } from "firebase/aut
 import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState, Suspense } from "react";
-import { collection, getDocs, doc, getDoc, setDoc, updateDoc, query, where, onSnapshot, addDoc, deleteDoc } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, setDoc, updateDoc, query, where, onSnapshot, addDoc, deleteDoc, getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 import { Switch } from "@/components/ui/switch";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import type { User as AppUser } from '@/app/admin/employees/page';
@@ -38,7 +39,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
-import { getAuth, getFirestore } from "firebase/firestore";
+
 
 // Types
 export type Shift = {
@@ -933,3 +934,5 @@ export default function AdminSettingsPage() {
     </Suspense>
   );
 }
+
+    
