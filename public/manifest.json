@@ -1,12 +1,12 @@
-
 {
   "name": "Attendry",
   "short_name": "Attendry",
-  "description": "Effortless attendance tracking for modern businesses.",
   "start_url": "/start-app",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#2050d4",
-  "theme_color": "#2050d4",
+  "background_color": "#ffffff",
+  "theme_color": "#0f172a",
+  "orientation": "portrait-primary",
   "icons": [
     {
       "src": "/icons/icon-192x192.png",
@@ -16,6 +16,12 @@
     {
       "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/maskable-icon-512.png",
+      "sizes": "512x512",
+      "purpose": "maskable",
       "type": "image/png"
     }
   ]
