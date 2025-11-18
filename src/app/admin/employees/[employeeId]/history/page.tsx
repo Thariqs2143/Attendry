@@ -4,15 +4,15 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CalendarDays, CheckCircle2, XCircle, Loader2, ArrowLeft, Clock, Clock4 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { collection, query, where, onSnapshot, orderBy, Timestamp, doc, getDoc } from "firebase/firestore";
-import { db, auth } from "@/lib/firebase";
+import { getFirestore } from 'firebase/firestore';
 import { startOfWeek, startOfMonth, endOfWeek, endOfMonth, format, parseISO } from 'date-fns';
 import { useParams, useRouter } from "next/navigation";
 import type { User } from "../../../employees/page";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { onAuthStateChanged, type User as AuthUser } from 'firebase/auth';
+import { getAuth, onAuthStateChanged, type User as AuthUser } from 'firebase/auth';
 
 type HistoryRecord = {
     id: string;
@@ -78,7 +78,7 @@ const HistoryList = ({ records, loading }: { records: HistoryRecord[]; loading: 
   </div>
 );
 
-export default function EmployeeHistoryPage() {
+function EmployeeHistoryContent() {
     const params = useParams();
     const router = useRouter();
     const { employeeId } = params as { employeeId: string };
@@ -89,6 +89,7 @@ export default function EmployeeHistoryPage() {
     const [loading, setLoading] = useState(true);
 
      useEffect(() => {
+        const auth = getAuth();
         const unsubscribe = onAuthStateChanged(auth, (user) => {
             if (user) {
                 setAuthUser(user);
@@ -101,6 +102,7 @@ export default function EmployeeHistoryPage() {
 
     useEffect(() => {
         if (!employeeId || !authUser) return;
+        const db = getFirestore();
 
         const fetchEmployee = async () => {
             const docRef = doc(db, 'shops', authUser.uid, 'employees', employeeId);
@@ -117,6 +119,7 @@ export default function EmployeeHistoryPage() {
 
     useEffect(() => {
         if (!employeeId || !authUser) return;
+        const db = getFirestore();
         
         setLoading(true);
         const attendanceRef = collection(db, 'shops', authUser.uid, 'attendance');
@@ -187,4 +190,12 @@ export default function EmployeeHistoryPage() {
       </Tabs>
     </div>
   );
+}
+
+export default function EmployeeHistoryPage() {
+    return (
+        <Suspense fallback={<div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+            <EmployeeHistoryContent />
+        </Suspense>
+    )
 }

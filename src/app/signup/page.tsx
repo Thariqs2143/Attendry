@@ -9,13 +9,13 @@ import { useToast } from '@/hooks/use-toast';
 import { UserCheck, Loader2, AlertTriangle, Building } from 'lucide-react';
 import { useEffect, useState, Suspense } from 'react';
 import { doc, getDoc, writeBatch } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebase';
+import { getFirestore } from 'firebase/firestore';
 import type { User } from '@/app/admin/employees/page';
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, getAuth } from "firebase/auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 
-function SignUpPage() {
+function SignUpPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { toast } = useToast();
@@ -34,6 +34,7 @@ function SignUpPage() {
             setError("Invalid or missing invitation link. Please check the URL.");
             return;
         }
+        const db = getFirestore();
 
         const fetchInvite = async () => {
             const inviteDocRef = doc(db, 'shops', shopId, 'invites', inviteId);
@@ -67,6 +68,8 @@ function SignUpPage() {
         }
 
         setLoading(true);
+        const auth = getAuth();
+        const db = getFirestore();
 
         try {
             // 1. Create the user in Firebase Auth
@@ -213,7 +216,7 @@ export default function SuspendedSignUpPage() {
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
             </div>
         }>
-            <SignUpPage />
+            <SignUpPageContent />
         </Suspense>
     )
 }

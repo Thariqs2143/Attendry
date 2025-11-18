@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
@@ -10,12 +10,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import { IndianFlagIcon } from "@/components/ui/indian-flag-icon";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
-import { auth, db } from "@/lib/firebase";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, getAuth } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import { getFirestore } from "firebase/firestore";
 import { Label } from "@/components/ui/label";
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
   const { toast } = useToast();
   const searchParams = useSearchParams();
@@ -40,6 +40,8 @@ export default function LoginPage() {
     }
 
     setLoading(true);
+    const auth = getAuth();
+    const db = getFirestore();
 
     try {
       if (isNewUser) {
@@ -207,4 +209,12 @@ export default function LoginPage() {
 
     </div>
   );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={<div className="flex min-h-screen w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+            <LoginContent />
+        </Suspense>
+    )
 }

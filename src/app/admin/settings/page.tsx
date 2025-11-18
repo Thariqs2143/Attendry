@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
 import { Trophy, LogOut, Save, Loader2, Bell, Edit, Building, Mail, Check, Crown, ArrowRight, CalendarDays, ShieldCheck, Gift, Upload, Copy, Share2, CheckCircle, Users, Briefcase, MapPin, Percent, Phone, User as UserIcon, Settings as SettingsIcon, PlusCircle, Trash2, Clock, X, XCircle } from "lucide-react";
-import { auth, db, requestForToken, functions } from "@/lib/firebase";
 import { signOut, onAuthStateChanged, type User as AuthUser } from "firebase/auth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
@@ -26,7 +24,7 @@ import { cn } from "@/lib/utils";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useSubscription } from "@/context/SubscriptionContext";
 import { Progress } from "@/components/ui/progress";
-import { httpsCallable } from "firebase/functions";
+import { httpsCallable, getFunctions } from "firebase/functions";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,6 +38,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
+import { getAuth, getFirestore } from "firebase/firestore";
 
 // Types
 export type Shift = {
@@ -450,6 +449,7 @@ function SettingsPageContent() {
 
 
   useEffect(() => {
+    const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
         if (!user) {
             router.push('/admin/login');
@@ -457,6 +457,7 @@ function SettingsPageContent() {
         }
         setAuthUser(user);
         setLoading(true);
+        const db = getFirestore();
 
         try {
             const userDocRef = doc(db, 'users', user.uid);
@@ -508,6 +509,7 @@ function SettingsPageContent() {
   
    useEffect(() => {
     if (!authUser) return;
+    const db = getFirestore();
     const shiftsCollectionRef = collection(db, 'shops', authUser.uid, 'shifts');
     const unsubscribe = onSnapshot(shiftsCollectionRef, (snapshot) => {
         const fetchedShifts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Shift));
@@ -526,6 +528,7 @@ function SettingsPageContent() {
   const handleSaveSettings = async () => {
     if (!authUser) return;
     setSaving(true);
+    const db = getFirestore();
     const settingsDocRef = doc(db, 'shops', authUser.uid, 'config', 'main');
     const shopDocRef = doc(db, 'shops', authUser.uid);
     try {
@@ -547,9 +550,13 @@ function SettingsPageContent() {
   const handleEnableNotifications = async () => {
     if (!authUser) return;
     setNotifLoading(true);
+    // This part requires firebase.ts to be correctly set up for client-side
+    // Let's assume it is and dynamically import requestForToken
     try {
+      const { requestForToken } = await import('@/lib/firebase');
       const token = await requestForToken();
       if (token) {
+        const db = getFirestore();
         const userDocRef = doc(db, 'users', authUser.uid);
         await updateDoc(userDocRef, { fcmToken: token });
         toast({ title: "Notifications Enabled!", description: "You will now receive alerts and updates." });
@@ -562,6 +569,7 @@ function SettingsPageContent() {
   };
 
   const handleLogout = async () => {
+    const auth = getAuth();
     try {
       await signOut(auth);
       toast({ title: "Logged Out" });
@@ -577,6 +585,7 @@ function SettingsPageContent() {
       return;
     }
     setIsAddingShift(true);
+    const db = getFirestore();
     try {
       const shiftsCollectionRef = collection(db, 'shops', authUser.uid, 'shifts');
       await addDoc(shiftsCollectionRef, {
@@ -598,6 +607,7 @@ function SettingsPageContent() {
 
   const handleDeleteShift = async (shiftId: string) => {
     if (!authUser) return;
+    const db = getFirestore();
     const shiftDocRef = doc(db, 'shops', authUser.uid, 'shifts', shiftId);
     try {
       await deleteDoc(shiftDocRef);
@@ -923,5 +933,3 @@ export default function AdminSettingsPage() {
     </Suspense>
   );
 }
-
-    

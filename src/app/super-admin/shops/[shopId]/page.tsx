@@ -8,9 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, ArrowLeft, Building, Save, ShieldAlert, Trash2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { doc, getDoc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getFirestore } from 'firebase/firestore';
 import type { User as AppUser } from '@/app/admin/employees/page';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -43,7 +43,7 @@ type ShopProfile = {
 
 type FullProfile = AppUser & ShopProfile;
 
-export default function SuperAdminViewShopPage() {
+function SuperAdminViewShopContent() {
     const router = useRouter();
     const params = useParams();
     const { shopId } = params as { shopId: string };
@@ -56,6 +56,7 @@ export default function SuperAdminViewShopPage() {
 
     useEffect(() => {
         if (!shopId) return;
+        const db = getFirestore();
         
         const fetchProfileData = async () => {
             setLoading(true);
@@ -95,6 +96,7 @@ export default function SuperAdminViewShopPage() {
     const handleSaveChanges = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setSaving(true);
+        const db = getFirestore();
         try {
             const batch = writeBatch(db);
 
@@ -130,6 +132,7 @@ export default function SuperAdminViewShopPage() {
 
     const handleStatusSave = async () => {
         setSaving(true);
+        const db = getFirestore();
         try {
             const shopDocRef = doc(db, 'shops', shopId);
             await updateDoc(shopDocRef, { status: status });
@@ -147,6 +150,7 @@ export default function SuperAdminViewShopPage() {
     
     const handleDeleteShop = async () => {
         setDeleting(true);
+        const db = getFirestore();
         try {
             // Note: In a production app, this should trigger a backend function 
             // to ensure all subcollections (employees, attendance, etc.) are deleted.
@@ -341,4 +345,12 @@ export default function SuperAdminViewShopPage() {
       </div>
     </div>
   );
+}
+
+export default function SuperAdminViewShopPage() {
+    return (
+        <Suspense fallback={<div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+            <SuperAdminViewShopContent />
+        </Suspense>
+    )
 }

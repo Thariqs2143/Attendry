@@ -8,11 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Store, ArrowLeft } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebase';
+import { getFirestore } from 'firebase/firestore';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { onAuthStateChanged, type User as AuthUser } from 'firebase/auth';
+import { onAuthStateChanged, type User as AuthUser, getAuth } from 'firebase/auth';
 import Link from 'next/link';
 
 type ShopProfile = {
@@ -24,7 +24,7 @@ type ShopProfile = {
 };
 
 
-export default function EditBranchPage() {
+function EditBranchContent() {
     const router = useRouter();
     const params = useParams();
     const { branchId } = params as { branchId: string };
@@ -35,6 +35,7 @@ export default function EditBranchPage() {
     const [profile, setProfile] = useState<Partial<ShopProfile>>({});
 
     useEffect(() => {
+        const auth = getAuth();
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             if (user) {
                 setAuthUser(user);
@@ -47,6 +48,7 @@ export default function EditBranchPage() {
     
     useEffect(() => {
         if (!authUser || !branchId) return;
+        const db = getFirestore();
 
         const fetchBranch = async () => {
             setLoading(true);
@@ -82,6 +84,7 @@ export default function EditBranchPage() {
         }
 
         setSaving(true);
+        const db = getFirestore();
         const shopDocRef = doc(db, 'shops', branchId);
         try {
             await updateDoc(shopDocRef, {
@@ -178,4 +181,12 @@ export default function EditBranchPage() {
       </div>
     </div>
   );
+}
+
+export default function EditBranchPage() {
+    return (
+        <Suspense fallback={<div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+            <EditBranchContent />
+        </Suspense>
+    )
 }

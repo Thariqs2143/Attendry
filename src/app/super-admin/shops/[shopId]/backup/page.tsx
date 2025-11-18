@@ -5,9 +5,9 @@ import { useRouter, useParams } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, ArrowLeft, Download, Users, CalendarCheck, Upload, FileJson, FileText, FileSpreadsheet } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { doc, getDoc, collection, getDocs, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getFirestore } from 'firebase/firestore';
 import type { User as AppUser } from '@/app/admin/employees/page';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -44,7 +44,7 @@ type AttendanceRecord = {
   status: 'On-time' | 'Late' | 'Absent' | 'Manual' | 'Half-day';
 };
 
-export default function SuperAdminBackupPage() {
+function SuperAdminBackupContent() {
     const router = useRouter();
     const params = useParams();
     const { shopId } = params as { shopId: string };
@@ -57,6 +57,7 @@ export default function SuperAdminBackupPage() {
 
     useEffect(() => {
         if (!shopId) return;
+        const db = getFirestore();
         
         const fetchShopBackupData = async () => {
             setLoading(true);
@@ -141,7 +142,7 @@ export default function SuperAdminBackupPage() {
             // Employees Table
             doc.setFontSize(14);
             doc.text("Employees", 14, 40);
-            doc.autoTable({
+            (doc as any).autoTable({
                 startY: 45,
                 head: [['Name', 'Role', 'Status', 'Phone', 'Email']],
                 body: employees.map(e => [e.name, e.role, e.status, e.phone || 'N/A', e.email || 'N/A']),
@@ -150,7 +151,7 @@ export default function SuperAdminBackupPage() {
             // Attendance Table
             const finalY = (doc as any).lastAutoTable.finalY || 100;
             doc.text("Attendance Records", 14, finalY + 15);
-            doc.autoTable({
+            (doc as any).autoTable({
                 startY: finalY + 20,
                 head: [['User ID', 'Check-in', 'Check-out', 'Status']],
                 body: attendance.map(att => [
@@ -335,4 +336,12 @@ export default function SuperAdminBackupPage() {
       </div>
     </div>
   );
+}
+
+export default function SuperAdminBackupPage() {
+    return (
+        <Suspense fallback={<div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+            <SuperAdminBackupContent />
+        </Suspense>
+    )
 }

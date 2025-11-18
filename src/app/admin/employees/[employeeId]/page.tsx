@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import type { User } from '../page';
 import { Button } from "@/components/ui/button";
@@ -15,8 +15,8 @@ import { ArrowLeft, Trash2, Loader2, History, Save, GitBranch, Clock } from 'luc
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { doc, getDoc, deleteDoc, updateDoc, writeBatch, collection, getDocs, where, query, onSnapshot } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebase';
-import { onAuthStateChanged, type User as AuthUser } from 'firebase/auth';
+import { getAuth, onAuthStateChanged, type User as AuthUser } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
@@ -62,7 +62,7 @@ const calculateTenure = (joinDate: string) => {
     return tenureString || 'Less than a month';
 };
 
-export default function EmployeeDetailPage() {
+function EmployeeDetailContent() {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
@@ -84,6 +84,7 @@ export default function EmployeeDetailPage() {
   const [selectedShift, setSelectedShift] = useState('');
 
   useEffect(() => {
+    const auth = getAuth();
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (user) {
         setAuthUser(user);
@@ -96,6 +97,7 @@ export default function EmployeeDetailPage() {
 
   useEffect(() => {
     if (!authUser || !branchId) return;
+    const db = getFirestore();
 
     const fetchBranches = async () => {
         const q = query(collection(db, 'shops'), where('ownerId', '==', authUser.uid));
@@ -123,6 +125,7 @@ export default function EmployeeDetailPage() {
   useEffect(() => {
     
     if (!employeeId || !branchId) return;
+    const db = getFirestore();
 
     const fetchEmployee = async () => {
         setLoading(true);
@@ -159,6 +162,7 @@ export default function EmployeeDetailPage() {
   const handleSave = async () => {
     if (!employee?.id || !branchId) return;
     setSaving(true);
+    const db = getFirestore();
     const userDocRef = doc(db, 'shops', branchId, 'employees', employee.id);
     
     try {
@@ -191,6 +195,7 @@ export default function EmployeeDetailPage() {
   const handleDeleteEmployee = async () => {
     if (!employee?.id || !branchId) return;
     setDeleting(true);
+    const db = getFirestore();
     
     try {
         const batch = writeBatch(db);
@@ -228,6 +233,7 @@ export default function EmployeeDetailPage() {
            return;
       }
       setTransferring(true);
+      const db = getFirestore();
 
       const sourceRef = doc(db, 'shops', branchId, 'employees', employee.id);
       const destinationCollectionRef = collection(db, 'shops', selectedBranch, 'employees');
@@ -448,4 +454,12 @@ export default function EmployeeDetailPage() {
       </Card>
     </div>
   );
+}
+
+export default function EmployeeDetailPage() {
+    return (
+        <Suspense fallback={<div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+            <EmployeeDetailContent />
+        </Suspense>
+    )
 }
