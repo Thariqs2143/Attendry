@@ -42,4 +42,5 @@ const nextConfig: NextConfig = {
   },
 };
 
-const config = process.env.TURBOPACK ? nextConfig : withPWA(nextConfi
+const config = process.env.TURBOPACK ? nextConfig : withPWA(nextConfig);
+export default config;
