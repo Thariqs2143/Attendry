@@ -16,13 +16,19 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-// Initialize Firebase
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+// Initialize Firebase only on the client side
+let app;
+if (typeof window !== 'undefined' && !getApps().length) {
+    app = initializeApp(firebaseConfig);
+} else if (typeof window !== 'undefined') {
+    app = getApp();
+}
+
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 const functions = getFunctions(app);
-const messaging = typeof window !== 'undefined' ? getMessaging(app) : null;
+const messaging = typeof window !== 'undefined' && app ? getMessaging(app) : null;
 
 // Function to request permission and get token
 const requestForToken = async () => {
@@ -61,5 +67,3 @@ const requestForToken = async () => {
 
 
 export { app, auth, db, storage, functions, messaging, requestForToken };
-
-    
