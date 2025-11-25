@@ -42,13 +42,18 @@ service cloud.firestore {
       
       // More specific rules for attendance
       match /attendance/{attendanceId} {
-        allow create: if isEmployee(shopId);
-        allow read, write: if isShopOwner(shopId) || (isEmployee(shopId) && resource.data.userId == request.auth.uid);
+        allow create: if isEmployee(shopId) && request.resource.data.userId == request.auth.uid;
+        // An employee can get their own record, an owner can get any.
+        allow read: if (isEmployee(shopId) && resource.data.userId == request.auth.uid) || isShopOwner(shopId);
+        // An employee can query for their own records, an owner can query for any.
+        allow list: if (isEmployee(shopId) && request.query.where.userId == request.auth.uid) || isShopOwner(shopId);
+        allow update: if isShopOwner(shopId) || (isEmployee(shopId) && resource.data.userId == request.auth.uid);
+        allow delete: if isShopOwner(shopId);
       }
       
       // More specific rules for leave requests
       match /leaveRequests/{leaveId} {
-         allow create: if isEmployee(shopId);
+         allow create: if isEmployee(shopId) && request.resource.data.userId == request.auth.uid;
          allow read, write: if isShopOwner(shopId) || (isEmployee(shopId) && resource.data.userId == request.auth.uid);
       }
     }
