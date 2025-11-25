@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -11,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Calendar as CalendarIcon, Download, FileText, Check, X, Calculator, Clock4, Users, Receipt, ChevronDown, Building, ChevronsUpDown, Search, Filter, FileSpreadsheet, Lock, AlertTriangle, Star, ShieldHalf, GitCommitHorizontal, CircleDot } from "lucide-react";
+import { Loader2, Calendar as CalendarIcon, Download, FileText, Check, X, Calculator, Clock4, Users, Receipt, ChevronDown, Building, ChevronsUpDown, Search, Filter, FileSpreadsheet, Lock, AlertTriangle, Star, ShieldHalf, GitCommitHorizontal, CircleDot, TrendingUp } from "lucide-react";
 import { collection, query, where, getDocs, orderBy, Timestamp, doc, getDoc, collectionGroup, onSnapshot } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase";
 import { format, subDays, getDaysInMonth, startOfMonth, endOfMonth, differenceInDays, eachDayOfInterval, startOfWeek, endOfWeek, setMonth, setYear, isWeekend } from 'date-fns';
@@ -63,7 +62,8 @@ type PayrollData = {
     employeeId: string;
     employeeName: string;
     baseSalary: number;
-    totalPoints: number;
+    finalScore: number;
+    rating: 'Excellent' | 'Acceptable' | 'Needs Improvement' | 'Warning';
     paidLeaveUsed: number;
     unpaidLeave: number;
     halfDays: number;
@@ -268,6 +268,13 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
     const [selectedDate, setSelectedDate] = useState(new Date());
     const { toast } = useToast();
     
+    const getRating = (score: number): PayrollData['rating'] => {
+        if (score >= 15) return 'Excellent';
+        if (score >= 0) return 'Acceptable';
+        if (score >= -10) return 'Needs Improvement';
+        return 'Warning';
+    };
+
     const handleAdjustmentChange = (employeeId: string, type: 'bonus' | 'advances', value: string) => {
         const numericValue = Number(value) || 0;
         setPayrollData(prevData => prevData.map(p => {
@@ -348,7 +355,9 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
             const employeeMonthAttendance = monthAttendanceRecords.filter(r => r.userId === employee.id);
             const dailyRate = (employee.baseSalary || 0) / daysInMonth;
             
-            let totalPoints = 0;
+            let onTimePoints = 0;
+            let latePoints = 0;
+            let absencePenalty = 0;
             let lateEntries = 0;
             let graceUsed = 0;
             let halfDays = 0;
@@ -358,13 +367,13 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
 
             employeeMonthAttendance.forEach(record => {
                  switch (record.status) {
-                    case 'On-time': totalPoints += gamification.onTimePoints; totalPresent++; break;
+                    case 'On-time': onTimePoints += gamification.onTimePoints; totalPresent++; break;
                     case 'Grace Period': graceUsed++; totalPresent++; break;
-                    case 'Late Category 1': lateEntries++; totalPoints += gamification.lateCategory1Points; totalPresent++; lateDeduction += payrollDeductions.lateCategory1Deduction; break;
-                    case 'Late Category 2': lateEntries++; totalPoints += gamification.lateCategory2Points; totalPresent++; lateDeduction += payrollDeductions.lateCategory2Deduction; break;
-                    case 'Late Category 3': lateEntries++; totalPoints += gamification.lateCategory3Points; totalPresent++; lateDeduction += payrollDeductions.lateCategory3Deduction; break;
+                    case 'Late Category 1': lateEntries++; latePoints += Math.abs(gamification.lateCategory1Points); totalPresent++; lateDeduction += payrollDeductions.lateCategory1Deduction; break;
+                    case 'Late Category 2': lateEntries++; latePoints += Math.abs(gamification.lateCategory2Points); totalPresent++; lateDeduction += payrollDeductions.lateCategory2Deduction; break;
+                    case 'Late Category 3': lateEntries++; latePoints += Math.abs(gamification.lateCategory3Points); totalPresent++; lateDeduction += payrollDeductions.lateCategory3Deduction; break;
                     case 'Half-day': halfDays++; totalPresent += 0.5; break; // Count as half present
-                    case 'Absent': absences++; totalPoints += gamification.absentPoints; break;
+                    case 'Absent': absences++; absencePenalty += Math.abs(gamification.absentPoints); break;
                 }
             });
 
@@ -385,10 +394,13 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
             
             const totalDeductions = unpaidLeaveDeductions + halfDayDeductions + lateDeduction;
             const finalSalary = Math.round((employee.baseSalary || 0) - totalDeductions);
+            
+            const finalScore = onTimePoints - latePoints - absencePenalty;
+            const rating = getRating(finalScore);
 
             return {
                 employeeId: employee.id!, employeeName: employee.name, baseSalary: employee.baseSalary || 0,
-                totalPoints, paidLeaveUsed, unpaidLeave, halfDays, lateEntries, graceUsed, absences,
+                finalScore, rating, paidLeaveUsed, unpaidLeave, halfDays, lateEntries, graceUsed, absences,
                 totalPresent, daysInMonth,
                 earnings: { base: employee.baseSalary || 0, bonus: 0 },
                 deductions: { unpaidLeave: unpaidLeaveDeductions, halfDay: halfDayDeductions, lateEntry: lateDeduction, advances: 0 },
@@ -398,6 +410,16 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
 
         setPayrollData(payrollResults);
         setLoading(false);
+    };
+    
+    const getRatingVariant = (rating: PayrollData['rating']) => {
+        switch (rating) {
+            case 'Excellent': return 'secondary';
+            case 'Acceptable': return 'outline';
+            case 'Needs Improvement': return 'default';
+            case 'Warning': return 'destructive';
+            default: return 'default';
+        }
     };
     
     const handleDownloadSlip = (employeeData: PayrollData) => {
@@ -463,18 +485,15 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
 
         doc.autoTable({
             startY: 22,
-            head: [['Employee', 'Base (₹)', 'Bonus (₹)', 'Total Points', 'Late', 'Grace', 'Half-Days', 'Absences', 'Paid Leave', 'Unpaid Leave', 'Deductions (₹)', 'Net Salary (₹)']],
+            head: [['Employee', 'Base (₹)', 'Final Score', 'Rating', 'Late', 'Grace', 'Absences', 'Deductions (₹)', 'Net Salary (₹)']],
             body: payrollData.map(p => [
                 p.employeeName,
                 p.earnings.base.toLocaleString(),
-                p.earnings.bonus.toLocaleString(),
-                p.totalPoints,
+                p.finalScore,
+                p.rating,
                 p.lateEntries,
                 p.graceUsed,
-                p.halfDays,
                 p.absences,
-                p.paidLeaveUsed,
-                p.unpaidLeave,
                 (p.deductions.unpaidLeave + p.deductions.halfDay + p.deductions.advances + p.deductions.lateEntry).toLocaleString(),
                 p.finalSalary.toLocaleString(),
             ]),
@@ -493,7 +512,8 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
             'Employee': p.employeeName,
             'Base Salary': p.earnings.base,
             'Bonus': p.earnings.bonus,
-            'Total Points': p.totalPoints,
+            'Final Score': p.finalScore,
+            'Rating': p.rating,
             'Late Entries': p.lateEntries,
             'Grace Used': p.graceUsed,
             'Half Days': p.halfDays,
@@ -559,6 +579,31 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
                     </div>
                 </div>
             </div>
+            
+             <Card>
+                <CardHeader>
+                    <CardTitle>Score Interpretation</CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                    <div className="p-3 bg-green-100 dark:bg-green-900 rounded-lg">
+                        <p className="font-bold text-green-800 dark:text-green-200">+15 or above</p>
+                        <p className="text-xs text-green-700 dark:text-green-300">Excellent</p>
+                    </div>
+                     <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                        <p className="font-bold text-blue-800 dark:text-blue-200">0 to +14</p>
+                        <p className="text-xs text-blue-700 dark:text-blue-300">Acceptable</p>
+                    </div>
+                     <div className="p-3 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
+                        <p className="font-bold text-yellow-800 dark:text-yellow-200">–1 to –10</p>
+                        <p className="text-xs text-yellow-700 dark:text-yellow-300">Needs Improvement</p>
+                    </div>
+                     <div className="p-3 bg-red-100 dark:bg-red-900 rounded-lg">
+                        <p className="font-bold text-red-800 dark:text-red-200">Below –10</p>
+                        <p className="text-xs text-red-700 dark:text-red-300">HR Warning</p>
+                    </div>
+                </CardContent>
+            </Card>
+            
             <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mt-10 gap-4">
                     <div>
@@ -581,25 +626,14 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
                                             <Card key={p.employeeId} className="p-4 space-y-4">
                                                 <div className="flex justify-between items-start">
                                                     <p className="font-bold">{p.employeeName}</p>
-                                                    <Button 
-                                                        size="sm"
-                                                        onClick={() => handleDownloadSlip(p)}
-                                                        disabled={p.baseSalary === 0}
-                                                        className="bg-blue-600 hover:bg-blue-600"
-                                                    >
-                                                        <Receipt className="mr-2 h-4 w-4"/> Slip
-                                                    </Button>
+                                                    <Badge variant={getRatingVariant(p.rating)}>{p.rating}</Badge>
                                                 </div>
                                                 <Separator />
                                                 <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                                                    <div className="text-muted-foreground">Final Score:</div><div className="font-medium text-right">{p.finalScore}</div>
                                                     <div className="text-muted-foreground">Base Salary:</div><div className="font-medium text-right">₹{p.baseSalary > 0 ? p.baseSalary.toLocaleString() : "N/A"}</div>
-                                                    <div className="text-muted-foreground">Total Points:</div><div className="font-medium text-right">{p.totalPoints}</div>
                                                     <div className="text-muted-foreground">Late:</div><div className="font-medium text-right">{p.lateEntries}</div>
-                                                    <div className="text-muted-foreground">Grace:</div><div className="font-medium text-right">{p.graceUsed}</div>
-                                                    <div className="text-muted-foreground">Half-Days:</div><div className="font-medium text-right">{p.halfDays}</div>
                                                     <div className="text-muted-foreground">Absences:</div><div className="font-medium text-right">{p.absences}</div>
-                                                    <div className="text-muted-foreground">Paid Leave:</div><div className="font-medium text-right">{p.paidLeaveUsed}</div>
-                                                    <div className="text-muted-foreground">Unpaid Leave:</div><div className="font-medium text-right">{p.unpaidLeave}</div>
                                                 </div>
                                                 <Separator />
                                                  <div className="space-y-3 text-sm">
@@ -617,6 +651,14 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
                                                     <span>Final Salary:</span>
                                                     <span>₹{p.finalSalary > 0 ? p.finalSalary.toLocaleString() : "N/A"}</span>
                                                 </div>
+                                                <Button 
+                                                    size="sm"
+                                                    onClick={() => handleDownloadSlip(p)}
+                                                    disabled={p.baseSalary === 0}
+                                                    className="w-full bg-blue-600 hover:bg-blue-600"
+                                                >
+                                                    <Receipt className="mr-2 h-4 w-4"/> Download Pay Slip
+                                                </Button>
                                             </Card>
                                         ))}
                                     </div>
@@ -626,15 +668,12 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
                                             <TableHeader>
                                                 <TableRow>
                                                     <TableHead>Employee</TableHead>
-                                                    <TableHead className="text-center">Base (₹)</TableHead>
-                                                    <TableHead className="text-center">Points</TableHead>
+                                                    <TableHead className="text-center">Final Score</TableHead>
+                                                    <TableHead className="text-center">Rating</TableHead>
                                                     <TableHead className="text-center">Late</TableHead>
-                                                    <TableHead className="text-center">Grace</TableHead>
-                                                    <TableHead className="text-center">Half-Days</TableHead>
                                                     <TableHead className="text-center">Absences</TableHead>
                                                     <TableHead>Bonus (₹)</TableHead>
-                                                    <TableHead>Late Deduction (₹)</TableHead>
-                                                    <TableHead>Other Deduction (₹)</TableHead>
+                                                    <TableHead>Deduction (₹)</TableHead>
                                                     <TableHead className="text-right">Net Salary (₹)</TableHead>
                                                     <TableHead className="text-center">Action</TableHead>
                                                 </TableRow>
@@ -643,16 +682,13 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
                                                 {payrollData.map(p => (
                                                     <TableRow key={p.employeeId}>
                                                         <TableCell className="font-medium whitespace-nowrap">{p.employeeName}</TableCell>
-                                                        <TableCell className="text-center">{p.baseSalary > 0 ? p.baseSalary.toLocaleString() : "N/A"}</TableCell>
-                                                        <TableCell className="text-center">{p.totalPoints}</TableCell>
+                                                        <TableCell className="text-center font-bold">{p.finalScore}</TableCell>
+                                                        <TableCell className="text-center"><Badge variant={getRatingVariant(p.rating)}>{p.rating}</Badge></TableCell>
                                                         <TableCell className="text-center">{p.lateEntries}</TableCell>
-                                                        <TableCell className="text-center">{p.graceUsed}</TableCell>
-                                                        <TableCell className="text-center">{p.halfDays}</TableCell>
                                                         <TableCell className="text-center">{p.absences}</TableCell>
                                                         <TableCell>
                                                             <Input type="number" className="max-w-[120px] text-right ml-auto" placeholder="0" value={p.earnings.bonus || ''} onChange={(e) => handleAdjustmentChange(p.employeeId, 'bonus', e.target.value)} disabled={p.baseSalary === 0} />
                                                         </TableCell>
-                                                         <TableCell className="text-center font-medium text-destructive">{p.deductions.lateEntry > 0 ? p.deductions.lateEntry.toLocaleString() : "0"}</TableCell>
                                                         <TableCell>
                                                             <Input type="number" className="max-w-[120px] text-right ml-auto" placeholder="0" value={p.deductions.advances || ''} onChange={(e) => handleAdjustmentChange(p.employeeId, 'advances', e.target.value)} disabled={p.baseSalary === 0} />
                                                         </TableCell>
@@ -1245,7 +1281,4 @@ export default function ReportsPage() {
     );
 }
 
-
-
-
-
+    
