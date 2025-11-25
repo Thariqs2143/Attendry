@@ -77,8 +77,6 @@ type PayrollData = {
         bonus: number;
     };
     deductions: {
-        unpaidLeave: number;
-        halfDay: number;
         lateEntry: number;
         advances: number;
     };
@@ -286,7 +284,7 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
                     updatedP.deductions.advances = numericValue;
                 }
                 const totalEarnings = updatedP.earnings.base + updatedP.earnings.bonus;
-                const totalDeductions = updatedP.deductions.unpaidLeave + updatedP.deductions.halfDay + updatedP.deductions.lateEntry + updatedP.deductions.advances;
+                const totalDeductions = updatedP.deductions.lateEntry + updatedP.deductions.advances;
                 updatedP.finalSalary = Math.round(totalEarnings - totalDeductions);
                 return updatedP;
             }
@@ -389,10 +387,6 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
             const paidLeaveUsed = Math.min(totalLeaveDays, monthlyPaidLeave);
             const unpaidLeave = Math.max(0, totalLeaveDays - paidLeaveUsed);
             
-            const halfDayDeductions = Math.round(halfDays * (dailyRate / 2));
-            const unpaidLeaveDeductions = Math.round(unpaidLeave * dailyRate);
-            
-            // Corrected Salary Calculation
             const payableDays = totalPresent + paidLeaveUsed;
             const earnedBase = Math.round(payableDays * dailyRate);
             
@@ -407,7 +401,7 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
                 finalScore, rating, paidLeaveUsed, unpaidLeave, halfDays, lateEntries, graceUsed, absences,
                 totalPresent, daysInMonth,
                 earnings: { base: earnedBase, bonus: 0 },
-                deductions: { unpaidLeave: unpaidLeaveDeductions, halfDay: halfDayDeductions, lateEntry: lateDeduction, advances: 0 },
+                deductions: { lateEntry: lateDeduction, advances: 0 },
                 finalSalary: finalSalary,
             };
         }).filter(p => p !== null) as PayrollData[];
@@ -429,7 +423,7 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
     const handleDownloadSlip = (employeeData: PayrollData) => {
         const doc = new jsPDF();
         const totalEarnings = employeeData.earnings.base + employeeData.earnings.bonus;
-        const totalDeductions = employeeData.deductions.unpaidLeave + employeeData.deductions.halfDay + employeeData.deductions.lateEntry + employeeData.deductions.advances;
+        const totalDeductions = employeeData.deductions.lateEntry + employeeData.deductions.advances;
         
         // Header
         doc.setFontSize(20);
@@ -496,7 +490,7 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
                 p.lateEntries,
                 p.graceUsed,
                 p.absences,
-                (p.deductions.unpaidLeave + p.deductions.halfDay + p.deductions.advances + p.deductions.lateEntry).toLocaleString(),
+                (p.deductions.lateEntry + p.deductions.advances).toLocaleString(),
                 p.finalSalary.toLocaleString(),
             ]),
             styles: { fontSize: 7 }
@@ -522,7 +516,7 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
             'Absences': p.absences,
             'Paid Leave': p.paidLeaveUsed,
             'Unpaid Leave': p.unpaidLeave,
-            'Deductions': p.deductions.unpaidLeave + p.deductions.halfDay + p.deductions.advances + p.deductions.lateEntry,
+            'Deductions': p.deductions.lateEntry + p.deductions.advances,
             'Final Salary': p.finalSalary,
         })));
         const workbook = XLSX.utils.book_new();
@@ -1288,4 +1282,3 @@ export default function ReportsPage() {
 }
 
     
-
