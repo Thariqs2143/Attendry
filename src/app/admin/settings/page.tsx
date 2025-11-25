@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -176,6 +177,20 @@ const PricingPlans = ({ profile }: { profile: Partial<FullProfile> }) => {
   const { toast } = useToast();
   const router = useRouter();
   const [staffCount, setStaffCount] = useState(10);
+  const [gatewayReady, setGatewayReady] = useState(false);
+
+  useEffect(() => {
+    // Poll to check if the DodoPay script has loaded
+    const interval = setInterval(() => {
+      if (typeof window.DodoPay === 'function') {
+        setGatewayReady(true);
+        clearInterval(interval);
+      }
+    }, 500); // Check every half a second
+
+    // Cleanup interval on component unmount
+    return () => clearInterval(interval);
+  }, []);
 
  const plans = [
     {
@@ -252,16 +267,6 @@ const PricingPlans = ({ profile }: { profile: Partial<FullProfile> }) => {
     if (!planId) {
         toast({ title: "Error", description: "This plan is not available for purchase yet.", variant: "destructive" });
         return;
-    }
-
-    if (typeof window.DodoPay !== 'function') {
-      toast({
-        title: "Initializing Gateway...",
-        description: "The payment gateway is loading. Please wait a moment and try again.",
-        variant: "default"
-      });
-      setLoadingPlan(null);
-      return;
     }
 
     setLoadingPlan(plan.id);
@@ -403,16 +408,21 @@ const PricingPlans = ({ profile }: { profile: Partial<FullProfile> }) => {
                       
                       <Button
                         onClick={() => handlePayment(p)}
-                        disabled={loadingPlan === p.id || !isWithinLimit}
+                        disabled={loadingPlan === p.id || !isWithinLimit || !gatewayReady}
                         className={cn(
                           'w-full mt-auto py-3 rounded-lg font-semibold text-slate-900 transition-all shadow-md text-base',
                           p.isPopular ? 'bg-blue-400 hover:bg-blue-500' : 'bg-slate-200 hover:bg-white',
                           p.isBestValue ? 'bg-green-400 hover:bg-green-500' : '',
-                          (loadingPlan === p.id || !isWithinLimit) && 'opacity-50 cursor-not-allowed'
+                          (loadingPlan === p.id || !isWithinLimit || !gatewayReady) && 'opacity-50 cursor-not-allowed'
                         )}
                       >
                           {loadingPlan === p.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
-                          {!isWithinLimit ? 'Staff limit exceeded' : (profile?.uid ? p.cta : 'Get Started')}
+                          {!gatewayReady ? (
+                              <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Loading Gateway...
+                              </>
+                          ) : !isWithinLimit ? 'Staff limit exceeded' : (profile?.uid ? p.cta : 'Get Started')}
                       </Button>
 
                       <Separator className="my-6 bg-slate-700" />
@@ -1084,30 +1094,6 @@ function SettingsPageContent() {
                         </CardContent>
                     </Card>
 
-                    <Card className="transition-all duration-300 ease-out hover:shadow-lg border-2 border-foreground/20 hover:border-primary">
-                        <CardHeader>
-                            <CardTitle>Attendance & Leave</CardTitle>
-                        </CardHeader>
-                        <CardContent className="grid sm:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <Label htmlFor="duration">Late Arrival Grace Period</Label>
-                                <Select value={String(settings.lateGracePeriodMinutes)} onValueChange={(value) => setSettings({...settings, lateGracePeriodMinutes: Number(value)})}>
-                                    <SelectTrigger id="duration"><SelectValue placeholder="Select duration" /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="5">5 minutes</SelectItem>
-                                        <SelectItem value="10">10 minutes</SelectItem>
-                                        <SelectItem value="15">15 minutes</SelectItem>
-                                        <SelectItem value="30">30 minutes</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="paidLeave">Monthly Paid Leave Days</Label>
-                                <Input id="paidLeave" type="number" value={settings.monthlyPaidLeave} onChange={(e) => setSettings({...settings, monthlyPaidLeave: Number(e.target.value)})} />
-                            </div>
-                        </CardContent>
-                    </Card>
-                    
                     <Card className="transition-all duration-300 ease-out hover:shadow-lg border-2 border-foreground/20 hover:border-primary">
                         <CardHeader>
                             <CardTitle>Shift Management</CardTitle>
