@@ -13,7 +13,7 @@ import { useRouter } from 'next/navigation';
 import jsQR from 'jsqr';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { addMinutes, startOfDay, endOfDay } from 'date-fns';
+import { setHours, setMinutes, setSeconds, startOfDay, endOfDay } from 'date-fns';
 
 type ScanStatus = 'idle' | 'scanning' | 'success' | 'error' | 'processing';
 type AttendanceRecord = {
@@ -132,29 +132,41 @@ export default function ScanPage() {
         setStatus('error');
         return;
     }
-
-    const todayWeekday = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
-     // Fetch the latest shop settings to ensure accuracy
-    const shopDocRef = doc(db, 'shops', shopId);
-    const shopSnap = await getDoc(shopDocRef);
-    const shopData = shopSnap.exists() ? shopSnap.data() : {};
-
-    const daySettings = shopData.businessHours?.[todayWeekday];
-    let attendanceStatus: 'On-time' | 'Late' | 'Half-day' = 'On-time';
     
-    if (daySettings?.isOpen) {
-        const todayDateStr = new Date().toISOString().split('T')[0];
-        const shiftStartTime = new Date(`${todayDateStr}T${daySettings.startTime}`);
-        const gracePeriod = shopData.lateGracePeriodMinutes || 0;
-        const deadline = addMinutes(shiftStartTime, gracePeriod);
-        
-        if (new Date() > deadline) {
-            attendanceStatus = 'Late';
-        }
+    const now = new Date();
+    const shiftStartTime = setSeconds(setMinutes(setHours(startOfDay(now), 9), 30), 0);
+
+    let attendanceStatus: 'On Time' | 'Grace Period' | 'Late Category 1' | 'Late Category 2' | 'Late Category 3' | 'Absent' = 'On Time';
+    let pointsChange = 0;
+
+    const checkInTime = now.getTime();
+    const gracePeriodEnd = setMinutes(shiftStartTime, 35).getTime();
+    const late1End = setMinutes(shiftStartTime, 40).getTime();
+    const late2End = setMinutes(shiftStartTime, 60).getTime(); // 10:00 AM is 30 mins after 9:30
+    const late3End = setMinutes(shiftStartTime, 90).getTime(); // 10:30 AM is 60 mins after 9:30
+    const absentThreshold = late3End;
+
+    if (checkInTime <= shiftStartTime.getTime()) {
+        attendanceStatus = 'On Time';
+        pointsChange = 1;
+    } else if (checkInTime <= gracePeriodEnd) {
+        attendanceStatus = 'Grace Period';
+        pointsChange = 0;
+    } else if (checkInTime <= late1End) {
+        attendanceStatus = 'Late Category 1';
+        pointsChange = -1;
+    } else if (checkInTime <= late2End) {
+        attendanceStatus = 'Late Category 2';
+        pointsChange = -2;
+    } else if (checkInTime <= late3End) {
+        attendanceStatus = 'Late Category 3';
+        pointsChange = -3;
+    } else {
+        attendanceStatus = 'Absent';
+        pointsChange = -5;
     }
     
-    const pointsChange = attendanceStatus === 'On-time' ? 10 : -5;
-    const newStreak = attendanceStatus === 'On-time' ? (userProfile.streak || 0) + 1 : 0;
+    const newStreak = (attendanceStatus === 'On Time' || attendanceStatus === 'Grace Period') ? (userProfile.streak || 0) + 1 : 0;
 
     const batch = writeBatch(db);
     const newAttendanceRef = doc(collection(db, 'shops', shopId, 'attendance'));

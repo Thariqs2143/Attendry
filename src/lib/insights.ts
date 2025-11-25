@@ -29,9 +29,9 @@ export const generateWeeklyBriefing = (employees: User[], weeklyAttendance: Atte
 
     weeklyAttendance.forEach(record => {
         if (record.status === 'On-time') {
-            pointsMap.set(record.userId, (pointsMap.get(record.userId) || 0) + 10);
+            pointsMap.set(record.userId, (pointsMap.get(record.userId) || 0) + 1);
         } else if (record.status === 'Late') {
-            pointsMap.set(record.userId, (pointsMap.get(record.userId) || 0) - 5);
+            pointsMap.set(record.userId, (pointsMap.get(record.userId) || 0) - 2); // Example deduction
             lateMap.set(record.userId, (lateMap.get(record.userId) || 0) + 1);
         }
     });
