@@ -72,7 +72,7 @@ export default function LandingPage() {
               </div>
             </div>
              <Image
-              src="https://res.cloudinary.com/dnkghymx5/image/upload/v1762847075/Generated_Image_November_11_2025_-_1_11PM_1_romg21.png"
+              src="https://res.cloudinary.com/dnkghymx5/image/upload/v1762850937/Frame_3_1_ku8hvi.png"
               width={700}
               height={700}
               alt="Hero"
@@ -201,17 +201,17 @@ export default function LandingPage() {
             </div>
             <div className="mx-auto grid max-w-5xl items-start gap-12 md:grid-cols-3 mt-12">
             <div className="grid gap-4 text-center">
-                <Image src="https://res.cloudinary.com/dnkghymx5/image/upload/v1762849032/Generated_Image_November_11_2025_-_1_42PM_1_n4lc6r.png" alt="Create Shop" width={600} height={400} className="rounded-lg object-cover w-full aspect-[3/2] mb-4"/>
+                <Image src="https://res.cloudinary.com/dnkghymx5/image/upload/v1762850937/Frame_3_1_ku8hvi.png" alt="Create Shop" width={600} height={400} className="rounded-lg object-cover w-full aspect-[3/2] mb-4"/>
                 <h3 className="text-xl font-bold">1. Create Your Shop</h3>
                 <p className="text-muted-foreground">Sign up as a shop owner and set up your business profile. Invite your employees to join your workspace via email.</p>
             </div>
             <div className="grid gap-4 text-center">
-                <Image src="https://res.cloudinary.com/dnkghymx5/image/upload/v1762849381/Generated_Image_November_11_2025_-_1_52PM_1_bkpo3k.png" alt="Generate QR" width={600} height={400} className="rounded-lg object-cover w-full aspect-[3/2] mb-4"/>
+                <Image src="https://res.cloudinary.com/dnkghymx5/image/upload/v1762851082/Frame_4_s1u1vs.png" alt="Generate QR" width={600} height={400} className="rounded-lg object-cover w-full aspect-[3/2] mb-4"/>
                 <h3 className="text-xl font-bold">2. Generate QR Code</h3>
                 <p className="text-muted-foreground">Generate a unique QR code for your shop. Choose between a permanent code for printing or a dynamic one for a screen.</p>
             </div>
             <div className="grid gap-4 text-center">
-                <Image src="https://res.cloudinary.com/dnkghymx5/image/upload/v1762849716/Generated_Image_November_11_2025_-_1_57PM_1_msv8zo.png" alt="Scan & Track" width={600} height={400} className="rounded-lg object-cover w-full aspect-[3/2] mb-4"/>
+                <Image src="https://res.cloudinary.com/dnkghymx5/image/upload/v1762851147/Frame_5_w6p1mt.png" alt="Scan & Track" width={600} height={400} className="rounded-lg object-cover w-full aspect-[3/2] mb-4"/>
                 <h3 className="text-xl font-bold">3. Scan & Track</h3>
                 <p className="text-muted-foreground">Employees scan the QR code with their phone to check in and out. All data is logged in your real-time dashboard instantly.</p>
             </div>
