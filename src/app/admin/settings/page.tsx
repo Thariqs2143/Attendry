@@ -799,19 +799,19 @@ function SettingsPageContent() {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="space-y-2 p-3 border rounded-lg">
                                 <Label>Late 1 (Ends after)</Label>
-                                <Input type="number" value={settings.gamification.lateCategory1Minutes} onChange={(e) => handleGamificationChange('lateCategory1Minutes', e.target.value)} addon="min"/>
+                                <Input type="number" value={settings.gamification.lateCategory1Minutes} onChange={(e) => handleGamificationChange('lateCategory1Minutes', e.target.value)} />
                                 <Label>Points</Label>
                                 <Input type="number" value={settings.gamification.lateCategory1Points} onChange={(e) => handleGamificationChange('lateCategory1Points', e.target.value)} />
                             </div>
                             <div className="space-y-2 p-3 border rounded-lg">
                                 <Label>Late 2 (Ends after)</Label>
-                                <Input type="number" value={settings.gamification.lateCategory2Minutes} onChange={(e) => handleGamificationChange('lateCategory2Minutes', e.target.value)} addon="min"/>
+                                <Input type="number" value={settings.gamification.lateCategory2Minutes} onChange={(e) => handleGamificationChange('lateCategory2Minutes', e.target.value)} />
                                 <Label>Points</Label>
                                 <Input type="number" value={settings.gamification.lateCategory2Points} onChange={(e) => handleGamificationChange('lateCategory2Points', e.target.value)} />
                             </div>
                             <div className="space-y-2 p-3 border rounded-lg">
                                 <Label>Late 3 (Ends after)</Label>
-                                <Input type="number" value={settings.gamification.lateCategory3Minutes} onChange={(e) => handleGamificationChange('lateCategory3Minutes', e.target.value)} addon="min"/>
+                                <Input type="number" value={settings.gamification.lateCategory3Minutes} onChange={(e) => handleGamificationChange('lateCategory3Minutes', e.target.value)} />
                                 <Label>Points</Label>
                                 <Input type="number" value={settings.gamification.lateCategory3Points} onChange={(e) => handleGamificationChange('lateCategory3Points', e.target.value)} />
                             </div>
