@@ -23,25 +23,34 @@ let storage: FirebaseStorage;
 let functions: Functions;
 let messaging: Messaging | null = null;
 
-function initializeFirebase() {
-  if (typeof window !== "undefined") {
-    if (!getApps().length) {
-      app = initializeApp(firebaseConfig);
-    } else {
-      app = getApp();
-    }
+
+if (typeof window !== 'undefined' && !getApps().length) {
+    app = initializeApp(firebaseConfig);
     auth = getFirebaseAuth(app);
     db = getFirebaseFirestore(app);
     storage = getFirebaseStorage(app);
     functions = getFirebaseFunctions(app);
-    if (typeof window !== 'undefined' && "Notification" in window) {
+    if ("Notification" in window && "serviceWorker" in navigator && "PushManager" in window) {
       messaging = getFirebaseMessaging(app);
     }
-  }
+} else if (!getApps().length) {
+    // For server-side rendering
+    app = initializeApp(firebaseConfig);
+    auth = getFirebaseAuth(app);
+    db = getFirebaseFirestore(app);
+    storage = getFirebaseStorage(app);
+    functions = getFirebaseFunctions(app);
+} else {
+    app = getApp();
+    auth = getFirebaseAuth(app);
+    db = getFirebaseFirestore(app);
+    storage = getFirebaseStorage(app);
+    functions = getFirebaseFunctions(app);
+     if (typeof window !== 'undefined' && "Notification" in window && "serviceWorker" in navigator && "PushManager" in window) {
+      messaging = getFirebaseMessaging(app);
+    }
 }
 
-// Initialize on load (client-side only)
-initializeFirebase();
 
 const requestForToken = async () => {
     if (!messaging) {
