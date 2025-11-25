@@ -13,7 +13,7 @@ import { useRouter } from 'next/navigation';
 import jsQR from 'jsqr';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { setHours, setMinutes, setSeconds, startOfDay, endOfDay, parse } from 'date-fns';
+import { setHours, setMinutes, setSeconds, startOfDay, endOfDay, parse, startOfMonth, endOfMonth } from 'date-fns';
 
 type ScanStatus = 'idle' | 'scanning' | 'success' | 'error' | 'processing';
 type AttendanceRecord = {
@@ -170,6 +170,7 @@ export default function ScanPage() {
 
     let attendanceStatus: string = 'On-time';
     let pointsChange = 0;
+    let isLate = false;
 
     const timeDiffMinutes = (now.getTime() - shiftStartTime.getTime()) / (1000 * 60);
 
@@ -179,18 +180,42 @@ export default function ScanPage() {
     } else if (timeDiffMinutes <= gamification.gracePeriodMinutes) {
         attendanceStatus = 'Grace Period';
         pointsChange = 0;
-    } else if (timeDiffMinutes <= gamification.lateCategory1Minutes) {
-        attendanceStatus = 'Late Category 1';
-        pointsChange = gamification.lateCategory1Points;
-    } else if (timeDiffMinutes <= gamification.lateCategory2Minutes) {
-        attendanceStatus = 'Late Category 2';
-        pointsChange = gamification.lateCategory2Points;
-    } else if (timeDiffMinutes <= gamification.lateCategory3Minutes) {
-        attendanceStatus = 'Late Category 3';
-        pointsChange = gamification.lateCategory3Points;
     } else {
-        attendanceStatus = 'Absent';
-        pointsChange = gamification.absentPoints;
+        isLate = true;
+        if (timeDiffMinutes <= gamification.lateCategory1Minutes) {
+            attendanceStatus = 'Late Category 1';
+            pointsChange = gamification.lateCategory1Points;
+        } else if (timeDiffMinutes <= gamification.lateCategory2Minutes) {
+            attendanceStatus = 'Late Category 2';
+            pointsChange = gamification.lateCategory2Points;
+        } else if (timeDiffMinutes <= gamification.lateCategory3Minutes) {
+            attendanceStatus = 'Late Category 3';
+            pointsChange = gamification.lateCategory3Points;
+        } else {
+            attendanceStatus = 'Absent';
+            pointsChange = gamification.absentPoints;
+            isLate = false; // Absent isn't counted as 'late' for allowance
+        }
+    }
+    
+    // Check monthly late allowance
+    if (isLate) {
+        const monthStart = startOfMonth(now);
+        const monthEnd = endOfMonth(now);
+        const lateQuery = query(
+            collection(db, 'shops', shopId, 'attendance'),
+            where('userId', '==', userProfile.id),
+            where('checkInTime', '>=', monthStart),
+            where('checkInTime', '<=', monthEnd),
+            where('status', 'in', ['Late Category 1', 'Late Category 2', 'Late Category 3'])
+        );
+        const lateSnapshot = await getDocs(lateQuery);
+        const monthlyLateCount = lateSnapshot.size;
+
+        if (monthlyLateCount < 3) {
+            pointsChange = 0; // Waive penalty for the first 3 late entries
+            toast({ title: 'Late Entry Allowance Used', description: `This is your ${monthlyLateCount + 1}/3 late entry this month. No points deducted.`});
+        }
     }
     
     const newStreak = (attendanceStatus === 'On-time' || attendanceStatus === 'Grace Period') ? (userProfile.streak || 0) + 1 : 0;
