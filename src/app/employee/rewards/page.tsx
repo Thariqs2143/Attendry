@@ -2,15 +2,14 @@
 'use client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Trophy, Award, Star, ShieldCheck, Flame, CalendarCheck, Loader2, Landmark } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Trophy, Award, Star, ShieldCheck, Flame, CalendarCheck, Loader2, Landmark, TrendingUp, TrendingDown, Percent, CalendarClock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { onAuthStateChanged, type User as AuthUser } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
-import { doc, getDoc, collection, query, orderBy, getDocs, where } from "firebase/firestore";
+import { doc, getDoc, collection, query, orderBy, getDocs, where, Timestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import type { User as AppUser } from "@/app/admin/employees/page";
-import { differenceInYears } from "date-fns";
+import { differenceInYears, startOfWeek, endOfWeek } from "date-fns";
 
 const badges = [
     { id: "streak", icon: <Flame className="h-8 w-8" />, name: "Hot Streak", description: "10-day on-time streak", unlocked: (user: AppUser, rank: number) => user.streak >= 10 },
@@ -24,12 +23,24 @@ const badges = [
     { id: "rank", icon: <ShieldCheck className="h-8 w-8" />, name: "Top Performer", description: "Reach #1 on the leaderboard", unlocked: (user: AppUser, rank: number) => rank === 1 },
 ];
 
+type WeeklyStats = {
+    latePunches: number;
+    pointsChange: number;
+    attendancePercentage: number;
+};
+
+type AttendanceRecord = {
+    status: 'On-time' | 'Late' | 'Absent' | 'Manual' | 'Half-day' | 'Grace Period' | 'Late Category 1' | 'Late Category 2' | 'Late Category 3';
+    checkInTime: Timestamp;
+}
 
 export default function RewardsPage() {
     const router = useRouter();
     const [userProfile, setUserProfile] = useState<AppUser | null>(null);
     const [rank, setRank] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [weeklyStats, setWeeklyStats] = useState<WeeklyStats | null>(null);
+    const [loadingStats, setLoadingStats] = useState(true);
 
     useEffect(() => {
         const fetchUserData = async (user: AuthUser) => {
@@ -42,6 +53,7 @@ export default function RewardsPage() {
                     setUserProfile(profile);
                     if (profile.shopId) {
                         await fetchRank(profile.id!, profile.shopId);
+                        await fetchWeeklyStats(profile.id!, profile.shopId);
                     }
                 } else {
                     router.push('/employee/login');
@@ -60,6 +72,68 @@ export default function RewardsPage() {
             const userRank = querySnapshot.docs.findIndex(doc => doc.id === employeeId) + 1;
             setRank(userRank);
         };
+        
+        const fetchWeeklyStats = async (employeeId: string, shopId: string) => {
+            setLoadingStats(true);
+            const now = new Date();
+            const weekStart = startOfWeek(now);
+            const weekEnd = endOfWeek(now);
+
+            const attendanceQuery = query(
+                collection(db, 'shops', shopId, 'attendance'),
+                where('userId', '==', employeeId),
+                where('checkInTime', '>=', weekStart),
+                where('checkInTime', '<=', weekEnd)
+            );
+
+            const snapshot = await getDocs(attendanceQuery);
+            const records = snapshot.docs.map(doc => doc.data() as AttendanceRecord);
+
+            let latePunches = 0;
+            let pointsChange = 0;
+            const presentDays = new Set();
+
+            // Fetch gamification settings
+            const shopConfigRef = doc(db, 'shops', shopId, 'config', 'main');
+            const shopConfigSnap = await getDoc(shopConfigRef);
+            const settings = shopConfigSnap.exists() ? shopConfigSnap.data() : {};
+            const gamification = {
+                onTimePoints: 1, gracePeriodMinutes: 5, lateCategory1Minutes: 10, lateCategory1Points: -1,
+                lateCategory2Minutes: 30, lateCategory2Points: -2, lateCategory3Minutes: 60, lateCategory3Points: -3,
+                absentMinutes: 60, absentPoints: -5, ...settings.gamification
+            };
+
+            records.forEach(record => {
+                presentDays.add(record.checkInTime.toDate().getDay());
+                switch (record.status) {
+                    case 'On-time':
+                        pointsChange += gamification.onTimePoints;
+                        break;
+                    case 'Late Category 1':
+                        latePunches++;
+                        pointsChange += gamification.lateCategory1Points;
+                        break;
+                    case 'Late Category 2':
+                        latePunches++;
+                        pointsChange += gamification.lateCategory2Points;
+                        break;
+                    case 'Late Category 3':
+                        latePunches++;
+                        pointsChange += gamification.lateCategory3Points;
+                        break;
+                    case 'Absent':
+                         pointsChange += gamification.absentPoints;
+                         break;
+                }
+            });
+            
+            // Assume a 5-day work week for percentage calculation if business hours aren't defined
+            const totalWorkDays = 5; 
+            const attendancePercentage = (presentDays.size / totalWorkDays) * 100;
+
+            setWeeklyStats({ latePunches, pointsChange, attendancePercentage });
+            setLoadingStats(false);
+        }
         
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             if (user) {
@@ -97,25 +171,62 @@ export default function RewardsPage() {
         </CardHeader>
         <CardContent className="grid grid-cols-2 gap-4 text-center">
             <div className="flex flex-col items-center p-4 bg-white/10 rounded-lg">
-                <Trophy className="h-8 w-8 sm:h-10 sm:w-10 text-yellow-300 mb-2"/>
+                <Trophy className="h-8 sm:h-10 sm:w-10 text-yellow-300 mb-2"/>
                 <p className="text-2xl sm:text-3xl font-bold text-white">{userProfile.points.toLocaleString()}</p>
                 <p className="text-xs sm:text-sm text-blue-200">Total Points</p>
             </div>
             <div className="flex flex-col items-center p-4 bg-white/10 rounded-lg">
-                <Award className="h-8 w-8 sm:h-10 sm:w-10 text-yellow-300 mb-2"/>
+                <Award className="h-8 sm:h-10 sm:w-10 text-yellow-300 mb-2"/>
                 <p className="text-2xl sm:text-3xl font-bold text-white">{rank > 0 ? `#${rank}` : 'N/A'}</p>
                 <p className="text-xs sm:text-sm text-blue-200">Current Rank</p>
             </div>
              <div className="flex flex-col items-center p-4 bg-white/10 rounded-lg">
-                <Flame className="h-8 w-8 sm:h-10 sm:w-10 text-yellow-300 mb-2"/>
+                <Flame className="h-8 sm:h-10 sm:w-10 text-yellow-300 mb-2"/>
                 <p className="text-2xl sm:text-3xl font-bold text-white">{userProfile.streak}</p>
                 <p className="text-xs sm:text-sm text-blue-200">Day Streak</p>
             </div>
             <div className="flex flex-col items-center p-4 bg-white/10 rounded-lg">
-                <CalendarCheck className="h-8 w-8 sm:h-10 sm:w-10 text-yellow-300 mb-2"/>
+                <CalendarCheck className="h-8 sm:h-10 sm:w-10 text-yellow-300 mb-2"/>
                 <p className="text-2xl sm:text-3xl font-bold text-white">0</p>
                 <p className="text-xs sm:text-sm text-blue-200">Perfect Days</p>
             </div>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>This Week's Summary</CardTitle>
+          <CardDescription>Your performance summary for the current week.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loadingStats ? (
+            <div className="flex items-center justify-center p-8">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : weeklyStats ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-muted">
+                <p className="text-3xl font-bold">{weeklyStats.latePunches}</p>
+                <p className="text-sm text-muted-foreground mt-1">Late Days</p>
+              </div>
+              <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-muted">
+                <div className={`flex items-center text-3xl font-bold ${weeklyStats.pointsChange >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                  {weeklyStats.pointsChange >= 0 ? <TrendingUp className="h-6 w-6 mr-1"/> : <TrendingDown className="h-6 w-6 mr-1"/>}
+                  {weeklyStats.pointsChange}
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">Points Change</p>
+              </div>
+              <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-muted col-span-2 md:col-span-1">
+                 <div className="flex items-center text-3xl font-bold text-primary">
+                    <Percent className="h-6 w-6 mr-1"/>
+                    {Math.round(weeklyStats.attendancePercentage)}
+                 </div>
+                <p className="text-sm text-muted-foreground mt-1">Attendance</p>
+              </div>
+            </div>
+          ) : (
+             <p className="text-sm text-muted-foreground text-center py-4">No attendance data for this week yet.</p>
+          )}
         </CardContent>
       </Card>
       
@@ -134,7 +245,7 @@ export default function RewardsPage() {
                        </div>
                        <p className={`font-semibold text-sm ${isUnlocked ? 'text-primary' : 'text-muted-foreground'}`}>{badge.name}</p>
                        <p className="text-xs text-muted-foreground mt-1">{badge.description}</p>
-                       {!isUnlocked && <Badge variant="outline" className="mt-3">Locked</Badge>}
+                       {!isUnlocked && <div className="mt-3 px-2 py-0.5 text-xs rounded-full bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300">Locked</div>}
                     </div>
                 );
             })}
