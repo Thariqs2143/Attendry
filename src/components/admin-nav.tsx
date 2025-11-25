@@ -12,6 +12,7 @@ import {
   User,
   Bell,
   LogOut,
+  Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { NavItem } from './bottom-nav';
@@ -36,6 +37,7 @@ const iconMap: { [key: string]: any } = {
   Crown,
   User,
   Bell,
+  Clock,
 };
 
 type AdminNavProps = {
