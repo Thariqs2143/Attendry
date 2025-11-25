@@ -392,8 +392,12 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
             const halfDayDeductions = Math.round(halfDays * (dailyRate / 2));
             const unpaidLeaveDeductions = Math.round(unpaidLeave * dailyRate);
             
-            const totalDeductions = unpaidLeaveDeductions + halfDayDeductions + lateDeduction;
-            const finalSalary = Math.round((employee.baseSalary || 0) - totalDeductions);
+            // Corrected Salary Calculation
+            const payableDays = totalPresent + paidLeaveUsed;
+            const earnedBase = Math.round(payableDays * dailyRate);
+            
+            const totalDeductions = lateDeduction;
+            const finalSalary = Math.round(earnedBase - totalDeductions);
             
             const finalScore = onTimePoints - latePoints - absencePenalty;
             const rating = getRating(finalScore);
@@ -402,7 +406,7 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
                 employeeId: employee.id!, employeeName: employee.name, baseSalary: employee.baseSalary || 0,
                 finalScore, rating, paidLeaveUsed, unpaidLeave, halfDays, lateEntries, graceUsed, absences,
                 totalPresent, daysInMonth,
-                earnings: { base: employee.baseSalary || 0, bonus: 0 },
+                earnings: { base: earnedBase, bonus: 0 },
                 deductions: { unpaidLeave: unpaidLeaveDeductions, halfDay: halfDayDeductions, lateEntry: lateDeduction, advances: 0 },
                 finalSalary: finalSalary,
             };
@@ -452,10 +456,8 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
             startY: 75,
             head: [['Earnings', 'Amount (₹)', 'Deductions', 'Amount (₹)']],
             body: [
-                ['Basic Salary', employeeData.earnings.base.toLocaleString(), 'Unpaid Leave', employeeData.deductions.unpaidLeave.toLocaleString()],
-                ['Bonus / Overtime', employeeData.earnings.bonus.toLocaleString(), 'Half-day', employeeData.deductions.halfDay.toLocaleString()],
-                ['', '', 'Late Entry', employeeData.deductions.lateEntry.toLocaleString()],
-                ['', '', 'Advance / Other', employeeData.deductions.advances.toLocaleString()],
+                ['Earned Salary', employeeData.earnings.base.toLocaleString(), 'Late Entry', employeeData.deductions.lateEntry.toLocaleString()],
+                ['Bonus / Overtime', employeeData.earnings.bonus.toLocaleString(), 'Advance / Other', employeeData.deductions.advances.toLocaleString()],
                 ['', '', '', ''], // Spacer row
                 [{ content: 'Total Earnings', styles: { fontStyle: 'bold' } }, { content: totalEarnings.toLocaleString(), styles: { fontStyle: 'bold' } }, { content: 'Total Deductions', styles: { fontStyle: 'bold' } }, { content: totalDeductions.toLocaleString(), styles: { fontStyle: 'bold' } }],
             ],
@@ -631,7 +633,7 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
                                                 <Separator />
                                                 <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                                                     <div className="text-muted-foreground">Final Score:</div><div className="font-medium text-right">{p.finalScore}</div>
-                                                    <div className="text-muted-foreground">Base Salary:</div><div className="font-medium text-right">₹{p.baseSalary > 0 ? p.baseSalary.toLocaleString() : "N/A"}</div>
+                                                    <div className="text-muted-foreground">Earned Salary:</div><div className="font-medium text-right">₹{p.earnings.base > 0 ? p.earnings.base.toLocaleString() : "N/A"}</div>
                                                     <div className="text-muted-foreground">Late:</div><div className="font-medium text-right">{p.lateEntries}</div>
                                                     <div className="text-muted-foreground">Grace Used:</div><div className="font-medium text-right">{p.graceUsed}</div>
                                                     <div className="text-muted-foreground">Half-Days:</div><div className="font-medium text-right">{p.halfDays}</div>
@@ -1286,3 +1288,4 @@ export default function ReportsPage() {
 }
 
     
+
