@@ -633,7 +633,11 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
                                                     <div className="text-muted-foreground">Final Score:</div><div className="font-medium text-right">{p.finalScore}</div>
                                                     <div className="text-muted-foreground">Base Salary:</div><div className="font-medium text-right">₹{p.baseSalary > 0 ? p.baseSalary.toLocaleString() : "N/A"}</div>
                                                     <div className="text-muted-foreground">Late:</div><div className="font-medium text-right">{p.lateEntries}</div>
+                                                    <div className="text-muted-foreground">Grace Used:</div><div className="font-medium text-right">{p.graceUsed}</div>
+                                                    <div className="text-muted-foreground">Half-Days:</div><div className="font-medium text-right">{p.halfDays}</div>
                                                     <div className="text-muted-foreground">Absences:</div><div className="font-medium text-right">{p.absences}</div>
+                                                    <div className="text-muted-foreground">Paid Leave:</div><div className="font-medium text-right">{p.paidLeaveUsed}</div>
+                                                    <div className="text-muted-foreground">Unpaid Leave:</div><div className="font-medium text-right">{p.unpaidLeave}</div>
                                                 </div>
                                                 <Separator />
                                                  <div className="space-y-3 text-sm">
