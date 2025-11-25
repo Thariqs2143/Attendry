@@ -8,37 +8,29 @@ service cloud.firestore {
     //                      HELPER FUNCTIONS                           //
     // ----------------------------------------------------------------//
 
-    // Returns true if the user is signed in.
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Returns true if the requesting user's UID matches the provided userId.
     function isSelf(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Returns true if the user is the owner of the shop document.
-    // The owner's UID is used as the shop's document ID or stored in ownerId.
     function isShopOwner(shopId) {
       return isSignedIn() &&
         (request.auth.uid == shopId ||
          (exists(/databases/$(database)/documents/shops/$(shopId)) && 
           get(/databases/$(database)/documents/shops/$(shopId)).data.ownerId == request.auth.uid));
     }
-
-    // Returns true if the user is listed in the specified shop's 'employees' subcollection.
+    
     function isEmployee(shopId) {
       return isSignedIn() && exists(/databases/$(database)/documents/shops/$(shopId)/employees/$(request.auth.uid));
     }
     
-    // Returns true if the user has either owner or employee permissions for a given shop.
     function isOwnerOrEmployee(shopId) {
       return isShopOwner(shopId) || isEmployee(shopId);
     }
     
-    // Returns true if a user making a write request is the owner of the shop
-    // that the resource belongs to. Used for collectionGroup queries.
     function isOwnerOfResourceShop() {
       let shopId = request.resource.data.shopId;
       return shopId != null && isShopOwner(shopId);
@@ -115,8 +107,6 @@ service cloud.firestore {
     }
     
     match /{path=**}/attendance/{attendanceId} {
-      // Allow employee to list their own records across all shops (for rewards page)
-      // Allow shop owner to list all records for their shop.
       allow list: if (isSignedIn() && request.query.where.userId == request.auth.uid) ||
                      (isSignedIn() && isShopOwner(resource.data.shopId));
     }
