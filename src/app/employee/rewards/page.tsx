@@ -2,14 +2,14 @@
 'use client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Trophy, Award, Star, ShieldCheck, Flame, CalendarCheck, Loader2, Landmark, Sparkles } from "lucide-react";
+import { Trophy, Award, Star, ShieldCheck, Flame, CalendarCheck, Loader2, Landmark, Sparkles, UserCheck, Clock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { onAuthStateChanged, type User as AuthUser } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
-import { doc, getDoc, collection, query, orderBy, getDocs, onSnapshot, getFirestore } from "firebase/firestore";
+import { doc, getDoc, collection, query, orderBy, getDocs, onSnapshot, getFirestore, where, Timestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import type { User as AppUser } from "@/app/admin/employees/page";
-import { differenceInYears } from "date-fns";
+import { differenceInYears, startOfWeek, endOfWeek } from "date-fns";
 
 type GamificationSettings = {
     onTimePoints: number;
@@ -24,6 +24,17 @@ type GamificationSettings = {
     absentPoints: number;
     streakBonusDays: number;
     streakBonusPoints: number;
+};
+
+type WeeklyStat = {
+    onTime: number;
+    late: number;
+};
+
+type AttendanceRecord = {
+    id: string;
+    checkInTime: Timestamp;
+    status: 'On-time' | 'Late' | 'Absent' | 'Manual' | 'Half-day' | 'Grace Period' | 'Late Category 1' | 'Late Category 2' | 'Late Category 3';
 };
 
 const defaultGamificationSettings: GamificationSettings = {
@@ -59,6 +70,8 @@ export default function RewardsPage() {
     const [rank, setRank] = useState(0);
     const [loading, setLoading] = useState(true);
     const [gamificationSettings, setGamificationSettings] = useState<GamificationSettings>(defaultGamificationSettings);
+    const [weeklyStats, setWeeklyStats] = useState<WeeklyStat>({ onTime: 0, late: 0 });
+    const [loadingStats, setLoadingStats] = useState(true);
 
 
     useEffect(() => {
@@ -71,10 +84,10 @@ export default function RewardsPage() {
                 if (userDocSnap.exists()) {
                     const profile = { id: userDocSnap.id, ...userDocSnap.data() } as AppUser;
                     setUserProfile(profile);
-                    if (profile.shopId) {
-                        await fetchRank(profile.id!, profile.shopId);
+                    if (profile.shopId && profile.id) {
+                        await fetchRank(profile.id, profile.shopId);
+                        fetchWeeklySummary(profile.id, profile.shopId);
                         
-                        // Fetch gamification settings
                         const settingsDocRef = doc(db, 'shops', profile.shopId, 'config', 'main');
                         const settingsSnap = await getDoc(settingsDocRef);
                         if (settingsSnap.exists() && settingsSnap.data().gamification) {
@@ -98,6 +111,41 @@ export default function RewardsPage() {
             const querySnapshot = await getDocs(q);
             const userRank = querySnapshot.docs.findIndex(doc => doc.id === employeeId) + 1;
             setRank(userRank);
+        };
+
+        const fetchWeeklySummary = (employeeId: string, shopId: string) => {
+            setLoadingStats(true);
+            const db = getFirestore();
+            const now = new Date();
+            const weekStart = startOfWeek(now);
+            const weekEnd = endOfWeek(now);
+
+            const attendanceRef = collection(db, 'shops', shopId, 'attendance');
+            const q = query(
+                attendanceRef, 
+                where('userId', '==', employeeId),
+                where('checkInTime', '>=', weekStart),
+                where('checkInTime', '<=', weekEnd)
+            );
+            
+            const unsubscribe = onSnapshot(q, (snapshot) => {
+                let onTimeCount = 0;
+                let lateCount = 0;
+                snapshot.forEach(doc => {
+                    const record = doc.data() as AttendanceRecord;
+                    if (record.status === 'On-time' || record.status === 'Grace Period') {
+                        onTimeCount++;
+                    } else if (record.status.startsWith('Late')) {
+                        lateCount++;
+                    }
+                });
+                setWeeklyStats({ onTime: onTimeCount, late: lateCount });
+                setLoadingStats(false);
+            }, (error) => {
+                console.error("Error fetching weekly summary:", error);
+                setLoadingStats(false);
+            });
+            return unsubscribe;
         };
         
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -155,6 +203,37 @@ export default function RewardsPage() {
                 <p className="text-2xl sm:text-3xl font-bold text-white">0</p>
                 <p className="text-xs sm:text-sm text-blue-200">Perfect Days</p>
             </div>
+        </CardContent>
+      </Card>
+      
+      <Card className="transition-all duration-300 ease-out hover:shadow-lg border-2 border-foreground/20 dark:border-foreground/20 hover:border-primary">
+        <CardHeader>
+            <CardTitle>This Week's Summary</CardTitle>
+            <CardDescription>Your performance summary for the current week.</CardDescription>
+        </CardHeader>
+        <CardContent>
+             {loadingStats ? (
+                <div className="flex items-center justify-center p-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+            ) : (
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center gap-4 p-4 rounded-lg bg-green-50 dark:bg-green-900/50 border-2 border-green-200 dark:border-green-800">
+                        <UserCheck className="h-8 w-8 text-green-600 dark:text-green-400" />
+                        <div>
+                            <p className="text-2xl font-bold text-green-700 dark:text-green-300">{weeklyStats.onTime}</p>
+                            <p className="text-sm font-medium text-green-600 dark:text-green-400">On-Time Days</p>
+                        </div>
+                    </div>
+                     <div className="flex items-center gap-4 p-4 rounded-lg bg-red-50 dark:bg-red-900/50 border-2 border-red-200 dark:border-red-800">
+                        <Clock className="h-8 w-8 text-red-600 dark:text-red-400" />
+                        <div>
+                            <p className="text-2xl font-bold text-red-700 dark:text-red-300">{weeklyStats.late}</p>
+                            <p className="text-sm font-medium text-red-600 dark:text-red-400">Late Days</p>
+                        </div>
+                    </div>
+                </div>
+            )}
         </CardContent>
       </Card>
 
