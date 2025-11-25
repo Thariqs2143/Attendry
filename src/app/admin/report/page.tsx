@@ -11,10 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Calendar as CalendarIcon, Download, FileText, Check, X, Calculator, Clock4, Users, Receipt, ChevronDown, Building, ChevronsUpDown, Search, Filter, FileSpreadsheet, Lock } from "lucide-react";
+import { Loader2, Calendar as CalendarIcon, Download, FileText, Check, X, Calculator, Clock4, Users, Receipt, ChevronDown, Building, ChevronsUpDown, Search, Filter, FileSpreadsheet, Lock, AlertTriangle } from "lucide-react";
 import { collection, query, where, getDocs, orderBy, Timestamp, doc, getDoc, collectionGroup, onSnapshot } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase";
-import { format, subDays, getDaysInMonth, startOfMonth, endOfMonth, differenceInDays, eachDayOfInterval, startOfWeek, endOfWeek, setMonth, setYear } from 'date-fns';
+import { format, subDays, getDaysInMonth, startOfMonth, endOfMonth, differenceInDays, eachDayOfInterval, startOfWeek, endOfWeek, setMonth, setYear, isWeekend } from 'date-fns';
 import type { DateRange } from "react-day-picker";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
@@ -56,7 +56,7 @@ type AttendanceRecord = {
   userName?: string;
   checkInTime: Timestamp;
   checkOutTime?: Timestamp;
-  status: 'On-time' | 'Late' | 'Absent' | 'Manual' | 'Half-day';
+  status: 'On-time' | 'Late' | 'Absent' | 'Manual' | 'Half-day' | 'Grace Period' | 'Late Category 1' | 'Late Category 2' | 'Late Category 3';
 };
 
 type PayrollData = {
@@ -66,6 +66,7 @@ type PayrollData = {
     paidLeaveUsed: number;
     unpaidLeave: number;
     halfDays: number;
+    lateEntries: number;
     totalPresent: number;
     daysInMonth: number;
     earnings: {
@@ -83,7 +84,7 @@ type PayrollData = {
 type MusterData = {
     employeeId: string;
     employeeName: string;
-    dailyStatus: { [day: number]: 'P' | 'A' | 'H' | 'L' }; // Present, Absent, Half-day, Leave
+    dailyStatus: { [day: number]: 'P' | 'A' | 'H' | 'L' | 'W' }; // Present, Absent, Half-day, Leave, Weekend
 }
 
 const AttendanceReportTab = ({ allBranches, selectedBranch, authUser, date, selectedEmployeeId, selectedStatus, employees }: { allBranches: ShopData[], selectedBranch: ShopData, authUser: AuthUser, date?: DateRange, selectedEmployeeId: string, selectedStatus: string, employees: User[] }) => {
@@ -150,8 +151,8 @@ const AttendanceReportTab = ({ allBranches, selectedBranch, authUser, date, sele
 
     const getStatusVariant = (status: AttendanceRecord['status']) => {
         switch (status) {
-            case 'On-time': return 'secondary';
-            case 'Late': return 'destructive';
+            case 'On-time': case 'Grace Period': return 'secondary';
+            case 'Late': case 'Late Category 1': case 'Late Category 2': case 'Late Category 3': return 'destructive';
             case 'Half-day': return 'outline';
             case 'Manual': return 'outline';
             default: return 'default';
@@ -330,7 +331,7 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
             if (!employee.baseSalary || employee.baseSalary === 0) {
                  return {
                     employeeId: employee.id!, employeeName: employee.name, baseSalary: 0,
-                    paidLeaveUsed: 0, unpaidLeave: 0, halfDays: 0, totalPresent: 0, daysInMonth,
+                    paidLeaveUsed: 0, unpaidLeave: 0, halfDays: 0, totalPresent: 0, daysInMonth, lateEntries: 0,
                     earnings: { base: 0, bonus: 0 },
                     deductions: { unpaidLeave: 0, halfDay: 0, advances: 0 },
                     finalSalary: 0,
@@ -350,6 +351,7 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
 
             const employeeMonthAttendance = monthAttendanceRecords.filter(r => r.userId === employee.id);
             const employeeHalfDays = employeeMonthAttendance.filter(r => r.status === 'Half-day').length;
+            const employeeLateEntries = employeeMonthAttendance.filter(r => r.status.startsWith('Late')).length;
             const employeePresents = employeeMonthAttendance.length - employeeHalfDays;
             
             const paidLeaveUsed = Math.min(totalLeaveDays, monthlyPaidLeave);
@@ -363,7 +365,7 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
 
             return {
                 employeeId: employee.id!, employeeName: employee.name, baseSalary: employee.baseSalary,
-                paidLeaveUsed: paidLeaveUsed, unpaidLeave: unpaidLeave, halfDays: employeeHalfDays,
+                paidLeaveUsed: paidLeaveUsed, unpaidLeave: unpaidLeave, halfDays: employeeHalfDays, lateEntries: employeeLateEntries,
                 totalPresent: employeePresents, daysInMonth,
                 earnings: { base: employee.baseSalary, bonus: 0 },
                 deductions: { unpaidLeave: unpaidLeaveDeductions, halfDay: halfDayDeductions, advances: 0 },
@@ -432,19 +434,21 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
             return;
         }
 
-        const doc = new jsPDF();
+        const doc = new jsPDF({ orientation: 'landscape' });
         doc.text(`Payroll Summary for ${format(selectedDate, 'MMMM yyyy')}`, 14, 15);
 
         doc.autoTable({
             startY: 22,
-            head: [['Employee', 'Base (₹)', 'Bonus (₹)', 'Unpaid Leave (₹)', 'Half Day (₹)', 'Advances (₹)', 'Net Salary (₹)']],
+            head: [['Employee', 'Base (₹)', 'Bonus (₹)', 'Late Entries', 'Half Days', 'Paid Leave', 'Unpaid Leave', 'Deductions (₹)', 'Net Salary (₹)']],
             body: payrollData.map(p => [
                 p.employeeName,
                 p.earnings.base.toLocaleString(),
                 p.earnings.bonus.toLocaleString(),
-                p.deductions.unpaidLeave.toLocaleString(),
-                p.deductions.halfDay.toLocaleString(),
-                p.deductions.advances.toLocaleString(),
+                p.lateEntries,
+                p.halfDays,
+                p.paidLeaveUsed,
+                p.unpaidLeave,
+                (p.deductions.unpaidLeave + p.deductions.halfDay + p.deductions.advances).toLocaleString(),
                 p.finalSalary.toLocaleString(),
             ]),
         });
@@ -461,9 +465,11 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
             'Employee': p.employeeName,
             'Base Salary': p.earnings.base,
             'Bonus': p.earnings.bonus,
-            'Unpaid Leave Deduction': p.deductions.unpaidLeave,
-            'Half Day Deduction': p.deductions.halfDay,
-            'Other Deductions': p.deductions.advances,
+            'Late Entries': p.lateEntries,
+            'Half Days': p.halfDays,
+            'Paid Leave': p.paidLeaveUsed,
+            'Unpaid Leave': p.unpaidLeave,
+            'Deductions': p.deductions.unpaidLeave + p.deductions.halfDay + p.deductions.advances,
             'Final Salary': p.finalSalary,
         })));
         const workbook = XLSX.utils.book_new();
@@ -554,11 +560,20 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
                                                     </Button>
                                                 </div>
                                                 <Separator />
-                                                <div className="space-y-3 text-sm">
-                                                    <div className="flex justify-between">
-                                                        <span className="text-muted-foreground">Base Salary:</span>
-                                                        <span className="font-medium">₹{p.baseSalary > 0 ? p.baseSalary.toLocaleString() : "N/A"}</span>
-                                                    </div>
+                                                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                                                    <div className="text-muted-foreground">Base Salary:</div>
+                                                    <div className="font-medium text-right">₹{p.baseSalary > 0 ? p.baseSalary.toLocaleString() : "N/A"}</div>
+                                                    <div className="text-muted-foreground">Late Entries:</div>
+                                                    <div className="font-medium text-right">{p.lateEntries}</div>
+                                                    <div className="text-muted-foreground">Half Days:</div>
+                                                    <div className="font-medium text-right">{p.halfDays}</div>
+                                                    <div className="text-muted-foreground">Paid Leave:</div>
+                                                    <div className="font-medium text-right">{p.paidLeaveUsed}</div>
+                                                    <div className="text-muted-foreground">Unpaid Leave:</div>
+                                                    <div className="font-medium text-right">{p.unpaidLeave}</div>
+                                                </div>
+                                                <Separator />
+                                                 <div className="space-y-3 text-sm">
                                                     <div className="flex justify-between items-center">
                                                         <Label htmlFor={`bonus-${p.employeeId}`} className="text-muted-foreground">Bonus (₹):</Label>
                                                         <Input 
@@ -598,10 +613,14 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
                                             <TableHeader>
                                                 <TableRow>
                                                     <TableHead>Employee</TableHead>
-                                                    <TableHead className="text-right">Base Salary (₹)</TableHead>
-                                                    <TableHead>Bonus/Overtime (₹)</TableHead>
-                                                    <TableHead>Advance/Deduction (₹)</TableHead>
-                                                    <TableHead className="text-right">Final Salary (₹)</TableHead>
+                                                    <TableHead className="text-center">Base (₹)</TableHead>
+                                                    <TableHead className="text-center">Late</TableHead>
+                                                    <TableHead className="text-center">Half-Days</TableHead>
+                                                    <TableHead className="text-center">Paid Leave</TableHead>
+                                                    <TableHead className="text-center">Unpaid Leave</TableHead>
+                                                    <TableHead>Bonus (₹)</TableHead>
+                                                    <TableHead>Deduction (₹)</TableHead>
+                                                    <TableHead className="text-right">Net Salary (₹)</TableHead>
                                                     <TableHead className="text-center">Action</TableHead>
                                                 </TableRow>
                                             </TableHeader>
@@ -609,7 +628,11 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
                                                 {payrollData.map(p => (
                                                     <TableRow key={p.employeeId}>
                                                         <TableCell className="font-medium">{p.employeeName}</TableCell>
-                                                        <TableCell className="text-right">{p.baseSalary > 0 ? p.baseSalary.toLocaleString() : "N/A"}</TableCell>
+                                                        <TableCell className="text-center">{p.baseSalary > 0 ? p.baseSalary.toLocaleString() : "N/A"}</TableCell>
+                                                        <TableCell className="text-center">{p.lateEntries}</TableCell>
+                                                        <TableCell className="text-center">{p.halfDays}</TableCell>
+                                                        <TableCell className="text-center">{p.paidLeaveUsed}</TableCell>
+                                                        <TableCell className="text-center">{p.unpaidLeave}</TableCell>
                                                         <TableCell>
                                                             <Input 
                                                             type="number" 
@@ -700,9 +723,14 @@ const MusterRollTab = ({ authUser }: { authUser: AuthUser }) => {
 
 
         const musterResults: MusterData[] = employeeList.map(employee => {
-            const dailyStatus: { [day: number]: 'P' | 'A' | 'H' | 'L' } = {};
+            const dailyStatus: { [day: number]: 'P' | 'A' | 'H' | 'L' | 'W' } = {};
             days.forEach(day => {
                 const dayOfMonth = day.getDate();
+                
+                 if(isWeekend(day)) {
+                    dailyStatus[dayOfMonth] = 'W';
+                    return;
+                }
                 
                 const attendanceRecord = attendanceRecords.find(r => 
                     r.userId === employee.id &&
@@ -739,12 +767,13 @@ const MusterRollTab = ({ authUser }: { authUser: AuthUser }) => {
         setLoading(false);
     };
 
-    const getStatusClass = (status: 'P' | 'A' | 'H' | 'L') => {
+    const getStatusClass = (status: 'P' | 'A' | 'H' | 'L' | 'W') => {
         switch (status) {
             case 'P': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
             case 'A': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
             case 'H': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
             case 'L': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+            case 'W': return 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400';
             default: return '';
         }
     };
@@ -759,7 +788,7 @@ const MusterRollTab = ({ authUser }: { authUser: AuthUser }) => {
         const head = [['Employee', ...daysInMonth.map(d => format(d, 'd'))]];
         const body = musterData.map(p => [
             p.employeeName,
-            ...daysInMonth.map(d => p.dailyStatus[d.getDate()] || 'A')
+            ...daysInMonth.map(d => p.dailyStatus[d.getDate()] || (isWeekend(d) ? 'W' : 'A'))
         ]);
         doc.autoTable({ startY: 22, head, body, styles: { fontSize: 7, cellPadding: 1 } });
         doc.save('muster_roll.pdf');
@@ -774,7 +803,7 @@ const MusterRollTab = ({ authUser }: { authUser: AuthUser }) => {
         const dataForSheet = musterData.map(p => {
             const row: { [key: string]: string } = { 'Employee': p.employeeName };
             daysInMonth.forEach(d => {
-                row[format(d, 'yyyy-MM-dd')] = p.dailyStatus[d.getDate()] || 'A';
+                row[format(d, 'yyyy-MM-dd')] = p.dailyStatus[d.getDate()] || (isWeekend(d) ? 'W' : 'A');
             });
             return row;
         });
@@ -839,7 +868,7 @@ const MusterRollTab = ({ authUser }: { authUser: AuthUser }) => {
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mt-10 gap-4">
                     <div>
                         <h3 className="text-2xl font-semibold leading-none tracking-tight">Muster Roll for {format(selectedDate, 'MMMM yyyy')}</h3>
-                        <p className="text-sm text-muted-foreground mt-2">P = Present, A = Absent, H = Half-day, L = On Leave</p>
+                        <p className="text-sm text-muted-foreground mt-2">P=Present, A=Absent, H=Half-day, L=On Leave, W=Weekend</p>
                     </div>
                      <div className="flex gap-2">
                         <Button onClick={handleExportMusterPDF} variant="outline" disabled={musterData.length === 0}><FileText className="mr-2 h-4 w-4"/>PDF</Button>
@@ -850,30 +879,30 @@ const MusterRollTab = ({ authUser }: { authUser: AuthUser }) => {
                      {loading ? <div className="flex items-center justify-center h-48"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
                         : musterData.length === 0 ? <div className="h-24 text-center flex flex-col items-center justify-center text-muted-foreground"><FileText className="h-8 w-8 mb-2" /><p>Generate a muster roll to see results.</p></div>
                             : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {musterData.map(p => (
-                                        <Card key={p.employeeId} className="overflow-hidden border-2 border-foreground/20 hover:border-primary transition-all shadow-lg rounded-xl">
-                                            <CardHeader className="p-4 bg-muted/50">
-                                                <CardTitle className="text-base">{p.employeeName}</CardTitle>
-                                            </CardHeader>
-                                            <CardContent className="p-4">
-                                                <div className="grid grid-cols-7 gap-1">
+                                <div className="w-full overflow-x-auto rounded-lg border">
+                                    <Table className="min-w-full">
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead className="sticky left-0 bg-background z-10 w-[200px]">Employee</TableHead>
+                                                {daysInMonth.map(day => (
+                                                     <TableHead key={day.toISOString()} className="text-center w-12">{format(day, 'd')}</TableHead>
+                                                ))}
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {musterData.map(p => (
+                                                <TableRow key={p.employeeId}>
+                                                    <TableCell className="sticky left-0 bg-background z-10 font-medium">{p.employeeName}</TableCell>
                                                     {daysInMonth.map(day => {
-                                                        const status = p.dailyStatus[day.getDate()] || 'A';
+                                                        const status = p.dailyStatus[day.getDate()] || (isWeekend(day) ? 'W' : 'A');
                                                         return (
-                                                            <div key={day.toISOString()} className="flex flex-col items-center gap-1 p-1 rounded-md">
-                                                                <span className="text-xs text-muted-foreground">{format(day, 'E')}</span>
-                                                                <span className={cn("w-7 h-7 flex items-center justify-center rounded-full font-bold text-xs", getStatusClass(status))}>
-                                                                    {status}
-                                                                </span>
-                                                                <span className="text-xs font-semibold">{format(day, 'd')}</span>
-                                                            </div>
+                                                             <TableCell key={day.toISOString()} className={cn("text-center font-bold", getStatusClass(status))}>{status}</TableCell>
                                                         )
                                                     })}
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    ))}
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
                                 </div>
                             )}
                 </div>
@@ -1217,5 +1246,6 @@ export default function ReportsPage() {
         </div>
     );
 }
+
 
 
