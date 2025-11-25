@@ -79,6 +79,7 @@ type PayrollData = {
     deductions: {
         unpaidLeave: number;
         halfDay: number;
+        lateEntry: number;
         advances: number;
     };
     finalSalary: number;
@@ -278,7 +279,7 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
                     updatedP.deductions.advances = numericValue;
                 }
                 const totalEarnings = updatedP.earnings.base + updatedP.earnings.bonus;
-                const totalDeductions = updatedP.deductions.unpaidLeave + updatedP.deductions.halfDay + updatedP.deductions.advances;
+                const totalDeductions = updatedP.deductions.unpaidLeave + updatedP.deductions.halfDay + updatedP.deductions.lateEntry + updatedP.deductions.advances;
                 updatedP.finalSalary = Math.round(totalEarnings - totalDeductions);
                 return updatedP;
             }
@@ -298,9 +299,13 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
         const settingsData = settingsSnap.exists() ? settingsSnap.data() : {};
         const monthlyPaidLeave = settingsData.monthlyPaidLeave || 4;
         const gamification = {
-            onTimePoints: 1, gracePeriodMinutes: 5, lateCategory1Minutes: 10, lateCategory1Points: -1,
-            lateCategory2Minutes: 30, lateCategory2Points: -2, lateCategory3Minutes: 60, lateCategory3Points: -3,
-            absentMinutes: 60, absentPoints: -5, ...settingsData.gamification
+            onTimePoints: 1, gracePeriodMinutes: 5, lateCategory1Points: -1,
+            lateCategory2Points: -2, lateCategory3Points: -3,
+            absentPoints: -5, ...settingsData.gamification
+        };
+         const payrollDeductions = {
+            lateCategory1Deduction: 0, lateCategory2Deduction: 0, lateCategory3Deduction: 0,
+            ...settingsData.payrollDeductions
         };
 
 
@@ -349,14 +354,15 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
             let halfDays = 0;
             let absences = 0;
             let totalPresent = 0;
+            let lateDeduction = 0;
 
             employeeMonthAttendance.forEach(record => {
                  switch (record.status) {
                     case 'On-time': totalPoints += gamification.onTimePoints; totalPresent++; break;
                     case 'Grace Period': graceUsed++; totalPresent++; break;
-                    case 'Late Category 1': lateEntries++; totalPoints += gamification.lateCategory1Points; totalPresent++; break;
-                    case 'Late Category 2': lateEntries++; totalPoints += gamification.lateCategory2Points; totalPresent++; break;
-                    case 'Late Category 3': lateEntries++; totalPoints += gamification.lateCategory3Points; totalPresent++; break;
+                    case 'Late Category 1': lateEntries++; totalPoints += gamification.lateCategory1Points; totalPresent++; lateDeduction += payrollDeductions.lateCategory1Deduction; break;
+                    case 'Late Category 2': lateEntries++; totalPoints += gamification.lateCategory2Points; totalPresent++; lateDeduction += payrollDeductions.lateCategory2Deduction; break;
+                    case 'Late Category 3': lateEntries++; totalPoints += gamification.lateCategory3Points; totalPresent++; lateDeduction += payrollDeductions.lateCategory3Deduction; break;
                     case 'Half-day': halfDays++; totalPresent += 0.5; break; // Count as half present
                     case 'Absent': absences++; totalPoints += gamification.absentPoints; break;
                 }
@@ -377,7 +383,7 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
             const halfDayDeductions = Math.round(halfDays * (dailyRate / 2));
             const unpaidLeaveDeductions = Math.round(unpaidLeave * dailyRate);
             
-            const totalDeductions = unpaidLeaveDeductions + halfDayDeductions;
+            const totalDeductions = unpaidLeaveDeductions + halfDayDeductions + lateDeduction;
             const finalSalary = Math.round((employee.baseSalary || 0) - totalDeductions);
 
             return {
@@ -385,7 +391,7 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
                 totalPoints, paidLeaveUsed, unpaidLeave, halfDays, lateEntries, graceUsed, absences,
                 totalPresent, daysInMonth,
                 earnings: { base: employee.baseSalary || 0, bonus: 0 },
-                deductions: { unpaidLeave: unpaidLeaveDeductions, halfDay: halfDayDeductions, advances: 0 },
+                deductions: { unpaidLeave: unpaidLeaveDeductions, halfDay: halfDayDeductions, lateEntry: lateDeduction, advances: 0 },
                 finalSalary: finalSalary,
             };
         }).filter(p => p !== null) as PayrollData[];
@@ -397,7 +403,7 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
     const handleDownloadSlip = (employeeData: PayrollData) => {
         const doc = new jsPDF();
         const totalEarnings = employeeData.earnings.base + employeeData.earnings.bonus;
-        const totalDeductions = employeeData.deductions.unpaidLeave + employeeData.deductions.halfDay + employeeData.deductions.advances;
+        const totalDeductions = employeeData.deductions.unpaidLeave + employeeData.deductions.halfDay + employeeData.deductions.lateEntry + employeeData.deductions.advances;
         
         // Header
         doc.setFontSize(20);
@@ -426,6 +432,7 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
             body: [
                 ['Basic Salary', employeeData.earnings.base.toLocaleString(), 'Unpaid Leave', employeeData.deductions.unpaidLeave.toLocaleString()],
                 ['Bonus / Overtime', employeeData.earnings.bonus.toLocaleString(), 'Half-day', employeeData.deductions.halfDay.toLocaleString()],
+                ['', '', 'Late Entry', employeeData.deductions.lateEntry.toLocaleString()],
                 ['', '', 'Advance / Other', employeeData.deductions.advances.toLocaleString()],
                 ['', '', '', ''], // Spacer row
                 [{ content: 'Total Earnings', styles: { fontStyle: 'bold' } }, { content: totalEarnings.toLocaleString(), styles: { fontStyle: 'bold' } }, { content: 'Total Deductions', styles: { fontStyle: 'bold' } }, { content: totalDeductions.toLocaleString(), styles: { fontStyle: 'bold' } }],
@@ -468,7 +475,7 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
                 p.absences,
                 p.paidLeaveUsed,
                 p.unpaidLeave,
-                (p.deductions.unpaidLeave + p.deductions.halfDay + p.deductions.advances).toLocaleString(),
+                (p.deductions.unpaidLeave + p.deductions.halfDay + p.deductions.advances + p.deductions.lateEntry).toLocaleString(),
                 p.finalSalary.toLocaleString(),
             ]),
             styles: { fontSize: 7 }
@@ -493,7 +500,7 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
             'Absences': p.absences,
             'Paid Leave': p.paidLeaveUsed,
             'Unpaid Leave': p.unpaidLeave,
-            'Deductions': p.deductions.unpaidLeave + p.deductions.halfDay + p.deductions.advances,
+            'Deductions': p.deductions.unpaidLeave + p.deductions.halfDay + p.deductions.advances + p.deductions.lateEntry,
             'Final Salary': p.finalSalary,
         })));
         const workbook = XLSX.utils.book_new();
@@ -626,7 +633,8 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
                                                     <TableHead className="text-center">Half-Days</TableHead>
                                                     <TableHead className="text-center">Absences</TableHead>
                                                     <TableHead>Bonus (₹)</TableHead>
-                                                    <TableHead>Deduction (₹)</TableHead>
+                                                    <TableHead>Late Deduction (₹)</TableHead>
+                                                    <TableHead>Other Deduction (₹)</TableHead>
                                                     <TableHead className="text-right">Net Salary (₹)</TableHead>
                                                     <TableHead className="text-center">Action</TableHead>
                                                 </TableRow>
@@ -644,6 +652,7 @@ const PayrollReportTab = ({ shopData, authUser }: { shopData: ShopData, authUser
                                                         <TableCell>
                                                             <Input type="number" className="max-w-[120px] text-right ml-auto" placeholder="0" value={p.earnings.bonus || ''} onChange={(e) => handleAdjustmentChange(p.employeeId, 'bonus', e.target.value)} disabled={p.baseSalary === 0} />
                                                         </TableCell>
+                                                         <TableCell className="text-center font-medium text-destructive">{p.deductions.lateEntry > 0 ? p.deductions.lateEntry.toLocaleString() : "0"}</TableCell>
                                                         <TableCell>
                                                             <Input type="number" className="max-w-[120px] text-right ml-auto" placeholder="0" value={p.deductions.advances || ''} onChange={(e) => handleAdjustmentChange(p.employeeId, 'advances', e.target.value)} disabled={p.baseSalary === 0} />
                                                         </TableCell>
@@ -1235,6 +1244,7 @@ export default function ReportsPage() {
         </div>
     );
 }
+
 
 
 

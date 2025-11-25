@@ -80,6 +80,12 @@ type GamificationSettings = {
     streakBonusPoints: number;
 };
 
+type PayrollDeductionSettings = {
+    lateCategory1Deduction: number;
+    lateCategory2Deduction: number;
+    lateCategory3Deduction: number;
+};
+
 type Settings = {
   businessHours: BusinessHours;
   lateGracePeriodMinutes: number;
@@ -88,6 +94,7 @@ type Settings = {
   enableLateAlerts: boolean;
   qrCodeMode: 'permanent' | 'dynamic';
   gamification: GamificationSettings;
+  payrollDeductions: PayrollDeductionSettings;
 };
 
 type ShopProfile = {
@@ -134,6 +141,12 @@ const defaultGamificationSettings: GamificationSettings = {
     streakBonusPoints: 50,
 };
 
+const defaultPayrollDeductionSettings: PayrollDeductionSettings = {
+    lateCategory1Deduction: 0,
+    lateCategory2Deduction: 0,
+    lateCategory3Deduction: 0,
+};
+
 const defaultSettings: Settings = {
   businessHours: defaultHours,
   lateGracePeriodMinutes: 15,
@@ -142,6 +155,7 @@ const defaultSettings: Settings = {
   enableLateAlerts: false,
   qrCodeMode: 'permanent',
   gamification: defaultGamificationSettings,
+  payrollDeductions: defaultPayrollDeductionSettings,
 };
 
 
@@ -520,8 +534,10 @@ function SettingsPageContent() {
                 }
                 
                 const newGamificationSettings = { ...defaultGamificationSettings, ...(existingSettings.gamification || {})};
+                const newPayrollDeductionSettings = { ...defaultPayrollDeductionSettings, ...(existingSettings.payrollDeductions || {}) };
 
-                const mergedSettings = { ...defaultSettings, ...existingSettings, businessHours: newBusinessHours, gamification: newGamificationSettings };
+
+                const mergedSettings = { ...defaultSettings, ...existingSettings, businessHours: newBusinessHours, gamification: newGamificationSettings, payrollDeductions: newPayrollDeductionSettings };
                 setSettings(mergedSettings);
             } else {
                 setSettings(defaultSettings);
@@ -551,6 +567,16 @@ function SettingsPageContent() {
         ...prevSettings.gamification,
         [field]: Number(value)
       }
+    }));
+  };
+  
+  const handleDeductionChange = (field: keyof PayrollDeductionSettings, value: string) => {
+    setSettings(prevSettings => ({
+        ...prevSettings,
+        payrollDeductions: {
+            ...prevSettings.payrollDeductions,
+            [field]: Number(value),
+        }
     }));
   };
 
@@ -883,6 +909,28 @@ function SettingsPageContent() {
                             </div>
                         ))}
                     </div>
+
+                    <Card className="transition-all duration-300 ease-out hover:shadow-lg border-2 border-foreground/20 hover:border-primary">
+                        <CardHeader>
+                            <CardTitle>Payroll Deduction Settings</CardTitle>
+                             <CardDescription>Set fixed deduction amounts (in ₹) for late arrivals. These will be subtracted from the monthly salary.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="grid sm:grid-cols-3 gap-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="lateCat1Deduction">Late Category 1 Deduction</Label>
+                                <Input id="lateCat1Deduction" type="number" value={settings.payrollDeductions.lateCategory1Deduction} onChange={(e) => handleDeductionChange('lateCategory1Deduction', e.target.value)} placeholder="e.g., 50" />
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="lateCat2Deduction">Late Category 2 Deduction</Label>
+                                <Input id="lateCat2Deduction" type="number" value={settings.payrollDeductions.lateCategory2Deduction} onChange={(e) => handleDeductionChange('lateCategory2Deduction', e.target.value)} placeholder="e.g., 100" />
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="lateCat3Deduction">Late Category 3 Deduction</Label>
+                                <Input id="lateCat3Deduction" type="number" value={settings.payrollDeductions.lateCategory3Deduction} onChange={(e) => handleDeductionChange('lateCategory3Deduction', e.target.value)} placeholder="e.g., 200" />
+                            </div>
+                        </CardContent>
+                    </Card>
+
                     <Card className="transition-all duration-300 ease-out hover:shadow-lg border-2 border-foreground/20 hover:border-primary">
                         <CardHeader>
                             <CardTitle>Attendance & Leave</CardTitle>
