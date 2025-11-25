@@ -742,76 +742,90 @@ function SettingsPageContent() {
                 </TabsContent>
                 
                 <TabsContent value="gamification" className="space-y-6 mt-0">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Punctuality Point System</CardTitle>
-                            <CardDescription>Customize the points and time limits for attendance. Your default shift start time is set under Business Hours.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 items-end">
-                                <div className="space-y-1.5">
-                                    <Label>On-time Points</Label>
-                                    <Input type="number" value={settings.gamification.onTimePoints} onChange={(e) => handleGamificationChange('onTimePoints', e.target.value)} />
+                    <div className="space-y-4">
+                        <div>
+                            <h3 className="text-xl font-semibold">Punctuality Point System</h3>
+                            <p className="text-sm text-muted-foreground">Customize the points and time limits for attendance. Your default shift start time is set under Business Hours.</p>
+                        </div>
+
+                        <Separator />
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 items-end">
+                            <div className="space-y-1.5">
+                                <Label>On-time Points</Label>
+                                <Input type="number" value={settings.gamification.onTimePoints} onChange={(e) => handleGamificationChange('onTimePoints', e.target.value)} />
+                            </div>
+                            <div className="space-y-1.5 col-span-2 md:col-span-3">
+                                <Label>Grace Period (minutes after shift start)</Label>
+                                <Slider
+                                    value={[settings.gamification.gracePeriodMinutes]}
+                                    onValueChange={(val) => handleGamificationChange('gracePeriodMinutes', String(val[0]))}
+                                    max={30}
+                                    step={1}
+                                />
+                                <p className="text-xs text-muted-foreground text-center pt-1">{settings.gamification.gracePeriodMinutes} minutes (0 points)</p>
+                            </div>
+                        </div>
+
+                        <Separator />
+
+                        <div>
+                            <p className="font-medium mb-4">Late Categories</p>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="space-y-1.5 p-3 border rounded-lg">
+                                    <Label>Late 1 (Ends after)</Label>
+                                    <Input type="number" value={settings.gamification.lateCategory1Minutes} onChange={(e) => handleGamificationChange('lateCategory1Minutes', e.target.value)} addon="min"/>
+                                    <Label>Points</Label>
+                                    <Input type="number" value={settings.gamification.lateCategory1Points} onChange={(e) => handleGamificationChange('lateCategory1Points', e.target.value)} />
                                 </div>
-                                <div className="space-y-1.5 col-span-2 md:col-span-3">
-                                    <Label>Grace Period (minutes after shift start)</Label>
-                                    <Slider
-                                        value={[settings.gamification.gracePeriodMinutes]}
-                                        onValueChange={(val) => handleGamificationChange('gracePeriodMinutes', String(val[0]))}
-                                        max={30}
-                                        step={1}
-                                    />
-                                     <p className="text-xs text-muted-foreground text-center pt-1">{settings.gamification.gracePeriodMinutes} minutes (0 points)</p>
+                                <div className="space-y-1.5 p-3 border rounded-lg">
+                                    <Label>Late 2 (Ends after)</Label>
+                                    <Input type="number" value={settings.gamification.lateCategory2Minutes} onChange={(e) => handleGamificationChange('lateCategory2Minutes', e.target.value)} addon="min"/>
+                                    <Label>Points</Label>
+                                    <Input type="number" value={settings.gamification.lateCategory2Points} onChange={(e) => handleGamificationChange('lateCategory2Points', e.target.value)} />
+                                </div>
+                                <div className="space-y-1.5 p-3 border rounded-lg">
+                                    <Label>Late 3 (Ends after)</Label>
+                                    <Input type="number" value={settings.gamification.lateCategory3Minutes} onChange={(e) => handleGamificationChange('lateCategory3Minutes', e.target.value)} addon="min"/>
+                                    <Label>Points</Label>
+                                    <Input type="number" value={settings.gamification.lateCategory3Points} onChange={(e) => handleGamificationChange('lateCategory3Points', e.target.value)} />
                                 </div>
                             </div>
-                            <Separator />
-                            <div className="space-y-4">
-                                <p className="font-medium">Late Categories</p>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                     <div className="space-y-1.5 p-3 border rounded-lg">
-                                        <Label>Late 1 (Ends after)</Label>
-                                        <Input type="number" value={settings.gamification.lateCategory1Minutes} onChange={(e) => handleGamificationChange('lateCategory1Minutes', e.target.value)} addon="min"/>
-                                        <Label>Points</Label>
-                                        <Input type="number" value={settings.gamification.lateCategory1Points} onChange={(e) => handleGamificationChange('lateCategory1Points', e.target.value)} />
-                                    </div>
-                                    <div className="space-y-1.5 p-3 border rounded-lg">
-                                        <Label>Late 2 (Ends after)</Label>
-                                        <Input type="number" value={settings.gamification.lateCategory2Minutes} onChange={(e) => handleGamificationChange('lateCategory2Minutes', e.target.value)} addon="min"/>
-                                        <Label>Points</Label>
-                                        <Input type="number" value={settings.gamification.lateCategory2Points} onChange={(e) => handleGamificationChange('lateCategory2Points', e.target.value)} />
-                                    </div>
-                                    <div className="space-y-1.5 p-3 border rounded-lg">
-                                        <Label>Late 3 (Ends after)</Label>
-                                        <Input type="number" value={settings.gamification.lateCategory3Minutes} onChange={(e) => handleGamificationChange('lateCategory3Minutes', e.target.value)} addon="min"/>
-                                        <Label>Points</Label>
-                                        <Input type="number" value={settings.gamification.lateCategory3Points} onChange={(e) => handleGamificationChange('lateCategory3Points', e.target.value)} />
-                                    </div>
-                                </div>
+                        </div>
+
+                        <Separator />
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <Label>Absent if later than (minutes)</Label>
+                                <Input type="number" value={settings.gamification.absentMinutes} onChange={(e) => handleGamificationChange('absentMinutes', e.target.value)} />
                             </div>
-                             <Separator />
-                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-1.5">
-                                    <Label>Absent if later than (minutes)</Label>
-                                    <Input type="number" value={settings.gamification.absentMinutes} onChange={(e) => handleGamificationChange('absentMinutes', e.target.value)} />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <Label>Absent Points</Label>
-                                    <Input type="number" value={settings.gamification.absentPoints} onChange={(e) => handleGamificationChange('absentPoints', e.target.value)} />
-                                </div>
+                            <div className="space-y-1.5">
+                                <Label>Absent Points</Label>
+                                <Input type="number" value={settings.gamification.absentPoints} onChange={(e) => handleGamificationChange('absentPoints', e.target.value)} />
                             </div>
-                             <Separator />
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-1.5">
-                                    <Label>On-time Streak for Bonus (days)</Label>
-                                    <Input type="number" value={settings.gamification.streakBonusDays} onChange={(e) => handleGamificationChange('streakBonusDays', e.target.value)} />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <Label>Streak Bonus Points</Label>
-                                    <Input type="number" value={settings.gamification.streakBonusPoints} onChange={(e) => handleGamificationChange('streakBonusPoints', e.target.value)} />
-                                </div>
+                        </div>
+
+                        <Separator />
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <Label>On-time Streak for Bonus (days)</Label>
+                                <Input type="number" value={settings.gamification.streakBonusDays} onChange={(e) => handleGamificationChange('streakBonusDays', e.target.value)} />
                             </div>
-                        </CardContent>
-                    </Card>
+                            <div className="space-y-1.5">
+                                <Label>Streak Bonus Points</Label>
+                                <Input type="number" value={settings.gamification.streakBonusPoints} onChange={(e) => handleGamificationChange('streakBonusPoints', e.target.value)} />
+                            </div>
+                        </div>
+                        
+                        <div className="flex justify-end pt-4">
+                             <Button onClick={handleSaveSettings} className="w-full md:w-auto" disabled={saving}>
+                                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                Save Point System
+                            </Button>
+                        </div>
+                    </div>
                 </TabsContent>
 
                 {/* General Settings Tab */}
