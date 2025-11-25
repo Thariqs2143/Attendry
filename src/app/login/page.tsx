@@ -10,9 +10,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import { IndianFlagIcon } from "@/components/ui/indian-flag-icon";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, getAuth } from "firebase/auth";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { getFirestore } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
 import { Label } from "@/components/ui/label";
 
 function LoginContent() {
@@ -40,9 +40,7 @@ function LoginContent() {
     }
 
     setLoading(true);
-    const auth = getAuth();
-    const db = getFirestore();
-
+    
     try {
       if (isNewUser) {
         // Handle Sign Up
