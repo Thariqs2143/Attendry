@@ -72,7 +72,7 @@ export default function LandingPage() {
               </div>
             </div>
              <Image
-              src="https://res.cloudinary.com/dnkghymx5/image/upload/v1722850937/Frame_3_1_ku8hvi.png"
+              src="https://res.cloudinary.com/dnkghymx5/image/upload/v1762847075/Generated_Image_November_11_2025_-_1_11PM_1_romg21.png"
               width={700}
               height={700}
               alt="Hero"
