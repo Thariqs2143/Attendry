@@ -509,6 +509,138 @@ const PricingPlans = ({ profile }: { profile: Partial<FullProfile> }) => {
   );
 };
 
+const Announcements = ({ authUser }: { authUser: AuthUser | null }) => {
+    const [announcements, setAnnouncements] = useState<ShopAnnouncement[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [title, setTitle] = useState('');
+    const [message, setMessage] = useState('');
+    const { toast } = useToast();
+
+    useEffect(() => {
+        if (!authUser) return;
+        const db = getFirestore();
+        const announcementsRef = collection(db, 'shops', authUser.uid, 'announcements');
+        const q = query(announcementsRef, orderBy('createdAt', 'desc'));
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const fetchedAnnouncements = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+            } as ShopAnnouncement));
+            setAnnouncements(fetchedAnnouncements);
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [authUser]);
+
+    const handleSaveAnnouncement = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!title || !message || !authUser) {
+            toast({ title: "Missing fields", variant: "destructive" });
+            return;
+        }
+        setSaving(true);
+        const db = getFirestore();
+        try {
+            await addDoc(collection(db, 'shops', authUser.uid, 'announcements'), {
+                title,
+                message,
+                createdAt: Timestamp.now(),
+            });
+            toast({ title: "Announcement Published!" });
+            setTitle('');
+            setMessage('');
+        } catch (error) {
+            toast({ title: "Save Failed", variant: "destructive" });
+        } finally {
+            setSaving(false);
+        }
+    };
+    
+    const handleDelete = async (announcementId: string) => {
+        if (!authUser) return;
+        const db = getFirestore();
+        try {
+            await deleteDoc(doc(db, 'shops', authUser.uid, 'announcements', announcementId));
+            toast({ title: "Announcement Deleted" });
+        } catch (error) {
+            toast({ title: "Delete Failed", variant: "destructive" });
+        }
+    };
+
+    return (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Create New Announcement</CardTitle>
+                    <CardDescription>This will be shown to all employees in your shop.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <form onSubmit={handleSaveAnnouncement} className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="ann-title">Title</Label>
+                            <Input id="ann-title" value={title} onChange={(e) => setTitle(e.target.value)} required />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="ann-message">Message</Label>
+                            <Textarea id="ann-message" value={message} onChange={(e) => setMessage(e.target.value)} required />
+                        </div>
+                        <Button type="submit" className="w-full" disabled={saving}>
+                            {saving ? <Loader2 className="animate-spin mr-2" /> : <Megaphone className="mr-2"/>}
+                            Publish
+                        </Button>
+                    </form>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader>
+                    <CardTitle>History</CardTitle>
+                    <CardDescription>A log of your shop's announcements.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {loading ? (
+                        <div className="flex justify-center"><Loader2 className="animate-spin" /></div>
+                    ) : announcements.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center">No announcements yet.</p>
+                    ) : (
+                        <div className="space-y-3">
+                            {announcements.map(ann => (
+                                <div key={ann.id} className="border p-3 rounded-md flex justify-between items-start">
+                                    <div>
+                                        <p className="font-semibold">{ann.title}</p>
+                                        <p className="text-xs text-muted-foreground">{ann.message}</p>
+                                        <p className="text-xs text-muted-foreground/70 mt-1">
+                                            {formatDistanceToNow(ann.createdAt.toDate(), { addSuffix: true })}
+                                        </p>
+                                    </div>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"><Trash2 className="h-4 w-4"/></Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Delete Announcement?</AlertDialogTitle>
+                                                <AlertDialogDescription>This will permanently delete "{ann.title}".</AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleDelete(ann.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
+    );
+};
+
+
 // Main Component
 function SettingsPageContent() {
   const router = useRouter();
@@ -1025,5 +1157,3 @@ export default function AdminSettingsPage() {
     </Suspense>
   );
 }
-
-    
