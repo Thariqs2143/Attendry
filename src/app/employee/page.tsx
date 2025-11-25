@@ -13,13 +13,28 @@ import { useRouter } from 'next/navigation';
 import jsQR from 'jsqr';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { setHours, setMinutes, setSeconds, startOfDay, endOfDay } from 'date-fns';
+import { setHours, setMinutes, setSeconds, startOfDay, endOfDay, parse } from 'date-fns';
 
 type ScanStatus = 'idle' | 'scanning' | 'success' | 'error' | 'processing';
 type AttendanceRecord = {
     id: string;
     checkInTime: Timestamp;
     checkOutTime?: Timestamp;
+};
+
+type GamificationSettings = {
+    onTimePoints: number;
+    gracePeriodMinutes: number;
+    lateCategory1Minutes: number;
+    lateCategory1Points: number;
+    lateCategory2Minutes: number;
+    lateCategory2Points: number;
+    lateCategory3Minutes: number;
+    lateCategory3Points: number;
+    absentMinutes: number;
+    absentPoints: number;
+    streakBonusDays: number;
+    streakBonusPoints: number;
 };
 
 
@@ -125,48 +140,60 @@ export default function ScanPage() {
   const handleCheckIn = async (shopId: string) => {
     if (!userProfile?.id) return;
     
-    // Check for completed day again right before check-in to prevent race conditions
     await checkAttendanceStatusForToday(userProfile.id, shopId);
     if (hasCompletedDay) {
         toast({ title: 'Already Completed', description: 'You have already checked in and out for today.', variant: 'destructive'});
         setStatus('error');
         return;
     }
-    
-    const now = new Date();
-    const shiftStartTime = setSeconds(setMinutes(setHours(startOfDay(now), 9), 30), 0);
 
-    let attendanceStatus: 'On Time' | 'Grace Period' | 'Late Category 1' | 'Late Category 2' | 'Late Category 3' | 'Absent' = 'On Time';
+    const shopConfigRef = doc(db, 'shops', shopId, 'config', 'main');
+    const shopConfigSnap = await getDoc(shopConfigRef);
+    const settings = shopConfigSnap.exists() ? shopConfigSnap.data() : {};
+    const gamification: GamificationSettings = {
+        onTimePoints: 1, gracePeriodMinutes: 5,
+        lateCategory1Minutes: 10, lateCategory1Points: -1,
+        lateCategory2Minutes: 30, lateCategory2Points: -2,
+        lateCategory3Minutes: 60, lateCategory3Points: -3,
+        absentMinutes: 60, absentPoints: -5,
+        streakBonusDays: 5, streakBonusPoints: 50,
+        ...settings.gamification
+    };
+
+    const businessHours = settings.businessHours || {};
+    const today = new Date().toLocaleString('en-us', { weekday: 'long' }).toLowerCase();
+    const shiftStartTimeString = businessHours[today]?.startTime || '09:30';
+
+    const now = new Date();
+    const [hours, minutes] = shiftStartTimeString.split(':');
+    const shiftStartTime = setSeconds(setMinutes(setHours(startOfDay(now), parseInt(hours)), parseInt(minutes)), 0);
+
+    let attendanceStatus: string = 'On-time';
     let pointsChange = 0;
 
-    const checkInTime = now.getTime();
-    const gracePeriodEnd = setMinutes(shiftStartTime, 35).getTime();
-    const late1End = setMinutes(shiftStartTime, 40).getTime();
-    const late2End = setMinutes(shiftStartTime, 60).getTime(); // 10:00 AM is 30 mins after 9:30
-    const late3End = setMinutes(shiftStartTime, 90).getTime(); // 10:30 AM is 60 mins after 9:30
-    const absentThreshold = late3End;
+    const timeDiffMinutes = (now.getTime() - shiftStartTime.getTime()) / (1000 * 60);
 
-    if (checkInTime <= shiftStartTime.getTime()) {
-        attendanceStatus = 'On Time';
-        pointsChange = 1;
-    } else if (checkInTime <= gracePeriodEnd) {
+    if (timeDiffMinutes <= 0) {
+        attendanceStatus = 'On-time';
+        pointsChange = gamification.onTimePoints;
+    } else if (timeDiffMinutes <= gamification.gracePeriodMinutes) {
         attendanceStatus = 'Grace Period';
         pointsChange = 0;
-    } else if (checkInTime <= late1End) {
+    } else if (timeDiffMinutes <= gamification.lateCategory1Minutes) {
         attendanceStatus = 'Late Category 1';
-        pointsChange = -1;
-    } else if (checkInTime <= late2End) {
+        pointsChange = gamification.lateCategory1Points;
+    } else if (timeDiffMinutes <= gamification.lateCategory2Minutes) {
         attendanceStatus = 'Late Category 2';
-        pointsChange = -2;
-    } else if (checkInTime <= late3End) {
+        pointsChange = gamification.lateCategory2Points;
+    } else if (timeDiffMinutes <= gamification.lateCategory3Minutes) {
         attendanceStatus = 'Late Category 3';
-        pointsChange = -3;
+        pointsChange = gamification.lateCategory3Points;
     } else {
         attendanceStatus = 'Absent';
-        pointsChange = -5;
+        pointsChange = gamification.absentPoints;
     }
     
-    const newStreak = (attendanceStatus === 'On Time' || attendanceStatus === 'Grace Period') ? (userProfile.streak || 0) + 1 : 0;
+    const newStreak = (attendanceStatus === 'On-time' || attendanceStatus === 'Grace Period') ? (userProfile.streak || 0) + 1 : 0;
 
     const batch = writeBatch(db);
     const newAttendanceRef = doc(collection(db, 'shops', shopId, 'attendance'));
@@ -187,9 +214,9 @@ export default function ScanPage() {
         streak: newStreak
     };
     
-    if (newStreak > 0 && newStreak % 5 === 0) {
-        updateData.points += 50;
-        toast({ title: 'Streak Bonus!', description: '+50 bonus points for your 5-day streak!' });
+    if (newStreak > 0 && newStreak % gamification.streakBonusDays === 0) {
+        updateData.points += gamification.streakBonusPoints;
+        toast({ title: 'Streak Bonus!', description: `+${gamification.streakBonusPoints} bonus points for your ${gamification.streakBonusDays}-day streak!` });
     }
 
     batch.update(employeeDocRef, updateData);

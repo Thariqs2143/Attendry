@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
-import { Trophy, LogOut, Save, Loader2, Bell, Edit, Building, Mail, Check, Crown, ArrowRight, CalendarDays, ShieldCheck, Gift, Upload, Copy, Share2, CheckCircle, Users, Briefcase, MapPin, Percent, Phone, User as UserIcon, Settings as SettingsIcon, PlusCircle, Trash2, Clock, X, XCircle } from "lucide-react";
+import { Trophy, LogOut, Save, Loader2, Bell, Edit, Building, Mail, Check, Crown, ArrowRight, CalendarDays, ShieldCheck, Gift, Upload, Copy, Share2, CheckCircle, Users, Briefcase, MapPin, Percent, Phone, User as UserIcon, Settings as SettingsIcon, PlusCircle, Trash2, Clock, X, XCircle, Star } from "lucide-react";
 import { signOut, onAuthStateChanged, type User as AuthUser } from "firebase/auth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
@@ -65,6 +65,21 @@ type BusinessHours = {
   sunday: DayHours;
 };
 
+type GamificationSettings = {
+    onTimePoints: number;
+    gracePeriodMinutes: number;
+    lateCategory1Minutes: number;
+    lateCategory1Points: number;
+    lateCategory2Minutes: number;
+    lateCategory2Points: number;
+    lateCategory3Minutes: number;
+    lateCategory3Points: number;
+    absentMinutes: number;
+    absentPoints: number;
+    streakBonusDays: number;
+    streakBonusPoints: number;
+};
+
 type Settings = {
   businessHours: BusinessHours;
   lateGracePeriodMinutes: number;
@@ -72,6 +87,7 @@ type Settings = {
   enableEmployeeReminders: boolean;
   enableLateAlerts: boolean;
   qrCodeMode: 'permanent' | 'dynamic';
+  gamification: GamificationSettings;
 };
 
 type ShopProfile = {
@@ -103,6 +119,21 @@ const defaultHours: BusinessHours = {
     sunday: { startTime: '10:00', endTime: '14:00', isOpen: false },
 };
 
+const defaultGamificationSettings: GamificationSettings = {
+    onTimePoints: 1,
+    gracePeriodMinutes: 5,
+    lateCategory1Minutes: 10,
+    lateCategory1Points: -1,
+    lateCategory2Minutes: 30,
+    lateCategory2Points: -2,
+    lateCategory3Minutes: 60,
+    lateCategory3Points: -3,
+    absentMinutes: 60,
+    absentPoints: -5,
+    streakBonusDays: 5,
+    streakBonusPoints: 50,
+};
+
 const defaultSettings: Settings = {
   businessHours: defaultHours,
   lateGracePeriodMinutes: 15,
@@ -110,6 +141,7 @@ const defaultSettings: Settings = {
   enableEmployeeReminders: true,
   enableLateAlerts: false,
   qrCodeMode: 'permanent',
+  gamification: defaultGamificationSettings,
 };
 
 
@@ -482,8 +514,8 @@ function SettingsPageContent() {
             const docSnap = await getDoc(settingsDocRef);
             if (docSnap.exists()) {
                 const existingSettings = docSnap.data();
-                const newBusinessHours = JSON.parse(JSON.stringify(defaultHours));
                 
+                const newBusinessHours = JSON.parse(JSON.stringify(defaultHours));
                 if (existingSettings.businessHours) {
                     Object.keys(newBusinessHours).forEach(day => {
                         const key = day as keyof BusinessHours;
@@ -492,7 +524,10 @@ function SettingsPageContent() {
                         }
                     });
                 }
-                const mergedSettings = { ...defaultSettings, ...existingSettings, businessHours: newBusinessHours };
+                
+                const newGamificationSettings = { ...defaultGamificationSettings, ...(existingSettings.gamification || {})};
+
+                const mergedSettings = { ...defaultSettings, ...existingSettings, businessHours: newBusinessHours, gamification: newGamificationSettings };
                 setSettings(mergedSettings);
             } else {
                 setSettings(defaultSettings);
@@ -526,6 +561,16 @@ function SettingsPageContent() {
     }));
   };
 
+  const handleGamificationChange = (field: keyof GamificationSettings, value: string) => {
+    setSettings(prevSettings => ({
+      ...prevSettings,
+      gamification: {
+        ...prevSettings.gamification,
+        [field]: Number(value)
+      }
+    }));
+  };
+
   const handleSaveSettings = async () => {
     if (!authUser) return;
     setSaving(true);
@@ -551,8 +596,6 @@ function SettingsPageContent() {
   const handleEnableNotifications = async () => {
     if (!authUser) return;
     setNotifLoading(true);
-    // This part requires firebase.ts to be correctly set up for client-side
-    // Let's assume it is and dynamically import requestForToken
     try {
       const { requestForToken } = await import('@/lib/firebase');
       const token = await requestForToken();
@@ -642,8 +685,8 @@ function SettingsPageContent() {
                      <TabsTrigger value="subscription" className="text-xs sm:text-sm py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md transition-all duration-300">
                         <Trophy className="h-5 w-5 lg:mr-2"/><span className="hidden lg:inline">Subscription</span>
                     </TabsTrigger>
-                    <TabsTrigger value="shifts" className="text-xs sm:text-sm py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md transition-all duration-300">
-                        <Clock className="h-5 w-5 lg:mr-2"/><span className="hidden lg:inline">Shifts</span>
+                    <TabsTrigger value="gamification" className="text-xs sm:text-sm py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md transition-all duration-300">
+                        <Star className="h-5 w-5 lg:mr-2"/><span className="hidden lg:inline">Points</span>
                     </TabsTrigger>
                     <TabsTrigger value="business" className="text-xs sm:text-sm py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md transition-all duration-300">
                         <Building className="h-5 w-5 lg:mr-2"/><span className="hidden lg:inline">Business</span>
@@ -755,67 +798,74 @@ function SettingsPageContent() {
                     {userProfile && <PricingPlans profile={userProfile} />}
                 </TabsContent>
                 
-                <TabsContent value="shifts" className="space-y-6 mt-0">
+                <TabsContent value="gamification" className="space-y-6 mt-0">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Shift Management</CardTitle>
-                            <CardDescription>Define custom work shifts for your employees.</CardDescription>
+                            <CardTitle>Punctuality Point System</CardTitle>
+                            <CardDescription>Customize the points and time limits for attendance. Your default shift start time is set under Business Hours.</CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-4">
-                             <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto_auto] gap-4 items-end p-4 border rounded-lg">
+                        <CardContent className="space-y-6">
+                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 items-end">
                                 <div className="space-y-1.5">
-                                    <Label htmlFor="shift-name">Shift Name</Label>
-                                    <Input id="shift-name" placeholder="e.g., Morning Shift" value={newShiftName} onChange={(e) => setNewShiftName(e.target.value)} />
+                                    <Label>On-time Points</Label>
+                                    <Input type="number" value={settings.gamification.onTimePoints} onChange={(e) => handleGamificationChange('onTimePoints', e.target.value)} />
                                 </div>
-                                 <div className="space-y-1.5">
-                                    <Label htmlFor="shift-start">Start Time</Label>
-                                    <Input id="shift-start" type="time" value={newShiftStart} onChange={(e) => setNewShiftStart(e.target.value)} />
+                                <div className="space-y-1.5 col-span-2 md:col-span-3">
+                                    <Label>Grace Period (minutes after shift start)</Label>
+                                    <Slider
+                                        value={[settings.gamification.gracePeriodMinutes]}
+                                        onValueChange={(val) => handleGamificationChange('gracePeriodMinutes', String(val[0]))}
+                                        max={30}
+                                        step={1}
+                                    />
+                                     <p className="text-xs text-muted-foreground text-center pt-1">{settings.gamification.gracePeriodMinutes} minutes (0 points)</p>
                                 </div>
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="shift-end">End Time</Label>
-                                    <Input id="shift-end" type="time" value={newShiftEnd} onChange={(e) => setNewShiftEnd(e.target.value)} />
-                                </div>
-                                <Button onClick={handleAddShift} disabled={isAddingShift}>
-                                    {isAddingShift ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-                                    Add
-                                </Button>
                             </div>
-
-                            <div className="space-y-2">
-                                <h4 className="font-semibold">Existing Shifts</h4>
-                                {shifts.length === 0 ? (
-                                    <p className="text-sm text-muted-foreground text-center p-4">No custom shifts created yet.</p>
-                                ) : (
-                                    shifts.map(shift => (
-                                        <div key={shift.id} className="flex items-center justify-between p-3 border rounded-md">
-                                            <div>
-                                                <p className="font-medium">{shift.name}</p>
-                                                <p className="text-sm text-muted-foreground">{shift.startTime} - {shift.endTime}</p>
-                                            </div>
-                                             <AlertDialog>
-                                                <AlertDialogTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10">
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </AlertDialogTrigger>
-                                                <AlertDialogContent>
-                                                    <AlertDialogHeader>
-                                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                        <AlertDialogDescription>
-                                                            This will permanently delete the "{shift.name}" shift. This action cannot be undone.
-                                                        </AlertDialogDescription>
-                                                    </AlertDialogHeader>
-                                                    <AlertDialogFooter>
-                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                        <AlertDialogAction onClick={() => handleDeleteShift(shift.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                                                            Delete Shift
-                                                        </AlertDialogAction>
-                                                    </AlertDialogFooter>
-                                                </AlertDialogContent>
-                                            </AlertDialog>
-                                        </div>
-                                    ))
-                                )}
+                            <Separator />
+                            <div className="space-y-4">
+                                <p className="font-medium">Late Categories</p>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                     <div className="space-y-1.5 p-3 border rounded-lg">
+                                        <Label>Late 1 (Ends after)</Label>
+                                        <Input type="number" value={settings.gamification.lateCategory1Minutes} onChange={(e) => handleGamificationChange('lateCategory1Minutes', e.target.value)} addon="min"/>
+                                        <Label>Points</Label>
+                                        <Input type="number" value={settings.gamification.lateCategory1Points} onChange={(e) => handleGamificationChange('lateCategory1Points', e.target.value)} />
+                                    </div>
+                                    <div className="space-y-1.5 p-3 border rounded-lg">
+                                        <Label>Late 2 (Ends after)</Label>
+                                        <Input type="number" value={settings.gamification.lateCategory2Minutes} onChange={(e) => handleGamificationChange('lateCategory2Minutes', e.target.value)} addon="min"/>
+                                        <Label>Points</Label>
+                                        <Input type="number" value={settings.gamification.lateCategory2Points} onChange={(e) => handleGamificationChange('lateCategory2Points', e.target.value)} />
+                                    </div>
+                                    <div className="space-y-1.5 p-3 border rounded-lg">
+                                        <Label>Late 3 (Ends after)</Label>
+                                        <Input type="number" value={settings.gamification.lateCategory3Minutes} onChange={(e) => handleGamificationChange('lateCategory3Minutes', e.target.value)} addon="min"/>
+                                        <Label>Points</Label>
+                                        <Input type="number" value={settings.gamification.lateCategory3Points} onChange={(e) => handleGamificationChange('lateCategory3Points', e.target.value)} />
+                                    </div>
+                                </div>
+                            </div>
+                             <Separator />
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <Label>Absent if later than (minutes)</Label>
+                                    <Input type="number" value={settings.gamification.absentMinutes} onChange={(e) => handleGamificationChange('absentMinutes', e.target.value)} />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label>Absent Points</Label>
+                                    <Input type="number" value={settings.gamification.absentPoints} onChange={(e) => handleGamificationChange('absentPoints', e.target.value)} />
+                                </div>
+                            </div>
+                             <Separator />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <Label>On-time Streak for Bonus (days)</Label>
+                                    <Input type="number" value={settings.gamification.streakBonusDays} onChange={(e) => handleGamificationChange('streakBonusDays', e.target.value)} />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label>Streak Bonus Points</Label>
+                                    <Input type="number" value={settings.gamification.streakBonusPoints} onChange={(e) => handleGamificationChange('streakBonusPoints', e.target.value)} />
+                                </div>
                             </div>
                         </CardContent>
                     </Card>
@@ -899,6 +949,69 @@ function SettingsPageContent() {
                             </div>
                         </CardContent>
                     </Card>
+                     <Card className="transition-all duration-300 ease-out hover:shadow-lg border-2 border-foreground/20 hover:border-primary">
+                        <CardHeader>
+                            <CardTitle>Shift Management</CardTitle>
+                            <CardDescription>Define custom work shifts for your employees.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                             <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto_auto] gap-4 items-end p-4 border rounded-lg">
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="shift-name">Shift Name</Label>
+                                    <Input id="shift-name" placeholder="e.g., Morning Shift" value={newShiftName} onChange={(e) => setNewShiftName(e.target.value)} />
+                                </div>
+                                 <div className="space-y-1.5">
+                                    <Label htmlFor="shift-start">Start Time</Label>
+                                    <Input id="shift-start" type="time" value={newShiftStart} onChange={(e) => setNewShiftStart(e.target.value)} />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="shift-end">End Time</Label>
+                                    <Input id="shift-end" type="time" value={newShiftEnd} onChange={(e) => setNewShiftEnd(e.target.value)} />
+                                </div>
+                                <Button onClick={handleAddShift} disabled={isAddingShift}>
+                                    {isAddingShift ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                                    Add
+                                </Button>
+                            </div>
+
+                            <div className="space-y-2">
+                                <h4 className="font-semibold">Existing Shifts</h4>
+                                {shifts.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground text-center p-4">No custom shifts created yet.</p>
+                                ) : (
+                                    shifts.map(shift => (
+                                        <div key={shift.id} className="flex items-center justify-between p-3 border rounded-md">
+                                            <div>
+                                                <p className="font-medium">{shift.name}</p>
+                                                <p className="text-sm text-muted-foreground">{shift.startTime} - {shift.endTime}</p>
+                                            </div>
+                                             <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10">
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            This will permanently delete the "{shift.name}" shift. This action cannot be undone.
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={() => handleDeleteShift(shift.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                                            Delete Shift
+                                                        </AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
                     <Card className="transition-all duration-300 ease-out hover:shadow-lg border-2 border-foreground/20 hover:border-primary">
                         <CardHeader><CardTitle>QR Code Security</CardTitle></CardHeader>
                         <CardContent>
@@ -922,6 +1035,7 @@ function SettingsPageContent() {
                     </div>
                 </TabsContent>
               </div>
+            
         </Tabs>
     </div>
   );
@@ -934,5 +1048,3 @@ export default function AdminSettingsPage() {
     </Suspense>
   );
 }
-
-    
