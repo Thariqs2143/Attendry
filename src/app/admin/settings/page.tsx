@@ -7,12 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
-import { Trophy, LogOut, Save, Loader2, Bell, Edit, Building, Mail, Check, Crown, ArrowRight, CalendarDays, ShieldCheck, Gift, Upload, Copy, Share2, CheckCircle, Users, Briefcase, MapPin, Percent, Phone, User as UserIcon, Settings as SettingsIcon, PlusCircle, Trash2, Clock, X, XCircle, Star } from "lucide-react";
+import { Trophy, LogOut, Save, Loader2, Bell, Edit, Building, Mail, Check, Crown, ArrowRight, CalendarDays, ShieldCheck, Gift, Upload, Copy, Share2, CheckCircle, Users, Briefcase, MapPin, Percent, Phone, User as UserIcon, Settings as SettingsIcon, PlusCircle, Trash2, Clock, X, XCircle, Star, Megaphone } from "lucide-react";
 import { signOut, onAuthStateChanged, type User as AuthUser } from "firebase/auth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState, Suspense } from "react";
-import { collection, getDocs, doc, getDoc, setDoc, updateDoc, query, where, onSnapshot, addDoc, deleteDoc, getFirestore } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, setDoc, updateDoc, query, where, onSnapshot, addDoc, deleteDoc, getFirestore, orderBy, Timestamp } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { Switch } from "@/components/ui/switch";
 import { ThemeSwitcher } from "@/components/theme-switcher";
@@ -39,6 +39,8 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
+import { Textarea } from "@/components/ui/textarea";
+import { formatDistanceToNow } from "date-fns";
 
 
 // Types
@@ -108,6 +110,14 @@ type ShopProfile = {
 }
 
 type FullProfile = AppUser & ShopProfile;
+
+export type ShopAnnouncement = {
+    id: string;
+    title: string;
+    message: string;
+    createdAt: Timestamp;
+};
+
 
 declare global {
   interface Window {
@@ -472,6 +482,142 @@ const PricingPlans = ({ profile }: { profile: Partial<FullProfile> }) => {
   );
 };
 
+const Announcements = ({ authUser }: { authUser: AuthUser | null }) => {
+    const { toast } = useToast();
+    const [announcements, setAnnouncements] = useState<ShopAnnouncement[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [newTitle, setNewTitle] = useState('');
+    const [newMessage, setNewMessage] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+        if (!authUser) return;
+        const db = getFirestore();
+        const announcementsRef = collection(db, 'shops', authUser.uid, 'announcements');
+        const q = query(announcementsRef, orderBy('createdAt', 'desc'));
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const fetchedAnnouncements = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            } as ShopAnnouncement));
+            setAnnouncements(fetchedAnnouncements);
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching announcements:", error);
+            toast({ title: "Error", description: "Could not load announcements.", variant: "destructive" });
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [authUser, toast]);
+
+    const handleAddAnnouncement = async () => {
+        if (!authUser || !newTitle || !newMessage) {
+            toast({ title: "Missing Fields", description: "Please provide a title and a message.", variant: "destructive" });
+            return;
+        }
+        setIsSaving(true);
+        const db = getFirestore();
+        try {
+            const announcementsRef = collection(db, 'shops', authUser.uid, 'announcements');
+            await addDoc(announcementsRef, {
+                title: newTitle,
+                message: newMessage,
+                createdAt: Timestamp.now(),
+            });
+            toast({ title: "Announcement Posted!" });
+            setNewTitle('');
+            setNewMessage('');
+        } catch (error) {
+            toast({ title: "Error", description: "Could not post announcement.", variant: "destructive" });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleDeleteAnnouncement = async (id: string) => {
+        if (!authUser) return;
+        const db = getFirestore();
+        try {
+            await deleteDoc(doc(db, 'shops', authUser.uid, 'announcements', id));
+            toast({ title: "Announcement Deleted" });
+        } catch (error) {
+            toast({ title: "Error", description: "Could not delete announcement.", variant: "destructive" });
+        }
+    };
+
+    return (
+        <div className="space-y-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Post a New Announcement</CardTitle>
+                    <CardDescription>This message will be visible to all employees in your shop.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="space-y-1.5">
+                        <Label htmlFor="ann-title">Title</Label>
+                        <Input id="ann-title" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="e.g., Team Meeting Tomorrow" />
+                    </div>
+                    <div className="space-y-1.5">
+                        <Label htmlFor="ann-message">Message</Label>
+                        <Textarea id="ann-message" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="e.g., Brief team meeting at 10 AM..." />
+                    </div>
+                </CardContent>
+                <CardFooter>
+                    <Button onClick={handleAddAnnouncement} disabled={isSaving}>
+                        {isSaving ? <Loader2 className="mr-2 animate-spin" /> : <Megaphone className="mr-2" />}
+                        Post to Staff
+                    </Button>
+                </CardFooter>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>History</CardTitle>
+                    <CardDescription>Previously posted announcements.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {loading ? (
+                        <div className="flex items-center justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+                    ) : announcements.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-4">No announcements posted yet.</p>
+                    ) : (
+                        <div className="space-y-4">
+                            {announcements.map(ann => (
+                                <div key={ann.id} className="border p-4 rounded-lg flex items-start gap-4">
+                                    <div className="flex-1">
+                                        <p className="font-bold">{ann.title}</p>
+                                        <p className="text-sm text-muted-foreground mt-1">{ann.message}</p>
+                                        <p className="text-xs text-muted-foreground/70 mt-2">
+                                            {formatDistanceToNow(ann.createdAt.toDate(), { addSuffix: true })}
+                                        </p>
+                                    </div>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="text-destructive h-8 w-8"><Trash2 className="h-4 w-4"/></Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                <AlertDialogDescription>This will permanently delete this announcement. This action cannot be undone.</AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleDeleteAnnouncement(ann.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
+    );
+};
+
 
 // Main Component
 function SettingsPageContent() {
@@ -647,12 +793,15 @@ function SettingsPageContent() {
             </div>
             
             <div className="sticky top-14 md:top-0 z-30 bg-background/80 backdrop-blur-sm -mx-6 px-6 py-4 mb-6 border-b">
-                 <TabsList className="items-center justify-center rounded-md bg-muted p-1 text-muted-foreground grid w-full grid-cols-5 h-auto border-2 border-border">
+                 <TabsList className="items-center justify-center rounded-md bg-muted p-1 text-muted-foreground grid w-full grid-cols-6 h-auto border-2 border-border">
                     <TabsTrigger value="profile" className="text-xs sm:text-sm py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md transition-all duration-300">
                         <UserIcon className="h-5 w-5 lg:mr-2" /><span className="hidden lg:inline">Profile</span>
                     </TabsTrigger>
                      <TabsTrigger value="subscription" className="text-xs sm:text-sm py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md transition-all duration-300">
                         <Trophy className="h-5 w-5 lg:mr-2"/><span className="hidden lg:inline">Subscription</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="announcements" className="text-xs sm:text-sm py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md transition-all duration-300">
+                        <Megaphone className="h-5 w-5 lg:mr-2"/><span className="hidden lg:inline">Announce</span>
                     </TabsTrigger>
                     <TabsTrigger value="gamification" className="text-xs sm:text-sm py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md transition-all duration-300">
                         <Star className="h-5 w-5 lg:mr-2"/><span className="hidden lg:inline">Points</span>
@@ -765,6 +914,10 @@ function SettingsPageContent() {
 
                 <TabsContent value="subscription">
                     {userProfile && <PricingPlans profile={userProfile} />}
+                </TabsContent>
+
+                <TabsContent value="announcements">
+                    <Announcements authUser={authUser} />
                 </TabsContent>
                 
                 <TabsContent value="gamification" className="space-y-6 mt-0">

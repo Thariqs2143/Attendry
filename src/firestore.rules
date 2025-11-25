@@ -64,14 +64,15 @@ service cloud.firestore {
 
       match /employees/{employeeId} {
         allow create: if isShopOwner(shopId);
-        allow read: if isOwnerOrEmployee(shopId) || isSelf(employeeId);
+        allow read, list: if isOwnerOrEmployee(shopId) || isSelf(employeeId);
         allow update: if isShopOwner(shopId) || isSelf(employeeId);
         allow delete: if isShopOwner(shopId);
       }
 
       match /attendance/{attendanceId} {
         allow create: if isEmployee(shopId) && request.resource.data.userId == request.auth.uid;
-        allow read, list: if isOwnerOrEmployee(shopId);
+        allow read: if isOwnerOrEmployee(shopId);
+        allow list: if (isEmployee(shopId) && request.query.where.userId == request.auth.uid) || isShopOwner(shopId);
         allow update: if isShopOwner(shopId) || (isEmployee(shopId) && resource.data.userId == request.auth.uid);
         allow delete: if isShopOwner(shopId);
       }
@@ -81,12 +82,17 @@ service cloud.firestore {
           allow read, list: if isOwnerOrEmployee(shopId);
           allow update, delete: if isShopOwner(shopId);
       }
+      
+      match /announcements/{announcementId} {
+        allow read: if isOwnerOrEmployee(shopId);
+        allow write: if isShopOwner(shopId);
+      }
 
       match /qr-history/{docId} {
         allow read, write: if isShopOwner(shopId);
       }
       match /config/{docId} {
-        allow read, write: if isShopOwner(shopId);
+        allow read, write: if isOwnerOrEmployee(shopId);
       }
       match /shifts/{shiftId} {
         allow read, write: if isShopOwner(shopId);
