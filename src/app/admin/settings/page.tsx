@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -180,17 +179,30 @@ const PricingPlans = ({ profile }: { profile: Partial<FullProfile> }) => {
   const [gatewayReady, setGatewayReady] = useState(false);
 
   useEffect(() => {
-    // Poll to check if the DodoPay script has loaded
-    const interval = setInterval(() => {
+    const intervalId = setInterval(() => {
       if (typeof window.DodoPay === 'function') {
         setGatewayReady(true);
-        clearInterval(interval);
+        clearInterval(intervalId);
       }
-    }, 500); // Check every half a second
+    }, 100); // Check every 100ms
 
-    // Cleanup interval on component unmount
-    return () => clearInterval(interval);
-  }, []);
+    // Set a timeout to avoid infinite polling if the script fails to load
+    const timeoutId = setTimeout(() => {
+        if (!gatewayReady) {
+            clearInterval(intervalId);
+            toast({
+                title: "Payment Gateway Error",
+                description: "Could not load the payment gateway. Please refresh the page.",
+                variant: "destructive"
+            });
+        }
+    }, 10000); // 10-second timeout
+
+    return () => {
+        clearInterval(intervalId);
+        clearTimeout(timeoutId);
+    };
+  }, [gatewayReady, toast]);
 
  const plans = [
     {
@@ -263,6 +275,11 @@ const PricingPlans = ({ profile }: { profile: Partial<FullProfile> }) => {
         return;
     }
     
+    if (!gatewayReady) {
+        toast({ title: "Initializing Gateway", description: "Please wait a moment and try again.", variant: "default" });
+        return;
+    }
+
     const planId = plan.plan_id[billingCycle][currency];
     if (!planId) {
         toast({ title: "Error", description: "This plan is not available for purchase yet.", variant: "destructive" });
@@ -491,143 +508,6 @@ const PricingPlans = ({ profile }: { profile: Partial<FullProfile> }) => {
     </div>
   );
 };
-
-const Announcements = ({ authUser }: { authUser: AuthUser | null }) => {
-    const { toast } = useToast();
-    const [announcements, setAnnouncements] = useState<ShopAnnouncement[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [newTitle, setNewTitle] = useState('');
-    const [newMessage, setNewMessage] = useState('');
-    const [isSaving, setIsSaving] = useState(false);
-
-    useEffect(() => {
-        if (!authUser) return;
-        const db = getFirestore();
-        const announcementsRef = collection(db, 'shops', authUser.uid, 'announcements');
-        const q = query(announcementsRef, orderBy('createdAt', 'desc'));
-
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const fetchedAnnouncements = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            } as ShopAnnouncement));
-            setAnnouncements(fetchedAnnouncements);
-            setLoading(false);
-        }, (error) => {
-            console.error("Error fetching announcements:", error);
-            toast({ title: "Error", description: "Could not load announcements.", variant: "destructive" });
-            setLoading(false);
-        });
-
-        return () => unsubscribe();
-    }, [authUser, toast]);
-
-    const handleAddAnnouncement = async () => {
-        if (!authUser || !newTitle || !newMessage) {
-            toast({ title: "Missing Fields", description: "Please provide a title and a message.", variant: "destructive" });
-            return;
-        }
-        setIsSaving(true);
-        const db = getFirestore();
-        try {
-            const announcementsRef = collection(db, 'shops', authUser.uid, 'announcements');
-            await addDoc(announcementsRef, {
-                title: newTitle,
-                message: newMessage,
-                createdAt: Timestamp.now(),
-            });
-            toast({ title: "Announcement Posted!" });
-            setNewTitle('');
-            setNewMessage('');
-        } catch (error) {
-            toast({ title: "Error", description: "Could not post announcement.", variant: "destructive" });
-        } finally {
-            setIsSaving(false);
-        }
-    };
-
-    const handleDeleteAnnouncement = async (id: string) => {
-        if (!authUser) return;
-        const db = getFirestore();
-        try {
-            await deleteDoc(doc(db, 'shops', authUser.uid, 'announcements', id));
-            toast({ title: "Announcement Deleted" });
-        } catch (error) {
-            toast({ title: "Error", description: "Could not delete announcement.", variant: "destructive" });
-        }
-    };
-
-    return (
-        <div className="space-y-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Post a New Announcement</CardTitle>
-                    <CardDescription>This message will be visible to all employees in your shop.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="space-y-1.5">
-                        <Label htmlFor="ann-title">Title</Label>
-                        <Input id="ann-title" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="e.g., Team Meeting Tomorrow" />
-                    </div>
-                    <div className="space-y-1.5">
-                        <Label htmlFor="ann-message">Message</Label>
-                        <Textarea id="ann-message" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="e.g., Brief team meeting at 10 AM..." />
-                    </div>
-                </CardContent>
-                <CardFooter>
-                    <Button onClick={handleAddAnnouncement} disabled={isSaving}>
-                        {isSaving ? <Loader2 className="mr-2 animate-spin" /> : <Megaphone className="mr-2" />}
-                        Post to Staff
-                    </Button>
-                </CardFooter>
-            </Card>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle>History</CardTitle>
-                    <CardDescription>Previously posted announcements.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {loading ? (
-                        <div className="flex items-center justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-                    ) : announcements.length === 0 ? (
-                        <p className="text-sm text-muted-foreground text-center py-4">No announcements posted yet.</p>
-                    ) : (
-                        <div className="space-y-4">
-                            {announcements.map(ann => (
-                                <div key={ann.id} className="border p-4 rounded-lg flex items-start gap-4">
-                                    <div className="flex-1">
-                                        <p className="font-bold">{ann.title}</p>
-                                        <p className="text-sm text-muted-foreground mt-1">{ann.message}</p>
-                                        <p className="text-xs text-muted-foreground/70 mt-2">
-                                            {formatDistanceToNow(ann.createdAt.toDate(), { addSuffix: true })}
-                                        </p>
-                                    </div>
-                                    <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="text-destructive h-8 w-8"><Trash2 className="h-4 w-4"/></Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                <AlertDialogDescription>This will permanently delete this announcement. This action cannot be undone.</AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                <AlertDialogAction onClick={() => handleDeleteAnnouncement(ann.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-        </div>
-    );
-};
-
 
 // Main Component
 function SettingsPageContent() {
@@ -1145,3 +1025,5 @@ export default function AdminSettingsPage() {
     </Suspense>
   );
 }
+
+    
