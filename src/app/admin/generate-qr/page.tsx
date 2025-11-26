@@ -24,6 +24,9 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
+import { useReactToPrint } from 'react-to-print';
+import { PrintableQrCard } from '@/components/printable-qr-card';
+import { useTheme } from 'next-themes';
 
 
 type ActivityRecord = {
@@ -57,7 +60,26 @@ const QrGeneratorCard = () => {
 
     const [dynamicQrUrl, setDynamicQrUrl] = useState('');
     const [timeLeft, setTimeLeft] = useState(15);
+
+    const printableCardRef = useRef<HTMLDivElement>(null);
+    const { theme, systemTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
+  
+    useEffect(() => {
+      setMounted(true);
+    }, []);
+  
+    const currentTheme = theme === 'system' ? systemTheme : theme;
+    const logoSrc = mounted && currentTheme === 'dark' ? '/header-logo-dark.png' : '/header-logo-light.png';
+
     
+    const handlePrint = useReactToPrint({
+      content: () => printableCardRef.current,
+      documentTitle: `Attendry_QR_Card_${shopName.replace(/\s+/g, '_')}`,
+      onAfterPrint: () => toast({ title: "Print job sent."}),
+      onPrintError: () => toast({ title: "Print failed", description: "Something went wrong while trying to print.", variant: "destructive"}),
+    });
+     
      useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             if (user) {
@@ -100,19 +122,6 @@ const QrGeneratorCard = () => {
         } finally {
             setPermanentLoading(false);
         }
-    };
-     const handleDownloadPermanent = () => {
-        if (!permanentQrUrl) return;
-        fetch(permanentQrUrl).then(response => response.blob()).then(blob => {
-            const blobUrl = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = blobUrl;
-            link.download = `shop-attendance-qr.png`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(blobUrl);
-        }).catch(console.error);
     };
     
      const generateDynamicQr = useCallback(async () => {
@@ -160,13 +169,16 @@ const QrGeneratorCard = () => {
                                     <div className="relative w-64 h-64 border p-2 rounded-lg bg-white">
                                         {permanentQrUrl && <Image src={permanentQrUrl} alt="Generated QR Code" width={256} height={256} className="rounded-md"/>}
                                     </div>
+                                    <div style={{ display: 'none' }}>
+                                        <PrintableQrCard ref={printableCardRef} shopName={shopName} qrUrl={permanentQrUrl} logoSrc={logoSrc} />
+                                    </div>
                                 </div>
                             ) : <p className="text-muted-foreground">Click the button below to generate your QR code.</p>
                         }
                     </CardContent>
                     <CardFooter className="flex-col gap-2 pt-6">
                         <Button onClick={handleGeneratePermanent} className="w-full" disabled={permanentLoading}>{isPermanentGenerated ? 'Re-generate QR Code' : 'Generate QR Code'}</Button>
-                        {isPermanentGenerated && <Button variant="secondary" onClick={handleDownloadPermanent} className="w-full"><Download className="mr-2 h-4 w-4"/>Download for Print</Button>}
+                        {isPermanentGenerated && <Button variant="secondary" onClick={handlePrint} className="w-full"><Download className="mr-2 h-4 w-4"/>Download for Print</Button>}
                     </CardFooter>
                 </>
             )
