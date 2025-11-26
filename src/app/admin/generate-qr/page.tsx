@@ -24,9 +24,8 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
-import { useReactToPrint } from 'react-to-print';
-import { PrintableQrCard } from '@/components/printable-qr-card';
 import { useTheme } from 'next-themes';
+import jsPDF from 'jspdf';
 
 
 type ActivityRecord = {
@@ -61,7 +60,6 @@ const QrGeneratorCard = () => {
     const [dynamicQrUrl, setDynamicQrUrl] = useState('');
     const [timeLeft, setTimeLeft] = useState(15);
 
-    const printableCardRef = useRef<HTMLDivElement>(null);
     const { theme, systemTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
   
@@ -72,13 +70,6 @@ const QrGeneratorCard = () => {
     const currentTheme = theme === 'system' ? systemTheme : theme;
     const logoSrc = mounted && currentTheme === 'dark' ? '/header-logo-dark.png' : '/header-logo-light.png';
 
-    
-    const handlePrint = useReactToPrint({
-      content: () => printableCardRef.current,
-      documentTitle: `Attendry_QR_Card_${shopName.replace(/\s+/g, '_')}`,
-      onAfterPrint: () => toast({ title: "Print job sent."}),
-      onPrintError: () => toast({ title: "Print failed", description: "Something went wrong while trying to print.", variant: "destructive"}),
-    });
      
      useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -122,6 +113,63 @@ const QrGeneratorCard = () => {
         } finally {
             setPermanentLoading(false);
         }
+    };
+
+    const handleDownloadPdf = async () => {
+        if (!permanentQrUrl) return;
+
+        const doc = new jsPDF({
+            orientation: 'portrait',
+            unit: 'px',
+            format: [400, 600]
+        });
+
+        // Background shapes
+        doc.setFillColor(239, 68, 68); // red-500
+        doc.triangle(0, 0, 150, 0, 0, 100, 'F');
+        doc.setFillColor(251, 146, 60); // orange-400
+        doc.triangle(50, 0, 200, 0, 0, 75, 'F');
+        
+        doc.setFillColor(250, 204, 21); // yellow-400
+        doc.triangle(300, 0, 400, 100, 400, 0, 'F');
+
+        doc.setFillColor(16, 185, 129); // green-500
+        doc.triangle(400, 600, 250, 600, 400, 500, 'F');
+        doc.setFillColor(37, 99, 235); // blue-600
+        doc.triangle(350, 600, 200, 600, 400, 525, 'F');
+
+
+        // Logo (assuming you have it as a base64 string or can fetch it)
+        // This part is tricky without canvas, so we'll add text instead for simplicity
+        doc.setFontSize(24);
+        doc.setFont('helvetica', 'bold');
+        doc.text("Attendry", 200, 80, { align: 'center' });
+
+        // QR Code
+        const qrResponse = await fetch(permanentQrUrl);
+        const qrBlob = await qrResponse.blob();
+        const reader = new FileReader();
+        reader.readAsDataURL(qrBlob);
+        reader.onloadend = () => {
+            const base64data = reader.result as string;
+            doc.addImage(base64data, 'PNG', 90, 120, 220, 220);
+
+            // Call to Action
+            doc.setFillColor(220, 38, 38); // red-600
+            doc.roundedRect(60, 380, 280, 50, 10, 10, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(30);
+            doc.setFont('helvetica', 'bold');
+            doc.text("SCAN TO CHECK-IN", 200, 412, { align: 'center' });
+            
+            doc.setTextColor(75, 85, 99); // gray-600
+            doc.setFontSize(18);
+            doc.setFont('helvetica', 'normal');
+            doc.text("Employees: Use your phone camera to scan.", 200, 450, { align: 'center'});
+
+            doc.save(`Attendry-QR-Card-${shopName.replace(/\s+/g, '_')}.pdf`);
+            toast({ title: "PDF Downloaded", description: "Your QR code card is ready." });
+        };
     };
     
      const generateDynamicQr = useCallback(async () => {
@@ -169,9 +217,6 @@ const QrGeneratorCard = () => {
                                     <div className="relative w-64 h-64 border p-2 rounded-lg bg-white">
                                         {permanentQrUrl && <Image src={permanentQrUrl} alt="Generated QR Code" width={256} height={256} className="rounded-md"/>}
                                     </div>
-                                    <div style={{ display: 'none' }}>
-                                        <PrintableQrCard ref={printableCardRef} shopName={shopName} qrUrl={permanentQrUrl} logoSrc={logoSrc} />
-                                    </div>
                                 </div>
                             ) : <p className="text-muted-foreground">Click the button below to generate your QR code.</p>
                         }
@@ -179,7 +224,7 @@ const QrGeneratorCard = () => {
                     <CardFooter className="flex-col gap-2 pt-6">
                         <Button onClick={handleGeneratePermanent} className="w-full" disabled={permanentLoading}>{isPermanentGenerated ? 'Re-generate QR Code' : 'Generate QR Code'}</Button>
                         {isPermanentGenerated && (
-                            <Button onClick={handlePrint} variant="secondary" className="w-full">
+                           <Button onClick={handleDownloadPdf} variant="secondary" className="w-full">
                                 <Download className="mr-2 h-4 w-4"/>Download for Print
                             </Button>
                         )}
