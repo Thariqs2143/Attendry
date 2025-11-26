@@ -172,44 +172,15 @@ const defaultSettings: Settings = {
 const PricingPlans = ({ profile }: { profile: Partial<FullProfile> }) => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly' | 'threeYearly'>('yearly');
   const [currency, setCurrency] = useState<'inr' | 'usd'>('inr');
-  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
-  const { toast } = useToast();
-  const router = useRouter();
   const [staffCount, setStaffCount] = useState(10);
-  const [gatewayReady, setGatewayReady] = useState(false);
-
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      if (typeof window.DodoPay === 'function') {
-        setGatewayReady(true);
-        clearInterval(intervalId);
-      }
-    }, 100); // Check every 100ms
-
-    // Set a timeout to avoid infinite polling if the script fails to load
-    const timeoutId = setTimeout(() => {
-        if (!gatewayReady) {
-            clearInterval(intervalId);
-            toast({
-                title: "Payment Gateway Error",
-                description: "Could not load the payment gateway. Please refresh the page.",
-                variant: "destructive"
-            });
-        }
-    }, 10000); // 10-second timeout
-
-    return () => {
-        clearInterval(intervalId);
-        clearTimeout(timeoutId);
-    };
-  }, [gatewayReady, toast]);
+  
+  const callNumber = '9363200237';
 
  const plans = [
     {
       id: 'trial',
       name: '14-Day Free Trial',
       price: { monthly: { inr: 0, usd: 0 }, yearly: { inr: 0, usd: 0 }, threeYearly: { inr: 0, usd: 0 } },
-      plan_id: { monthly: { inr: 'dodo_trial_inr_monthly', usd: 'dodo_trial_usd_monthly' }, yearly: { inr: 'dodo_trial_inr_yearly', usd: 'dodo_trial_usd_yearly' }, threeYearly: { inr: 'dodo_trial_inr_3y', usd: 'dodo_trial_usd_3y' } },
       cta: 'Start Free Trial',
       highlight: 'Try our core features — absolutely free for 14 days.',
       mainFeatures: ['QR Code Check-in/out', 'Manual Attendance Entry', 'Live Attendance Dashboard', 'Easy Employee Onboarding'],
@@ -219,8 +190,7 @@ const PricingPlans = ({ profile }: { profile: Partial<FullProfile> }) => {
       id: 'starter',
       name: 'Starter',
       price: { monthly: { inr: 49, usd: 0.99 }, yearly: { inr: 490, usd: 9.9 }, threeYearly: { inr: 999, usd: 19.9 } },
-      plan_id: { monthly: { inr: 'pdt_spNpTEoFNYNJeeDRynUQ8', usd: 'pdt_dmNNjfR8pdHmyUQaTPCpY' }, yearly: { inr: 'pdt_EFOn69ZCJERTASlzUQUZU', usd: 'pdt_SrsybYaHr0AG5GXnnLO7S' }, threeYearly: { inr: 'pdt_WmVUxyEFB5KQ2IAANYvMY', usd: 'pdt_LjaIX4I73QjSUiPXS6Z6T' } },
-      cta: 'Choose Starter',
+      cta: 'Call to Activate',
       highlight: 'For new & small businesses just getting started.',
       mainFeatures: ['QR Code Check-in/out', 'Manual Attendance Entry', 'Live Attendance Dashboard', 'Easy Employee Onboarding'],
       usageLimits: { employees: 'Up to 20 employees', branches: '1 Branch' }
@@ -229,8 +199,7 @@ const PricingPlans = ({ profile }: { profile: Partial<FullProfile> }) => {
       id: 'growth',
       name: 'Growth',
       price: { monthly: { inr: 79, usd: 1.49 }, yearly: { inr: 790, usd: 14.9 }, threeYearly: { inr: 1599, usd: 29.9 } },
-      plan_id: { monthly: { inr: 'pdt_Kj7IT4XwRq5yNLM0vTD1K', usd: 'pdt_NirzUFWWDLEo4dX9wChQ4' }, yearly: { inr: 'pdt_zPZO12RXBToia4vKfI38w', usd: 'pdt_ShbPLJXhOwscGjWiH3m5F' }, threeYearly: { inr: 'pdt_yygvHhLfFxutXYzJNKZta', usd: 'pdt_nmV6qydnrp3JHisHtXopM' } },
-      cta: 'Upgrade to Growth',
+      cta: 'Call to Activate',
       highlight: 'For growing businesses that need more control.',
       isPopular: true,
       mainFeatures: ['All Starter features', 'Priority Support', 'Advanced Reports & Analytics', 'Multi-branch Dashboard'],
@@ -240,8 +209,7 @@ const PricingPlans = ({ profile }: { profile: Partial<FullProfile> }) => {
       id: 'pro',
       name: 'Pro',
       price: { monthly: { inr: 129, usd: 2.49 }, yearly: { inr: 1290, usd: 24.9 }, threeYearly: { inr: 2999, usd: 49.9 } },
-      plan_id: { monthly: { inr: 'pdt_AjNgvBP5e39dQr06SiXHT', usd: 'pdt_eWUBiKEfh4hyphK51X7Wo' }, yearly: { inr: 'pdt_VyNauKVSHfPhcSPQSLqMU', usd: 'pdt_YH8gajeq3KOfojCJcB8QB' }, threeYearly: { inr: 'pdt_UOnolPQtwuviXPBirTgNE', usd: 'pdt_EF34N9kllxfUbzgi7EKah' } },
-      cta: 'Upgrade to Pro',
+      cta: 'Call to Activate',
       highlight: 'For large organizations needing enterprise-grade power.',
       isBestValue: true,
       mainFeatures: ['All Growth features', 'AI-powered Insights', 'Custom Branding & Reports', 'API Access + Integrations'],
@@ -267,65 +235,6 @@ const PricingPlans = ({ profile }: { profile: Partial<FullProfile> }) => {
     { name: 'Smart Staffing Advisor (AI)', trial: false, starter: false, growth: false, pro: true },
     { name: 'Customizable Alerts & Notifications', trial: false, starter: false, growth: false, pro: true },
   ];
-
-  const handlePayment = async (plan: typeof plans[0]) => {
-    if (!profile || !profile.uid) {
-        toast({ title: "Please Login", description: "You must be logged in to subscribe.", variant: "destructive" });
-        router.push('/login');
-        return;
-    }
-    
-    if (!gatewayReady) {
-        toast({ title: "Initializing Gateway", description: "Please wait a moment and try again.", variant: "default" });
-        return;
-    }
-
-    const planId = plan.plan_id[billingCycle][currency];
-    if (!planId) {
-        toast({ title: "Error", description: "This plan is not available for purchase yet.", variant: "destructive" });
-        return;
-    }
-
-    setLoadingPlan(plan.id);
-    
-    const options = {
-      key: process.env.NEXT_PUBLIC_DODO_KEY_ID,
-      subscription_id: planId,
-      quantity: staffCount,
-      name: "Attendry Subscription",
-      description: `Billing for ${plan.name} - ${billingCycle} (${currency.toUpperCase()})`,
-      image: "https://res.cloudinary.com/dnkghymx5/image/upload/v1721992194/logo-sm_scak0f.png",
-      handler: async (response: any) => {
-          setLoadingPlan(null);
-          toast({
-              title: "Subscription Activated!",
-              description: `Thank you for subscribing to the ${plan.name} plan.`,
-          });
-          router.push('/admin');
-      },
-      prefill: {
-          name: profile.name,
-          email: profile.email,
-          contact: profile.phone,
-      },
-      theme: {
-          color: "#0C2A6A"
-      },
-      modal: {
-        ondismiss: () => {
-          setLoadingPlan(null);
-          toast({
-            title: "Payment Cancelled",
-            description: "The payment process was cancelled.",
-            variant: "destructive"
-          })
-        }
-      }
-    };
-    
-    const dodo = window.DodoPay(options);
-    dodo.open();
-  }
 
   const currencySymbol = currency === 'inr' ? '₹' : '$';
   const cycleText = billingCycle === 'monthly' ? '/month' : billingCycle === 'yearly' ? '/year' : '/3-years';
@@ -423,25 +332,20 @@ const PricingPlans = ({ profile }: { profile: Partial<FullProfile> }) => {
                           {p.id !== 'trial' && <p className="text-xs text-slate-500 mt-1">(billed per employee)</p>}
                       </div>
                       
-                      <Button
-                        onClick={() => handlePayment(p)}
-                        disabled={loadingPlan === p.id || !isWithinLimit || !gatewayReady}
-                        className={cn(
-                          'w-full mt-auto py-3 rounded-lg font-semibold text-slate-900 transition-all shadow-md text-base',
-                          p.isPopular ? 'bg-blue-400 hover:bg-blue-500' : 'bg-slate-200 hover:bg-white',
-                          p.isBestValue ? 'bg-green-400 hover:bg-green-500' : '',
-                          (loadingPlan === p.id || !isWithinLimit || !gatewayReady) && 'opacity-50 cursor-not-allowed'
-                        )}
-                      >
-                          {loadingPlan === p.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
-                          {!gatewayReady ? (
-                              <>
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                  Loading Gateway...
-                              </>
-                          ) : !isWithinLimit ? 'Staff limit exceeded' : (profile?.uid ? p.cta : 'Get Started')}
-                      </Button>
-
+                      <a href={`tel:${callNumber}`} className="w-full">
+                        <Button
+                            disabled={!isWithinLimit}
+                            className={cn(
+                            'w-full mt-auto py-3 rounded-lg font-semibold text-slate-900 transition-all shadow-md text-base',
+                            p.isPopular ? 'bg-blue-400 hover:bg-blue-500' : 'bg-slate-200 hover:bg-white',
+                            p.isBestValue ? 'bg-green-400 hover:bg-green-500' : '',
+                            !isWithinLimit && 'opacity-50 cursor-not-allowed'
+                            )}
+                        >
+                            {p.id === 'trial' ? 'Get Started' : p.cta}
+                        </Button>
+                      </a>
+                      
                       <Separator className="my-6 bg-slate-700" />
                       
                       <div className="space-y-2 text-sm">
@@ -1097,11 +1001,11 @@ function SettingsPageContent() {
                             </div>
                              <div className="space-y-2">
                                 <Label htmlFor="lateCat2Deduction">Late Category 2 Deduction</Label>
-                                <Input id="lateCat2Deduction" type="number" value={settings.payrollDeductions.lateCategory2Deduction} onChange={(e) => handleDeductionChange('lateCategory2Deduction', e.target.value)} placeholder="e.g., 100" />
+                                <Input id="lateCat2Deduction" type="number" value={settings.payrollDeductions.lateCategory2Deduction} onChange={(e) => handleDeductionChange('lateCat2Deduction', e.target.value)} placeholder="e.g., 100" />
                             </div>
                              <div className="space-y-2">
                                 <Label htmlFor="lateCat3Deduction">Late Category 3 Deduction</Label>
-                                <Input id="lateCat3Deduction" type="number" value={settings.payrollDeductions.lateCategory3Deduction} onChange={(e) => handleDeductionChange('lateCategory3Deduction', e.target.value)} placeholder="e.g., 200" />
+                                <Input id="lateCat3Deduction" type="number" value={settings.payrollDeductions.lateCategory3Deduction} onChange={(e) => handleDeductionChange('lateCat3Deduction', e.target.value)} placeholder="e.g., 200" />
                             </div>
                         </CardContent>
                     </Card>
