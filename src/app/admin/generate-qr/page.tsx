@@ -179,11 +179,9 @@ const QrGeneratorCard = () => {
                     <CardFooter className="flex-col gap-2 pt-6">
                         <Button onClick={handleGeneratePermanent} className="w-full" disabled={permanentLoading}>{isPermanentGenerated ? 'Re-generate QR Code' : 'Generate QR Code'}</Button>
                         {isPermanentGenerated && (
-                            <div onClick={handlePrint} className="w-full">
-                                <Button variant="secondary" className="w-full pointer-events-none">
-                                    <Download className="mr-2 h-4 w-4"/>Download for Print
-                                </Button>
-                            </div>
+                            <Button onClick={handlePrint} variant="secondary" className="w-full">
+                                <Download className="mr-2 h-4 w-4"/>Download for Print
+                            </Button>
                         )}
                     </CardFooter>
                 </>
