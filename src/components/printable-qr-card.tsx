@@ -18,15 +18,15 @@ export const PrintableQrCard = forwardRef<HTMLDivElement, PrintableQrCardProps>(
         {/* Top decorative element */}
         <div className="relative h-[100px] w-full">
           <div
-            className="absolute -top-10 -left-10 w-[200px] h-[150px] bg-red-500 origin-bottom-left"
-            style={{ transform: 'rotate(-45deg)' }}
+            className="absolute -top-10 -left-10 w-[200px] h-[150px] bg-sky-500 origin-bottom-left"
+            style={{ transform: 'rotate(-45deg)', opacity: 0.8 }}
           />
           <div
-            className="absolute -top-10 -left-0 w-[200px] h-[150px] bg-orange-400 origin-bottom-left"
-            style={{ transform: 'rotate(-30deg)', opacity: 0.8 }}
+            className="absolute -top-10 -left-0 w-[200px] h-[150px] bg-blue-600 origin-bottom-left"
+            style={{ transform: 'rotate(-30deg)', opacity: 0.9 }}
           />
            <div
-            className="absolute -top-10 right-0 w-[200px] h-[150px] bg-yellow-400 origin-bottom-right"
+            className="absolute -top-10 right-0 w-[200px] h-[150px] bg-indigo-500 origin-bottom-right"
             style={{ transform: 'rotate(25deg)', opacity: 0.7 }}
           />
         </div>
@@ -39,7 +39,7 @@ export const PrintableQrCard = forwardRef<HTMLDivElement, PrintableQrCardProps>(
             </div>
 
             {/* QR Code */}
-            <div className="p-2 border-4 border-red-500 rounded-2xl bg-white shadow-lg my-4">
+            <div className="p-2 border-4 border-blue-600 rounded-2xl bg-white shadow-lg my-4">
               {qrUrl ? (
                 <Image
                   src={qrUrl}
@@ -57,7 +57,7 @@ export const PrintableQrCard = forwardRef<HTMLDivElement, PrintableQrCardProps>(
 
             {/* Call to Action */}
             <div className="w-full">
-                <div className="bg-red-600 text-white font-bold text-3xl py-3 px-6 rounded-lg shadow-md">
+                <div className="bg-blue-600 text-white font-bold text-3xl py-3 px-6 rounded-lg shadow-md">
                     SCAN TO CHECK-IN
                 </div>
                 <p className="mt-4 text-lg font-medium text-gray-600">
@@ -69,8 +69,8 @@ export const PrintableQrCard = forwardRef<HTMLDivElement, PrintableQrCardProps>(
          {/* Bottom decorative element */}
         <div className="relative h-[100px] w-full overflow-hidden">
           <div
-            className="absolute -bottom-16 -right-12 w-[250px] h-[180px] bg-green-500 origin-top-right"
-            style={{ transform: 'rotate(-55deg)' }}
+            className="absolute -bottom-16 -right-12 w-[250px] h-[180px] bg-sky-500 origin-top-right"
+            style={{ transform: 'rotate(-55deg)', opacity: 0.8 }}
           />
           <div
             className="absolute -bottom-16 -right-0 w-[250px] h-[180px] bg-blue-600 origin-top-right"
