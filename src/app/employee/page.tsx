@@ -150,9 +150,6 @@ export default function FaceAttendancePage() {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
         streamRef.current = stream;
         setHasCameraPermission(true);
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
       } catch (error) {
         console.error('Error accessing camera:', error);
         setHasCameraPermission(false);
@@ -170,6 +167,12 @@ export default function FaceAttendancePage() {
       stopCamera();
     };
   }, [stopCamera, toast]);
+  
+  useEffect(() => {
+    if (hasCameraPermission && videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+    }
+  }, [hasCameraPermission]);
   
   const captureFrame = (): string | null => {
       if (!videoRef.current) return null;
@@ -465,8 +468,14 @@ export default function FaceAttendancePage() {
         <CardContent className="flex items-center justify-center p-4 min-h-[300px]">
           {status !== 'idle' ? renderStatus() : (
               <div className="relative w-full aspect-square max-w-sm mx-auto overflow-hidden rounded-lg border-4 border-muted shadow-lg">
-                <video ref={videoRef} className="w-full h-full object-cover scale-x-[-1]" autoPlay muted playsInline />
-                {!hasCameraPermission && status === 'idle' && (
+                {hasCameraPermission === true && <video ref={videoRef} className="w-full h-full object-cover scale-x-[-1]" autoPlay muted playsInline />}
+                {hasCameraPermission === null && (
+                    <div className="absolute inset-0 bg-background flex flex-col items-center justify-center text-muted-foreground p-4">
+                        <Loader2 className="h-10 w-10 mb-4 animate-spin"/>
+                        <p className="font-semibold">Accessing Camera...</p>
+                    </div>
+                )}
+                {hasCameraPermission === false && (
                     <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white p-4">
                         <CameraOff className="h-10 w-10 mb-4"/>
                         <p className="font-semibold">Camera Access Required</p>
