@@ -9,8 +9,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, QrCode, AlertTriangle, CameraOff } from 'lucide-react';
 import { onAuthStateChanged, type User as AuthUser } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, getDoc, updateDoc, setDoc, addDoc, collection, writeBatch, Timestamp, query, where, getDocs, limit, startOfMonth, endOfMonth } from 'firebase/firestore';
-import { setHours, setMinutes, setSeconds, startOfDay, endOfDay } from 'date-fns';
+import { doc, getDoc, updateDoc, setDoc, addDoc, collection, writeBatch, Timestamp, query, where, getDocs, limit, orderBy } from 'firebase/firestore';
+import { setHours, setMinutes, setSeconds, startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 type ScanStatus = 'idle' | 'scanning' | 'processing' | 'success' | 'error';
