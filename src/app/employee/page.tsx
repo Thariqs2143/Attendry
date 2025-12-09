@@ -15,10 +15,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Image from 'next/image';
 
-
 type ScanStatus = 'idle' | 'scanning' | 'success' | 'error' | 'processing';
 type PermissionStatus = 'prompt' | 'granted' | 'denied';
-
 
 type AttendanceRecord = {
     id: string;
@@ -46,7 +44,6 @@ type ShopData = {
     longitude?: string;
 };
 
-// Haversine formula to calculate distance between two lat/lon points
 const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
     const R = 6371e3; // metres
     const φ1 = lat1 * Math.PI/180;
@@ -84,6 +81,9 @@ export default function FaceAttendancePage() {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
+      if (videoRef.current) {
+          videoRef.current.srcObject = null;
+      }
     }
   }, []);
 
@@ -120,6 +120,7 @@ export default function FaceAttendancePage() {
         if (record.checkOutTime) {
             setHasCompletedDay(true);
             setActiveCheckIn(null);
+            stopCamera();
         } else {
             setActiveCheckIn(record);
             setHasCompletedDay(false);
@@ -128,7 +129,7 @@ export default function FaceAttendancePage() {
         setActiveCheckIn(null);
         setHasCompletedDay(false);
     }
-  }, []);
+  }, [stopCamera]);
   
   // Main effect for auth and profile fetching
   useEffect(() => {
@@ -166,47 +167,43 @@ export default function FaceAttendancePage() {
 
   // Effect for checking and handling permissions
   useEffect(() => {
-    const checkAndRequestPermissions = async () => {
+    const checkPermissions = async () => {
         try {
             const cameraStatus = await navigator.permissions.query({ name: 'camera' as PermissionName });
             setCameraPermission(cameraStatus.state);
+            cameraStatus.onchange = () => setCameraPermission(cameraStatus.state);
             
             const locationStatus = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
             setLocationPermission(locationStatus.state);
-
-            if (cameraStatus.state === 'granted') {
-                if (!hasCompletedDay) {
-                    startCamera();
-                }
-            }
-            
-            cameraStatus.onchange = () => {
-                setCameraPermission(cameraStatus.state);
-                if(cameraStatus.state === 'granted' && !hasCompletedDay) startCamera();
-                else stopCamera();
-            };
             locationStatus.onchange = () => setLocationPermission(locationStatus.state);
-
         } catch (error) {
             console.error("Error checking permissions:", error);
             setCameraPermission('prompt');
             setLocationPermission('prompt');
         }
     };
-    checkAndRequestPermissions();
-    
-    return () => stopCamera();
-  }, [startCamera, stopCamera, hasCompletedDay]);
+    checkPermissions();
+  }, []);
+
+  // Effect to react to permission changes
+  useEffect(() => {
+    if (!hasCompletedDay && cameraPermission === 'granted') {
+        startCamera();
+    } else {
+        stopCamera();
+    }
+  }, [cameraPermission, hasCompletedDay, startCamera, stopCamera]);
 
   const requestPermissions = async () => {
     let locGranted = locationPermission === 'granted';
 
     if (cameraPermission === 'prompt') {
-      try {
-        await startCamera();
-      } catch (err) {
-        // startCamera already handles setting denied state
-      }
+        try {
+            // Request camera, which will update state via onchange listener
+            await navigator.mediaDevices.getUserMedia({ video: true });
+        } catch (err) {
+            setCameraPermission('denied');
+        }
     }
 
     if (locationPermission === 'prompt') {
