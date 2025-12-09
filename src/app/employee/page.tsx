@@ -219,7 +219,11 @@ export default function FaceAttendancePage(): JSX.Element {
           await checkAttendanceStatusForToday(profile.uid, profile.shopId);
           const shopSnap = await getDoc(doc(db, 'shops', profile.shopId));
           if (shopSnap.exists()) {
-            setShopData(shopSnap.data() as ShopData);
+            const data = shopSnap.data();
+            setShopData({
+                latitude: Number(data.latitude),
+                longitude: Number(data.longitude)
+            });
           }
         }
       } catch (err) {
@@ -255,16 +259,13 @@ export default function FaceAttendancePage(): JSX.Element {
         const [hours, minutes] = shiftStartTimeString.split(':').map(Number);
         const shiftStart = setSeconds(setMinutes(setHours(startOfDay(now), hours), minutes), 0);
         
-        let attendanceStatus = 'Late';
+        let attendanceStatus = 'On-time';
         let pointsChange = 0;
         let isLate = false;
         
         const timeDiffMinutes = (now.getTime() - shiftStart.getTime()) / 60000;
 
-        if (timeDiffMinutes <= gamification.gracePeriodMinutes) {
-          attendanceStatus = 'On-time';
-          pointsChange = gamification.onTimePoints;
-        } else {
+        if (timeDiffMinutes > gamification.gracePeriodMinutes) {
           isLate = true;
           if (timeDiffMinutes <= gamification.lateCategory1Minutes) {
             attendanceStatus = 'Late Category 1';
@@ -280,20 +281,25 @@ export default function FaceAttendancePage(): JSX.Element {
             pointsChange = gamification.absentPoints;
             isLate = false;
           }
+        } else {
+            attendanceStatus = 'On-time';
+            pointsChange = gamification.onTimePoints;
         }
         
         if (isLate) {
-          const lateSnap = await getDocs(query(
-            collection(db, 'shops', shopId, 'attendance'),
-            where('userId', '==', userProfile.uid),
-            where('checkInTime', '>=', startOfMonth(now)),
-            where('checkInTime', '<=', endOfMonth(now)),
-            where('status', 'in', ['Late Category 1', 'Late Category 2', 'Late Category 3'])
-          ));
-          if (lateSnap.size < 3) {
-            pointsChange = 0;
-            toast({ title: 'Late allowance used', description: `This is your ${lateSnap.size + 1}/3 late entries for this month. No points deducted.` });
-          }
+            const monthStart = startOfMonth(now);
+            const monthEnd = endOfMonth(now);
+            const lateSnap = await getDocs(query(
+              collection(db, 'shops', shopId, 'attendance'),
+              where('userId', '==', userProfile.uid),
+              where('checkInTime', '>=', monthStart),
+              where('checkInTime', '<=', monthEnd),
+              where('status', 'in', ['Late Category 1', 'Late Category 2', 'Late Category 3'])
+            ));
+            if (lateSnap.size < 3) {
+              pointsChange = 0;
+              toast({ title: 'Late allowance used', description: `This is your ${lateSnap.size + 1}/3 late entries for this month. No points deducted.` });
+            }
         }
 
         const newStreak = attendanceStatus === 'On-time' ? (userProfile.streak || 0) + 1 : 0;
