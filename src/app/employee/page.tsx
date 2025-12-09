@@ -244,10 +244,18 @@ export default function FaceAttendancePage(): JSX.Element {
         const shopConfigSnap = await getDoc(doc(db, 'shops', shopId, 'config', 'main'));
         const settings = shopConfigSnap.exists() ? shopConfigSnap.data() : {};
         const gamification: GamificationSettings = {
-          onTimePoints: 1, gracePeriodMinutes: 5, lateCategory1Minutes: 10,
-          lateCategory1Points: -1, lateCategory2Minutes: 30, lateCategory2Points: -2,
-          lateCategory3Minutes: 60, lateCategory3Points: -3, absentMinutes: 60,
-          absentPoints: -5, streakBonusDays: 5, streakBonusPoints: 50,
+          onTimePoints: 10,
+          gracePeriodMinutes: 5,
+          lateCategory1Minutes: 10,
+          lateCategory1Points: -1,
+          lateCategory2Minutes: 30,
+          lateCategory2Points: -2,
+          lateCategory3Minutes: 60,
+          lateCategory3Points: -3,
+          absentMinutes: 60,
+          absentPoints: -5,
+          streakBonusDays: 5,
+          streakBonusPoints: 50,
           ...(settings.gamification || {}),
         } as GamificationSettings;
         
@@ -265,25 +273,25 @@ export default function FaceAttendancePage(): JSX.Element {
         
         const timeDiffMinutes = (now.getTime() - shiftStart.getTime()) / 60000;
 
-        if (timeDiffMinutes <= gamification.gracePeriodMinutes) {
-          attendanceStatus = 'On-time';
-          pointsChange = gamification.onTimePoints;
+        if (timeDiffMinutes > gamification.gracePeriodMinutes) {
+          isLate = true;
+          if (timeDiffMinutes <= gamification.lateCategory1Minutes) {
+              attendanceStatus = 'Late Category 1';
+              pointsChange = gamification.lateCategory1Points;
+          } else if (timeDiffMinutes <= gamification.lateCategory2Minutes) {
+              attendanceStatus = 'Late Category 2';
+              pointsChange = gamification.lateCategory2Points;
+          } else if (timeDiffMinutes <= gamification.lateCategory3Minutes) {
+              attendanceStatus = 'Late Category 3';
+              pointsChange = gamification.lateCategory3Points;
+          } else {
+              attendanceStatus = 'Absent';
+              pointsChange = gamification.absentPoints;
+              isLate = false; // Absent is not "late" for the free pass logic
+          }
         } else {
-            isLate = true;
-            if (timeDiffMinutes <= gamification.lateCategory1Minutes) {
-                attendanceStatus = 'Late Category 1';
-                pointsChange = gamification.lateCategory1Points;
-            } else if (timeDiffMinutes <= gamification.lateCategory2Minutes) {
-                attendanceStatus = 'Late Category 2';
-                pointsChange = gamification.lateCategory2Points;
-            } else if (timeDiffMinutes <= gamification.lateCategory3Minutes) {
-                attendanceStatus = 'Late Category 3';
-                pointsChange = gamification.lateCategory3Points;
-            } else {
-                attendanceStatus = 'Absent';
-                pointsChange = gamification.absentPoints;
-                isLate = false;
-            }
+            attendanceStatus = 'On-time';
+            pointsChange = gamification.onTimePoints;
         }
         
         if (isLate) {
@@ -303,7 +311,7 @@ export default function FaceAttendancePage(): JSX.Element {
         }
 
         const newStreak = attendanceStatus === 'On-time' ? (userProfile.streak || 0) + 1 : 0;
-
+        
         const batch = writeBatch(db);
         const newAttendanceRef = doc(collection(db, 'shops', shopId, 'attendance'));
         const newAttendanceRecord = {
@@ -315,11 +323,14 @@ export default function FaceAttendancePage(): JSX.Element {
 
         const newPoints = Math.max(0, (userProfile.points || 0) + pointsChange);
         const updateData: any = { points: newPoints, streak: newStreak };
+        
         if (newStreak > 0 && newStreak % gamification.streakBonusDays === 0) {
           updateData.points += gamification.streakBonusPoints;
           toast({ title: 'Streak Bonus!', description: `+${gamification.streakBonusPoints} for your ${gamification.streakBonusDays}-day streak!` });
         }
+        
         batch.update(doc(db, 'shops', shopId, 'employees', userProfile.uid), updateData);
+        batch.update(doc(db, 'users', userProfile.uid), updateData);
         await batch.commit();
 
         setActiveCheckIn({ id: newAttendanceRef.id, checkInTime: newAttendanceRecord.checkInTime });

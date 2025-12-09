@@ -195,10 +195,18 @@ export default function QRScannerPage() {
         const shopConfigSnap = await getDoc(shopConfigRef);
         const settings = shopConfigSnap.exists() ? shopConfigSnap.data() : {};
         const gamification: GamificationSettings = {
-          onTimePoints: 1, gracePeriodMinutes: 5, lateCategory1Points: -1,
-          lateCategory1Minutes: 10, lateCategory2Points: -2, lateCategory2Minutes: 30,
-          lateCategory3Points: -3, lateCategory3Minutes: 60, absentMinutes: 60, absentPoints: -5,
-          streakBonusDays: 5, streakBonusPoints: 50,
+          onTimePoints: 10,
+          gracePeriodMinutes: 5,
+          lateCategory1Minutes: 10,
+          lateCategory1Points: -1,
+          lateCategory2Minutes: 30,
+          lateCategory2Points: -2,
+          lateCategory3Minutes: 60,
+          lateCategory3Points: -3,
+          absentMinutes: 60,
+          absentPoints: -5,
+          streakBonusDays: 5,
+          streakBonusPoints: 50,
           ...(settings.gamification || {}),
         } as GamificationSettings;
 
@@ -216,25 +224,25 @@ export default function QRScannerPage() {
 
         const timeDiffMinutes = (now.getTime() - shiftStart.getTime()) / (1000 * 60);
 
-        if (timeDiffMinutes <= gamification.gracePeriodMinutes) {
+        if (timeDiffMinutes > gamification.gracePeriodMinutes) {
+          isLate = true;
+          if (timeDiffMinutes <= gamification.lateCategory1Minutes) {
+              attendanceStatus = 'Late Category 1';
+              pointsChange = gamification.lateCategory1Points;
+          } else if (timeDiffMinutes <= gamification.lateCategory2Minutes) {
+              attendanceStatus = 'Late Category 2';
+              pointsChange = gamification.lateCategory2Points;
+          } else if (timeDiffMinutes <= gamification.lateCategory3Minutes) {
+              attendanceStatus = 'Late Category 3';
+              pointsChange = gamification.lateCategory3Points;
+          } else {
+              attendanceStatus = 'Absent';
+              pointsChange = gamification.absentPoints;
+              isLate = false;
+          }
+        } else {
             attendanceStatus = 'On-time';
             pointsChange = gamification.onTimePoints;
-        } else {
-            isLate = true;
-            if (timeDiffMinutes <= gamification.lateCategory1Minutes) {
-                attendanceStatus = 'Late Category 1';
-                pointsChange = gamification.lateCategory1Points;
-            } else if (timeDiffMinutes <= gamification.lateCategory2Minutes) {
-                attendanceStatus = 'Late Category 2';
-                pointsChange = gamification.lateCategory2Points;
-            } else if (timeDiffMinutes <= gamification.lateCategory3Minutes) {
-                attendanceStatus = 'Late Category 3';
-                pointsChange = gamification.lateCategory3Points;
-            } else {
-                attendanceStatus = 'Absent';
-                pointsChange = gamification.absentPoints;
-                isLate = false;
-            }
         }
         
         if (isLate) {
@@ -280,6 +288,7 @@ export default function QRScannerPage() {
         }
         
         batch.update(employeeRef, updateData);
+        batch.update(doc(db, 'users', userProfile.uid), updateData);
         await batch.commit();
         
         toast({ title: 'Check-in Successful!', description: `You have been marked as ${attendanceStatus}.` });
