@@ -106,38 +106,56 @@ export default function FaceAttendancePage() {
         setHasCompletedDay(false);
     }
   }, []);
-
+  
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
     }
   }, []);
   
-  const setupCamera = useCallback(async () => {
-    try {
-        if (streamRef.current) {
-            stopCamera();
-        }
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-        streamRef.current = stream;
-        if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-        }
-        setHasCameraPermission(true);
-        return true;
-    } catch (error) {
-        console.error('Error accessing camera:', error);
-        setHasCameraPermission(false);
-        toast({
-            variant: 'destructive',
-            title: 'Camera Access Denied',
-            description: 'Please enable camera permissions in your browser settings to use this feature.',
-        });
-        return false;
-    }
-}, [stopCamera, toast]);
+  const requestAndSetupPermissions = useCallback(async () => {
+    let cameraGranted = false;
+    let locationGranted = false;
 
+    // Request Camera
+    try {
+      if (streamRef.current) stopCamera(); // Stop any existing stream
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+      setHasCameraPermission(true);
+      cameraGranted = true;
+    } catch (error) {
+      setHasCameraPermission(false);
+      console.error('Camera permission error:', error);
+    }
+
+    // Request Location
+    try {
+      await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true });
+      });
+      setHasLocationPermission(true);
+      locationGranted = true;
+    } catch (error) {
+      setHasLocationPermission(false);
+      console.error('Location permission error:', error);
+    }
+
+    if (cameraGranted && locationGranted) {
+      setPermissionsReady(true);
+    } else {
+      setPermissionsReady(false);
+      if (!cameraGranted) toast({ variant: 'destructive', title: 'Camera Access Denied' });
+      if (!locationGranted) toast({ variant: 'destructive', title: 'Location Access Denied' });
+    }
+  }, [stopCamera, toast]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -171,49 +189,15 @@ export default function FaceAttendancePage() {
     };
   }, [router, checkAttendanceStatusForToday, stopCamera]);
 
+  // Combined effect for permissions
   useEffect(() => {
-    const requestPermissions = async () => {
-      let locationGranted = false;
-
-      const cameraGranted = await setupCamera();
-
-      // Request Location
-      try {
-        await new Promise((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(
-            (position) => {
-              setHasLocationPermission(true);
-              locationGranted = true;
-              resolve(position);
-            },
-            (error) => {
-              reject(error);
-            },
-            { enableHighAccuracy: true }
-          );
-        });
-      } catch (error) {
-        console.error('Error accessing location:', error);
-        setHasLocationPermission(false);
-        toast({
-          variant: 'destructive',
-          title: 'Location Access Denied',
-          description: 'Please enable location services to use this feature.',
-        });
-      }
-
-      if (cameraGranted && locationGranted) {
-        setPermissionsReady(true);
-      }
-    };
-
-    if (typeof window !== 'undefined') {
-        requestPermissions();
+    if (typeof window !== 'undefined' && userProfile && !hasCompletedDay) {
+        requestAndSetupPermissions();
     }
-    
+    // Cleanup camera on navigate away
     return () => stopCamera();
-  }, [setupCamera, stopCamera, toast]);
-  
+  }, [userProfile, hasCompletedDay, requestAndSetupPermissions, stopCamera]);
+
   const captureFrame = useCallback((): string | null => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -240,13 +224,14 @@ export default function FaceAttendancePage() {
     });
     
     if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Cloudinary upload error:', errorText);
         throw new Error('Image upload failed');
     }
 
     const data = await response.json();
     return data.secure_url;
   };
-
 
   const handleLocationAndMarkAttendance = async () => {
       setStatus('processing');
@@ -520,7 +505,7 @@ export default function FaceAttendancePage() {
                     muted 
                     playsInline 
                 />
-                {(hasCameraPermission === null || hasLocationPermission === null) && (
+                {!permissionsReady && (
                     <div className="absolute inset-0 bg-background flex flex-col items-center justify-center text-muted-foreground p-4">
                         <Loader2 className="h-10 w-10 mb-4 animate-spin"/>
                         <p className="font-semibold">Getting Permissions...</p>
