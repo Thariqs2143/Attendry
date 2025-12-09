@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Store, ArrowLeft } from 'lucide-react';
+import { Loader2, Store, ArrowLeft, MapPin } from 'lucide-react';
 import { useEffect, useState, Suspense } from 'react';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { getFirestore } from 'firebase/firestore';
@@ -21,6 +21,8 @@ type ShopProfile = {
     address: string;
     email: string;
     gstNumber: string;
+    latitude: string;
+    longitude: string;
 };
 
 
@@ -78,8 +80,8 @@ function EditBranchContent() {
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        if (!profile.shopName || !profile.businessType || !profile.address) {
-             toast({ title: "Error", description: "Please fill out all required fields.", variant: "destructive" });
+        if (!profile.shopName || !profile.businessType || !profile.address || !profile.latitude || !profile.longitude) {
+             toast({ title: "Error", description: "Please fill out all required fields, including location coordinates.", variant: "destructive" });
              return;
         }
 
@@ -93,6 +95,8 @@ function EditBranchContent() {
                 address: profile.address,
                 email: profile.email || '',
                 gstNumber: profile.gstNumber || '',
+                latitude: profile.latitude,
+                longitude: profile.longitude,
             });
 
             toast({
@@ -168,6 +172,25 @@ function EditBranchContent() {
                 <div className="space-y-2">
                     <Label htmlFor="address">Full Branch Address *</Label>
                     <Textarea id="address" name="address" value={profile.address || ''} onChange={handleInputChange} required />
+                </div>
+                <div className="space-y-4 rounded-lg border-2 p-4">
+                    <div className='flex items-start gap-3'>
+                        <MapPin className='h-5 w-5 text-primary mt-1' />
+                        <div>
+                            <h3 className="font-semibold">Branch Location Coordinates *</h3>
+                            <p className="text-xs text-muted-foreground">Required for Face Attendance. Go to Google Maps, right-click on your branch's location, and click the coordinates to copy them.</p>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <Label htmlFor="latitude">Latitude *</Label>
+                            <Input id="latitude" name="latitude" placeholder="e.g., 11.0168" value={profile.latitude || ''} onChange={handleInputChange} required />
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="longitude">Longitude *</Label>
+                            <Input id="longitude" name="longitude" placeholder="e.g., 76.9558" value={profile.longitude || ''} onChange={handleInputChange} required />
+                        </div>
+                    </div>
                 </div>
             </div>
             <div className="flex justify-center pt-4">

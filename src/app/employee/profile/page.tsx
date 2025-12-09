@@ -13,12 +13,14 @@ import { useToast } from '@/hooks/use-toast';
 import { onAuthStateChanged, signOut, type User as AuthUser, updatePassword } from 'firebase/auth';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import type { User as AppUser } from '@/app/admin/employees/page';
-import { Loader2, LogOut, Upload, Bell, Edit, Save, X, User as UserIcon, Settings } from 'lucide-react';
+import { Loader2, LogOut, Upload, Bell, Edit, Save, X, User as UserIcon, Settings, KeyRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ThemeSwitcher } from '@/components/theme-switcher';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+
 
 type Suggestion = {
     place_id: number;
@@ -58,6 +60,7 @@ export default function ProfilePage() {
       name: '',
       aadhaar: '',
       imageUrl: '',
+      faceIdImageUrl: '',
       address: '',
       phone: '',
   });
@@ -68,6 +71,7 @@ export default function ProfilePage() {
   const [uploading, setUploading] = useState(false);
   const [notifLoading, setNotifLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const faceIdInputRef = useRef<HTMLInputElement>(null);
 
   // State for address autocomplete
   const [address, setAddress] = useState('');
@@ -160,6 +164,7 @@ export default function ProfilePage() {
             }
             await updatePassword(authUser, newPassword);
             setNewPassword(''); 
+            toast({ title: "Password Updated", description: "Your new password has been set." });
         }
 
         const updateData: Partial<AppUser> = {
@@ -177,7 +182,7 @@ export default function ProfilePage() {
             await updateDoc(shopEmployeeDocRef, updateData);
         }
 
-        setUserProfile(prev => ({...prev!, ...updateData, imageUrl: editableProfile.imageUrl}));
+        setUserProfile(prev => ({...prev!, ...updateData}));
         setEditableProfile(prev => ({...prev, ...updateData}));
         toast({ title: "Success", description: "Your profile has been updated." });
         setActiveTab('profile');
@@ -236,7 +241,7 @@ export default function ProfilePage() {
     }
   };
 
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'profile' | 'faceId') => {
     if (!e.target.files || e.target.files.length === 0 || !authUser || !userProfile?.id) {
       return;
     }
@@ -254,8 +259,6 @@ export default function ProfilePage() {
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Cloudinary upload error:", errorText);
         throw new Error(`Upload failed with status: ${response.status}`);
       }
       
@@ -263,20 +266,20 @@ export default function ProfilePage() {
       
       if (data.secure_url) {
           const imageUrl = data.secure_url;
-          
-          setEditableProfile(prev => ({ ...prev, imageUrl: imageUrl }));
+          const updateField = type === 'profile' ? 'imageUrl' : 'faceIdImageUrl';
+
+          setEditableProfile(prev => ({ ...prev, [updateField]: imageUrl }));
           
           const userDocRef = doc(db, 'users', userProfile.id);
-          await updateDoc(userDocRef, { imageUrl: imageUrl });
-           if(userProfile.shopId) {
+          await updateDoc(userDocRef, { [updateField]: imageUrl });
+          if(userProfile.shopId) {
                 const shopEmployeeDocRef = doc(db, 'shops', userProfile.shopId, 'employees', userProfile.id);
-                await updateDoc(shopEmployeeDocRef, { imageUrl: imageUrl });
-            }
+                await updateDoc(shopEmployeeDocRef, { [updateField]: imageUrl });
+          }
           
-          setUserProfile(prev => ({...(prev as AppUser), imageUrl: imageUrl }));
-          toast({ title: "Photo Updated!", description: "Your new profile photo has been saved." });
+          setUserProfile(prev => ({...(prev as AppUser), [updateField]: imageUrl }));
+          toast({ title: "Photo Updated!", description: `Your new ${type === 'profile' ? 'profile' : 'Face ID'} photo has been saved.` });
       } else {
-          console.error("Cloudinary upload failed:", data);
           throw new Error('Image URL not found in response');
       }
     } catch (error) {
@@ -359,7 +362,7 @@ export default function ProfilePage() {
                     <div className="space-y-2 flex-1 w-full">
                         <h2 className="text-2xl font-bold">{userProfile.name}</h2>
                         <p className="text-muted-foreground">{userProfile.employeeId}</p>
-                        <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" className="hidden" />
+                        <input type="file" ref={fileInputRef} onChange={(e) => handlePhotoUpload(e, 'profile')} accept="image/*" className="hidden" />
                         <Button variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
                           {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Upload className="mr-2 h-4 w-4"/>}
                           Change Photo
@@ -371,7 +374,7 @@ export default function ProfilePage() {
       <Card className="border-2 border-foreground/20 dark:border-foreground/20 hover:border-primary">
         <CardHeader>
           <CardTitle>Edit Information</CardTitle>
-          <CardDescription>Update your contact details and password.</CardDescription>
+          <CardDescription>Update your contact details.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -413,10 +416,6 @@ export default function ProfilePage() {
                   </Card>
               )}
           </div>
-           <div className="space-y-2">
-                <Label htmlFor="newPassword">New Password</Label>
-                <Input id="newPassword" type="password" placeholder="Leave blank to keep current password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-            </div>
         </CardContent>
         <CardContent className="border-t pt-6 flex flex-col sm:flex-row gap-2">
             <Button onClick={handleSaveChanges} disabled={saving} className="w-full sm:w-auto">
@@ -450,6 +449,9 @@ export default function ProfilePage() {
                  <TabsTrigger value="edit-profile" className="w-full justify-start data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:font-semibold text-base py-3 px-4 rounded-lg border-2 hover:bg-muted/50 hover:border-border transition-all duration-300 ease-out">
                     <Edit className="mr-2 h-5 w-5" /> Edit Profile
                 </TabsTrigger>
+                <TabsTrigger value="security" className="w-full justify-start data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:font-semibold text-base py-3 px-4 rounded-lg border-2 hover:bg-muted/50 hover:border-border transition-all duration-300 ease-out">
+                    <KeyRound className="mr-2 h-5 w-5" /> Security
+                </TabsTrigger>
                 <TabsTrigger value="settings" className="w-full justify-start data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:font-semibold text-base py-3 px-4 rounded-lg border-2 hover:bg-muted/50 hover:border-border transition-all duration-300 ease-out">
                     <Settings className="mr-2 h-5 w-5" /> Settings
                 </TabsTrigger>
@@ -472,6 +474,62 @@ export default function ProfilePage() {
                 </TabsContent>
                  <TabsContent value="edit-profile" forceMount={true} className={cn('mt-0', activeTab !== 'edit-profile' && 'hidden')}>
                     {renderProfileEdit()}
+                </TabsContent>
+                <TabsContent value="security" className="space-y-6 mt-0">
+                    <Card className="border-2 border-foreground/20 dark:border-foreground/20 hover:border-primary">
+                        <CardHeader>
+                            <CardTitle>Face ID Setup</CardTitle>
+                            <CardDescription>Upload a clear, forward-facing photo of yourself to enable face attendance.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="flex flex-col items-center gap-4">
+                            <Avatar className="h-32 w-32 border-4 border-primary">
+                                <AvatarImage src={editableProfile.faceIdImageUrl} />
+                                <AvatarFallback><UserIcon className="h-16 w-16" /></AvatarFallback>
+                            </Avatar>
+                            <input type="file" ref={faceIdInputRef} onChange={(e) => handlePhotoUpload(e, 'faceId')} accept="image/*" className="hidden" />
+                            <Button variant="outline" className="w-full max-w-sm" onClick={() => faceIdInputRef.current?.click()} disabled={uploading}>
+                                {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Upload className="mr-2 h-4 w-4"/>}
+                                {editableProfile.faceIdImageUrl ? 'Change Face ID Photo' : 'Upload Face ID Photo'}
+                            </Button>
+                             <AlertDialog>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Face ID Photo Tips</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            <ul className="list-disc list-inside space-y-2 mt-2">
+                                                <li>Use a clear, recent photo of yourself.</li>
+                                                <li>Look straight at the camera.</li>
+                                                <li>No sunglasses, hats, or heavy masks.</li>
+                                                <li>Ensure good, even lighting with no strong shadows.</li>
+                                            </ul>
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogCancel>Got it</AlertDialogCancel>
+                                </AlertDialogContent>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="link" size="sm">Photo guidelines</Button>
+                                </AlertDialogTrigger>
+                             </AlertDialog>
+                        </CardContent>
+                    </Card>
+                    <Card className="border-2 border-foreground/20 dark:border-foreground/20 hover:border-primary">
+                        <CardHeader>
+                            <CardTitle>Change Password</CardTitle>
+                            <CardDescription>Set a new password for your account.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-2 max-w-sm">
+                                <Label htmlFor="newPassword">New Password</Label>
+                                <Input id="newPassword" type="password" placeholder="Min. 6 characters" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+                            </div>
+                        </CardContent>
+                         <CardContent className="border-t pt-6">
+                            <Button onClick={handleSaveChanges} disabled={saving}>
+                                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4" />}
+                                Save New Password
+                            </Button>
+                        </CardContent>
+                    </Card>
                 </TabsContent>
                 <TabsContent value="settings" forceMount={true} className={cn('mt-0', activeTab !== 'settings' && 'hidden')}>
                      <Card className="border-2 border-foreground/20 dark:border-foreground/20 hover:border-primary">

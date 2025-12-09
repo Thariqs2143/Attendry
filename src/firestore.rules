@@ -65,7 +65,7 @@ service cloud.firestore {
       match /employees/{employeeId} {
         allow create: if isShopOwner(shopId);
         allow read, list: if isOwnerOrEmployee(shopId) || isSelf(employeeId);
-        allow update: if isShopOwner(shopId) || isSelf(employeeId);
+        allow update: if isShopOwner(shopId) || (isSelf(employeeId) && !('role' in request.resource.data));
         allow delete: if isShopOwner(shopId);
       }
 
@@ -92,7 +92,8 @@ service cloud.firestore {
         allow read, write: if isShopOwner(shopId);
       }
       match /config/{docId} {
-        allow read, write: if isOwnerOrEmployee(shopId);
+        allow read: if isOwnerOrEmployee(shopId);
+        allow write: if isShopOwner(shopId);
       }
       match /shifts/{shiftId} {
         allow read, write: if isShopOwner(shopId);
