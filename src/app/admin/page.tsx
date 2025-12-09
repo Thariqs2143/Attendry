@@ -4,7 +4,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Users, QrCode, Clock, UserCheck, UserX, TrendingUp, Loader2, BarChart3, LogOut, Activity, Sparkles, ChevronsUpDown, Building, UserPlus, CalendarOff, BrainCircuit, Eye, Lock } from "lucide-react";
+import { Users, UserCheck, UserX, TrendingUp, Loader2, BarChart3, LogOut, Activity, Sparkles, ChevronsUpDown, Building, UserPlus, CalendarOff, BrainCircuit, Eye, Lock } from "lucide-react";
 import Link from 'next/link';
 import { AnimatedCounter } from "@/components/animated-counter";
 import { useEffect, useState, useMemo, useCallback } from "react";
@@ -378,13 +378,15 @@ export default function AdminDashboard() {
             const userIds = [...new Set(attendanceRecords.map(ar => ar.userId))];
             let feedUsers: User[] = [];
             if(userIds.length > 0) {
-                const usersQuery = query(collectionGroup(db, 'employees'), where('shopId', 'in', targetShopIds), where('id', 'in', userIds));
-                const usersSnap = await getDocs(usersQuery);
-                feedUsers = usersSnap.docs.map(d => d.data() as User);
+                // This is a simplified fetch; for performance, you might fetch only required users.
+                const allUsersQuery = query(collectionGroup(db, 'employees'), where('shopId', 'in', targetShopIds));
+                const usersSnap = await getDocs(allUsersQuery);
+                const allUsers = usersSnap.docs.map(d => d.data() as User & {uid: string});
+                feedUsers = allUsers.filter(u => userIds.includes(u.uid));
             }
             
             const attendanceActivities = attendanceRecords.map(record => {
-                const user = feedUsers.find(u => u.id === record.userId);
+                const user = feedUsers.find(u => u.uid === record.userId);
                 return {
                     id: record.id + (record.checkOutTime ? '-out' : '-in'),
                     type: record.checkOutTime ? 'check-out' : 'check-in',
@@ -402,7 +404,7 @@ export default function AdminDashboard() {
             onSnapshot(leaveQuery, (leaveSnapshot) => {
                 const leaveRequests = leaveSnapshot.docs.map(doc => doc.data() as LeaveRequest & {requestedAt: Timestamp});
                 const leaveActivities = leaveRequests.map(req => {
-                     const user = employees.find(u => u.id === req.userId);
+                     const user = employees.find(u => u.uid === req.userId);
                      return {
                         id: req.id,
                         type: 'leave-request',
@@ -803,7 +805,7 @@ export default function AdminDashboard() {
                  ) : activeStaff.length > 0 ? (
                     <div className="space-y-4">
                         {activeStaff.map((record) => {
-                            const employee = employees.find(e => e.id === record.userId);
+                            const employee = employees.find(e => e.uid === record.userId);
                             return (
                             <div key={record.id} className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
@@ -847,10 +849,10 @@ export default function AdminDashboard() {
                         <span className="text-center text-sm font-medium">Invite Employee</span>
                     </Card>
                 </Link>
-                 <Link href="/admin/generate-qr#manual-entry">
+                 <Link href="/admin/generate-qr">
                     <Card className="h-full flex flex-col items-center justify-center p-4 gap-2 transition-all hover:shadow-md hover:border-primary border-2 border-foreground">
-                        <QrCode className="h-6 w-6 text-primary"/>
-                        <span className="text-center text-sm font-medium">Manual Entry</span>
+                        <Activity className="h-6 w-6 text-primary"/>
+                        <span className="text-center text-sm font-medium">Live View</span>
                     </Card>
                 </Link>
                  <Link href="/admin/employees">

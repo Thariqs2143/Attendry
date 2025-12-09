@@ -17,7 +17,7 @@ import Image from 'next/image';
 import { useTheme } from 'next-themes';
 
 const employeeNavItems: NavItem[] = [
-  { href: '/employee', label: 'Scan', iconName: 'ScanLine' },
+  { href: '/employee', label: 'Attendance', iconName: 'UserCheck' },
   { href: '/employee/history', label: 'History', iconName: 'History' },
   { href: '/employee/leave', label: 'Leave', iconName: 'CalendarOff' },
   { href: '/employee/rewards', label: 'Rewards', iconName: 'Trophy' },

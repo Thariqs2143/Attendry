@@ -11,6 +11,7 @@ import {
   Bell,
   LogOut,
   type LucideIcon,
+  UserCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { NavItem } from './bottom-nav';
@@ -32,6 +33,7 @@ const iconMap: Record<string, LucideIcon> = {
   Trophy,
   CalendarOff,
   Bell,
+  UserCheck,
 };
 
 type EmployeeNavProps = {
@@ -122,7 +124,7 @@ export function EmployeeNav({ navItems, profile }: EmployeeNavProps) {
               </div>
             </div>
           </Link>
-          <Button variant="ghost" className="w-full justify-start h-auto p-2 border bg-red-100 text-red-700 hover:bg-red-600 hover:text-white active:bg-red-800 active:text-white dark:bg-red-900/50 dark:text-red-400 dark:hover:bg-red-800 dark:hover:text-white dark:active:bg-red-900 dark:active:text-white" onClick={handleLogout}>
+          <Button variant="ghost" className="w-full justify-start h-auto p-2 border bg-red-100 text-red-600 hover:bg-red-600 hover:text-white active:bg-red-800 active:text-white dark:bg-red-900/50 dark:text-red-400 dark:hover:bg-red-800 dark:hover:text-white dark:active:bg-red-900 dark:active:text-white" onClick={handleLogout}>
             <LogOut className="h-5 w-5 mr-3" />
             <span className="font-semibold">Logout</span>
           </Button>

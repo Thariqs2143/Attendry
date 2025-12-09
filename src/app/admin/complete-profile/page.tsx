@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Store, Upload } from 'lucide-react';
+import { Loader2, Store, Upload, MapPin } from 'lucide-react';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { doc, setDoc, writeBatch, collection, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -33,6 +33,8 @@ export default function AdminCompleteProfilePage() {
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [phone, setPhone] = useState('');
+    const [latitude, setLatitude] = useState('');
+    const [longitude, setLongitude] = useState('');
 
     const [address, setAddress] = useState('');
     const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -137,8 +139,8 @@ export default function AdminCompleteProfilePage() {
         const gstNumber = formData.get('gstNumber') as string;
 
 
-        if (!shopName || !businessType || !address || !phone) {
-             toast({ title: "Error", description: "Please fill out all required fields.", variant: "destructive" });
+        if (!shopName || !businessType || !address || !phone || !latitude || !longitude) {
+             toast({ title: "Error", description: "Please fill out all required fields, including location coordinates.", variant: "destructive" });
              setLoading(false);
              return;
         }
@@ -176,6 +178,8 @@ export default function AdminCompleteProfilePage() {
             email,
             gstNumber,
             status: 'active',
+            latitude,
+            longitude,
         };
 
         try {
@@ -191,7 +195,7 @@ export default function AdminCompleteProfilePage() {
             batch.set(newShopRef, shopProfile, { merge: true });
 
             const ownerAsEmployeeRef = doc(db, 'shops', newShopRef.id, 'employees', uid);
-            batch.set(ownerAsEmployeeRef, { ...userAsEmployeeProfile, shopId: newShopRef.id });
+            batch.set(ownerAsEmployeeRef, { ...userAsEmployeeProfile, shopId: newShopRef.id, uid: uid });
 
             const shopDocSnap = await getDoc(newShopRef);
             const referredBy = shopDocSnap.data()?.referredBy;
@@ -316,6 +320,25 @@ export default function AdminCompleteProfilePage() {
                             </CardContent>
                         </Card>
                     )}
+                </div>
+                <div className="space-y-4 rounded-lg border-2 p-4">
+                    <div className='flex items-start gap-3'>
+                        <MapPin className='h-5 w-5 text-primary mt-1' />
+                        <div>
+                            <h3 className="font-semibold">Shop Location Coordinates</h3>
+                            <p className="text-xs text-muted-foreground">Required for Face Attendance. Go to Google Maps, right-click on your shop's location, and click the coordinates to copy them.</p>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <Label htmlFor="latitude">Latitude *</Label>
+                            <Input id="latitude" name="latitude" placeholder="e.g., 11.0168" required value={latitude} onChange={(e) => setLatitude(e.target.value)} />
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="longitude">Longitude *</Label>
+                            <Input id="longitude" name="longitude" placeholder="e.g., 76.9558" required value={longitude} onChange={(e) => setLongitude(e.target.value)} />
+                        </div>
+                    </div>
                 </div>
             </div>
             <div className="flex justify-center pt-4">

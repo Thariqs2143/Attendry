@@ -160,20 +160,27 @@ function EmployeeDetailContent() {
   };
 
   const handleSave = async () => {
-    if (!employee?.id || !branchId) return;
+    if (!employee?.uid || !branchId) return;
     setSaving(true);
     const db = getFirestore();
-    const userDocRef = doc(db, 'shops', branchId, 'employees', employee.id);
-    
+    const userDocRef = doc(db, 'shops', branchId, 'employees', employee.uid);
+    const globalUserDocRef = doc(db, 'users', employee.uid);
+
     try {
-        await updateDoc(userDocRef, {
+        const updateData = {
             name: editableEmployee.name,
             email: editableEmployee.email || '',
             role: editableEmployee.role,
             aadhaar: editableEmployee.aadhaar || '',
             baseSalary: Number(editableEmployee.baseSalary) || 0,
             shiftId: selectedShift,
-        });
+        };
+
+        const batch = writeBatch(db);
+        batch.update(userDocRef, updateData);
+        batch.update(globalUserDocRef, updateData);
+        await batch.commit();
+
         toast({
             title: "Employee Updated",
             description: `${editableEmployee.name}'s details have been updated.`,
@@ -193,20 +200,20 @@ function EmployeeDetailContent() {
 
 
   const handleDeleteEmployee = async () => {
-    if (!employee?.id || !branchId) return;
+    if (!employee?.uid || !branchId) return;
     setDeleting(true);
     const db = getFirestore();
     
     try {
         const batch = writeBatch(db);
-        const userDocRef = doc(db, 'shops', branchId, 'employees', employee.id);
-        batch.delete(userDocRef);
+        
+        // Delete from shop's employees subcollection
+        const shopEmployeeDocRef = doc(db, 'shops', branchId, 'employees', employee.uid);
+        batch.delete(shopEmployeeDocRef);
 
-        // Also delete the global phone lookup to free up the phone number
-        if(employee.phone) {
-            const phoneLookupRef = doc(db, 'employee_phone_to_shop_lookup', employee.phone);
-            batch.delete(phoneLookupRef);
-        }
+        // Delete from global users collection
+        const userDocRef = doc(db, 'users', employee.uid);
+        batch.delete(userDocRef);
 
         await batch.commit();
 

@@ -4,16 +4,16 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScanLine, CheckCircle, XCircle, Loader2, CameraOff, LogIn, LogOut, PartyPopper } from "lucide-react";
+import { CheckCircle, XCircle, Loader2, CameraOff, LogIn, LogOut, PartyPopper, LocateFixed } from "lucide-react";
 import { onAuthStateChanged, type User as AuthUser } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, addDoc, collection, writeBatch, Timestamp, query, where, getDocs, limit } from 'firebase/firestore';
 import type { User as AppUser } from '@/app/admin/employees/page';
 import { useRouter } from 'next/navigation';
-import jsQR from 'jsqr';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { setHours, setMinutes, setSeconds, startOfDay, endOfDay, parse, startOfMonth, endOfMonth } from 'date-fns';
+import { setHours, setMinutes, setSeconds, startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns';
+import { verifyFace } from '@/ai/flows/verify-face-flow';
 
 type ScanStatus = 'idle' | 'scanning' | 'success' | 'error' | 'processing';
 type AttendanceRecord = {
@@ -37,8 +37,28 @@ type GamificationSettings = {
     streakBonusPoints: number;
 };
 
+type ShopData = {
+    latitude?: string;
+    longitude?: string;
+};
 
-export default function ScanPage() {
+// Haversine formula to calculate distance between two lat/lon points
+const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371e3; // metres
+    const φ1 = lat1 * Math.PI/180;
+    const φ2 = lat2 * Math.PI/180;
+    const Δφ = (lat2-lat1) * Math.PI/180;
+    const Δλ = (lon2-lon1) * Math.PI/180;
+
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    return R * c; // in metres
+}
+
+export default function FaceAttendancePage() {
   const router = useRouter();
   const { toast } = useToast();
   const [status, setStatus] = useState<ScanStatus>('idle');
@@ -47,14 +67,11 @@ export default function ScanPage() {
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [activeCheckIn, setActiveCheckIn] = useState<AttendanceRecord | null>(null);
   const [hasCompletedDay, setHasCompletedDay] = useState(false);
-  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [currentDate, setCurrentDate] = useState('');
-
+  const [shopData, setShopData] = useState<ShopData | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const animationFrameId = useRef<number | null>(null);
 
   useEffect(() => {
     setCurrentDate(new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
@@ -76,16 +93,13 @@ export default function ScanPage() {
         const docSnap = snapshot.docs[0];
         const record = { id: docSnap.id, ...docSnap.data() } as AttendanceRecord;
         if (record.checkOutTime) {
-            // Already checked in and out today
             setHasCompletedDay(true);
             setActiveCheckIn(null);
         } else {
-            // Actively checked in
             setActiveCheckIn(record);
             setHasCompletedDay(false);
         }
     } else {
-        // No record for today
         setActiveCheckIn(null);
         setHasCompletedDay(false);
     }
@@ -94,15 +108,19 @@ export default function ScanPage() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        setAuthUser(user);
         const userDocRef = doc(db, "users", user.uid);
         const userDocSnap = await getDoc(userDocRef);
 
         if (userDocSnap.exists()) {
-            const profile = { id: userDocSnap.id, ...userDocSnap.data() } as AppUser;
+            const profile = { id: userDocSnap.id, ...userDocSnap.data(), uid: user.uid } as AppUser;
             setUserProfile(profile);
             if(profile.shopId){
-                await checkAttendanceStatusForToday(profile.id!, profile.shopId);
+                await checkAttendanceStatusForToday(profile.uid, profile.shopId);
+                const shopDocRef = doc(db, 'shops', profile.shopId);
+                const shopSnap = await getDoc(shopDocRef);
+                if (shopSnap.exists()) {
+                    setShopData(shopSnap.data() as ShopData);
+                }
             }
         } else {
             router.push('/employee/login');
@@ -115,12 +133,7 @@ export default function ScanPage() {
     return () => unsubscribe();
   }, [router, checkAttendanceStatusForToday]);
 
-
   const stopCamera = useCallback(() => {
-    if (animationFrameId.current) {
-      cancelAnimationFrame(animationFrameId.current);
-      animationFrameId.current = null;
-    }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
@@ -132,20 +145,123 @@ export default function ScanPage() {
   }, []);
 
   useEffect(() => {
+    const getCameraPermission = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+        streamRef.current = stream;
+        setHasCameraPermission(true);
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      } catch (error) {
+        console.error('Error accessing camera:', error);
+        setHasCameraPermission(false);
+        toast({
+          variant: 'destructive',
+          title: 'Camera Access Denied',
+          description: 'Please enable camera permissions in your browser settings to use face attendance.',
+        });
+      }
+    };
+
+    getCameraPermission();
+    
     return () => {
       stopCamera();
     };
-  }, [stopCamera]);
+  }, [stopCamera, toast]);
   
-  const handleCheckIn = async (shopId: string) => {
-    if (!userProfile?.id) return;
-    
-    await checkAttendanceStatusForToday(userProfile.id, shopId);
-    if (hasCompletedDay) {
-        toast({ title: 'Already Completed', description: 'You have already checked in and out for today.', variant: 'destructive'});
+  const captureFrame = (): string | null => {
+      if (!videoRef.current) return null;
+      const canvas = document.createElement('canvas');
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+      const context = canvas.getContext('2d');
+      if (!context) return null;
+      context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL('image/jpeg');
+  };
+
+  const handleLocationAndMarkAttendance = async () => {
+      setStatus('processing');
+      toast({ title: 'Getting your location...' });
+
+      if (!shopData?.latitude || !shopData?.longitude) {
+          toast({ variant: 'destructive', title: 'Setup Error', description: 'Shop location is not set. Please contact your admin.' });
+          setStatus('error');
+          return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+          async (position) => {
+              const { latitude, longitude } = position.coords;
+              const shopLat = parseFloat(shopData.latitude!);
+              const shopLon = parseFloat(shopData.longitude!);
+              
+              const distance = getDistance(latitude, longitude, shopLat, shopLon);
+
+              if (distance > 100) { // 100 meters radius
+                  toast({ variant: 'destructive', title: 'Location Mismatch', description: `You must be within 100 meters of the shop to mark attendance. You are ${Math.round(distance)}m away.`});
+                  setStatus('error');
+                  return;
+              }
+
+              toast({ title: 'Location Verified!', description: 'Now verifying your face...' });
+              await handleMarkAttendance('Verified');
+          },
+          (error) => {
+              console.error("Geolocation error:", error);
+              toast({ variant: 'destructive', title: 'Location Error', description: 'Could not get your location. Please enable location services and try again.' });
+              setStatus('error');
+          },
+          { enableHighAccuracy: true }
+      );
+  };
+  
+  const handleMarkAttendance = async (locationStatus: 'Verified' | 'Unverified') => {
+    if (!userProfile?.uid || !userProfile?.shopId) return;
+
+    const capturedImage = captureFrame();
+    if (!capturedImage) {
+        toast({ title: 'Capture Failed', description: 'Could not capture image from camera.', variant: 'destructive' });
         setStatus('error');
         return;
     }
+
+    if (!userProfile.faceIdImageUrl) {
+        toast({ title: 'Setup Required', description: 'Your Face ID is not set up. Please go to your profile to add it.', variant: 'destructive' });
+        setStatus('error');
+        return;
+    }
+
+    try {
+        const { isSamePerson } = await verifyFace({
+            capturedPhotoDataUri: capturedImage,
+            referencePhotoUrl: userProfile.faceIdImageUrl,
+        });
+
+        if (!isSamePerson) {
+            toast({ title: 'Face Mismatch', description: 'The face captured does not match your profile. Please try again.', variant: 'destructive' });
+            setStatus('error');
+            return;
+        }
+
+        toast({ title: 'Face Verified!', description: 'Finalizing attendance...' });
+
+        if (activeCheckIn) {
+            await handleCheckOut(locationStatus);
+        } else {
+            await handleCheckIn(userProfile.shopId, locationStatus);
+        }
+    } catch (aiError) {
+        console.error("AI Face Verification Error:", aiError);
+        toast({ title: 'AI Error', description: 'Could not verify face. Please try again.', variant: 'destructive' });
+        setStatus('error');
+    }
+  };
+
+  const handleCheckIn = async (shopId: string, locationStatus: 'Verified' | 'Unverified') => {
+    if (!userProfile?.uid) return;
 
     const shopConfigRef = doc(db, 'shops', shopId, 'config', 'main');
     const shopConfigSnap = await getDoc(shopConfigRef);
@@ -194,17 +310,16 @@ export default function ScanPage() {
         } else {
             attendanceStatus = 'Absent';
             pointsChange = gamification.absentPoints;
-            isLate = false; // Absent isn't counted as 'late' for allowance
+            isLate = false;
         }
     }
     
-    // Check monthly late allowance
     if (isLate) {
         const monthStart = startOfMonth(now);
         const monthEnd = endOfMonth(now);
         const lateQuery = query(
             collection(db, 'shops', shopId, 'attendance'),
-            where('userId', '==', userProfile.id),
+            where('userId', '==', userProfile.uid),
             where('checkInTime', '>=', monthStart),
             where('checkInTime', '<=', monthEnd),
             where('status', 'in', ['Late Category 1', 'Late Category 2', 'Late Category 3'])
@@ -213,7 +328,7 @@ export default function ScanPage() {
         const monthlyLateCount = lateSnapshot.size;
 
         if (monthlyLateCount < 3) {
-            pointsChange = 0; // Waive penalty for the first 3 late entries
+            pointsChange = 0;
             toast({ title: 'Late Entry Allowance Used', description: `This is your ${monthlyLateCount + 1}/3 late entry this month. No points deducted.`});
         }
     }
@@ -223,16 +338,17 @@ export default function ScanPage() {
     const batch = writeBatch(db);
     const newAttendanceRef = doc(collection(db, 'shops', shopId, 'attendance'));
     const newAttendanceRecord = {
-        userId: userProfile.id,
+        userId: userProfile.uid,
         userName: userProfile.name,
         shopId: shopId,
         checkInTime: Timestamp.now(),
         status: attendanceStatus,
         checkOutTime: null,
+        locationStatus,
     };
     batch.set(newAttendanceRef, newAttendanceRecord);
     
-    const employeeDocRef = doc(db, 'shops', shopId, 'employees', userProfile.id);
+    const employeeDocRef = doc(db, 'shops', shopId, 'employees', userProfile.uid);
     const newPoints = (userProfile.points || 0) + pointsChange;
     let updateData: any = {
         points: newPoints < 0 ? 0 : newPoints,
@@ -254,153 +370,20 @@ export default function ScanPage() {
     toast({ title: 'Check-in Successful!', description: `You have been marked as ${attendanceStatus}.` });
   };
   
-  const handleCheckOut = async () => {
+  const handleCheckOut = async (locationStatus: 'Verified' | 'Unverified') => {
     if (!userProfile?.shopId || !activeCheckIn) return;
     
     const attendanceDocRef = doc(db, 'shops', userProfile.shopId, 'attendance', activeCheckIn.id);
     await updateDoc(attendanceDocRef, {
         checkOutTime: Timestamp.now(),
+        locationStatus: locationStatus
     });
 
     setActiveCheckIn(null);
-    setHasCompletedDay(true); // Mark day as completed
+    setHasCompletedDay(true);
     setStatus('success');
     toast({ title: 'Check-out Successful!', description: 'Have a great day!' });
   };
-
-  const handleQrCode = useCallback(async (data: string) => {
-      setStatus('processing');
-      stopCamera();
-      
-      if (!userProfile?.id || !userProfile?.shopId) {
-         toast({ title: 'Error', description: 'Could not identify user.', variant: 'destructive'});
-         setStatus('error');
-         return;
-      }
-
-      try {
-        const parts = data.split(';');
-        if (parts[0] !== 'attendry-shop-qr' || parts.length < 2) {
-            throw new Error('Invalid QR code format.');
-        }
-
-        const qrData: {[key: string]: string} = {};
-        parts.slice(1).forEach(part => {
-            const [key, value] = part.split('=');
-            qrData[key] = value;
-        });
-
-        if (userProfile.shopId !== qrData.shopId) {
-             throw new Error('This QR code does not belong to your assigned shop.');
-        }
-        
-        const shopDocRef = doc(db, 'shops', qrData.shopId);
-        const shopSnap = await getDoc(shopDocRef);
-
-        if (!shopSnap.exists()) {
-            throw new Error('Shop profile not found. Please contact admin.');
-        }
-        
-        const shopSettings = shopSnap.data();
-
-        // If shop is in dynamic mode, validate timestamp
-        if (shopSettings?.qrCodeMode === 'dynamic') {
-            if (!qrData.ts) {
-                throw new Error('Dynamic QR code expected, but none found. Please use the one displayed on the admin screen.');
-            }
-            const qrTimestamp = parseInt(qrData.ts, 10);
-            const now = Date.now();
-            const timeDiffSeconds = (now - qrTimestamp) / 1000;
-            
-            // Allow a 20-second window (15s refresh + 5s buffer)
-            if (timeDiffSeconds > 20) {
-                 throw new Error('This QR code has expired. Please scan the current one.');
-            }
-        }
-
-
-        if (activeCheckIn) {
-            await handleCheckOut();
-        } else {
-            await handleCheckIn(qrData.shopId);
-        }
-
-      } catch (error: any) {
-        console.error("Error processing QR code:", error);
-        toast({ title: 'Scan Error', description: error.message || 'Could not process QR code.', variant: 'destructive'});
-        setStatus('error');
-      }
-
-  }, [stopCamera, userProfile, toast, activeCheckIn, handleCheckIn, handleCheckOut]);
-
-  const tick = useCallback(() => {
-    if (statusRef.current !== 'scanning' || !videoRef.current?.HAVE_ENOUGH_DATA) {
-        if (statusRef.current === 'scanning') {
-            animationFrameId.current = requestAnimationFrame(tick);
-        }
-        return;
-    }
-    
-    if (videoRef.current && canvasRef.current) {
-        const canvas = canvasRef.current;
-        const context = canvas.getContext('2d');
-        if (context) {
-            canvas.height = videoRef.current.videoHeight;
-            canvas.width = videoRef.current.videoWidth;
-            context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-            
-            try {
-                const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-                const code = jsQR(imageData.data, imageData.width, imageData.height, {
-                    inversionAttempts: "dontInvert",
-                });
-
-                if (code?.data) {
-                    handleQrCode(code.data);
-                    return; // Stop the loop once a code is found and handled
-                }
-            } catch(e) {
-                console.error("jsQR error", e);
-            }
-        }
-    }
-    if (statusRef.current === 'scanning') {
-      animationFrameId.current = requestAnimationFrame(tick);
-    }
-  }, [handleQrCode]);
-
-  const statusRef = useRef(status);
-  useEffect(() => {
-    statusRef.current = status;
-  }, [status]);
-
-
-  const startScan = useCallback(async () => {
-    setStatus('scanning');
-    setHasCameraPermission(null);
-    
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-        streamRef.current = stream;
-        if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-            videoRef.current.setAttribute("playsinline", "true");
-            await videoRef.current.play();
-            setHasCameraPermission(true);
-            animationFrameId.current = requestAnimationFrame(tick);
-        }
-    } catch (err) {
-        console.error("Camera access error:", err);
-        setHasCameraPermission(false);
-        setStatus('idle');
-        toast({
-          variant: 'destructive',
-          title: 'Camera Access Denied',
-          description: 'Please enable camera permissions in your browser settings to scan the QR code.',
-        });
-    }
-  }, [toast, tick]);
-
 
   const renderStatus = () => {
     if (status === 'success' || status === 'error') {
@@ -419,8 +402,8 @@ export default function ScanPage() {
         return (
           <div className="flex flex-col items-center gap-4 text-center text-destructive">
             <XCircle className="h-20 w-20" />
-            <p className="font-bold text-xl">Scan Failed</p>
-            <p className="text-sm text-muted-foreground">Please try again. Make sure you are scanning the correct QR code.</p>
+            <p className="font-bold text-xl">Verification Failed</p>
+            <p className="text-sm text-muted-foreground">Please try again. Make sure you are in a well-lit area.</p>
           </div>
         );
       case 'processing':
@@ -428,26 +411,9 @@ export default function ScanPage() {
             <div className="flex flex-col items-center gap-4 text-center">
               <Loader2 className="h-20 w-20 animate-spin text-primary" />
               <p className="font-bold text-xl">Processing...</p>
-              <p className="text-sm text-muted-foreground">Verifying your attendance.</p>
+              <p className="text-sm text-muted-foreground">Verifying your identity and location.</p>
             </div>
           );
-      case 'scanning':
-        return (
-          <div className="relative w-full aspect-square max-w-sm mx-auto overflow-hidden rounded-lg border-4 border-primary shadow-lg">
-            <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
-            <canvas ref={canvasRef} className="hidden" />
-            <div className="absolute inset-0 border-[20px] border-black/30 "/>
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-1/2">
-                <div className="absolute -top-1 -left-1 h-12 w-12 border-t-4 border-l-4 border-red-500 rounded-tl-lg"/>
-                <div className="absolute -top-1 -right-1 h-12 w-12 border-t-4 border-r-4 border-red-500 rounded-tr-lg"/>
-                <div className="absolute -bottom-1 -left-1 h-12 w-12 border-b-4 border-l-4 border-red-500 rounded-bl-lg"/>
-                <div className="absolute -bottom-1 -right-1 h-12 w-12 border-b-4 border-r-4 border-red-500 rounded-br-lg"/>
-            </div>
-            <p className="absolute bottom-4 left-0 right-0 text-center text-white bg-black/50 p-2 text-sm">
-                Position the QR code inside the frame.
-            </p>
-          </div>
-        );
       case 'idle':
       default:
         if (hasCompletedDay) {
@@ -465,20 +431,17 @@ export default function ScanPage() {
                      <LogIn className="h-20 w-20 text-green-500" />
                      <p className="text-lg font-semibold">You are checked in!</p>
                      <p className="text-sm text-muted-foreground">Checked in at: {activeCheckIn.checkInTime.toDate().toLocaleTimeString()}</p>
-                     <p className="text-sm text-muted-foreground">Scan again to check out.</p>
                  </div>
             )
         }
         return (
           <div className="flex flex-col items-center gap-2 text-center">
-             <ScanLine className="h-20 w-20 text-primary" />
              <p className="text-lg font-semibold">Ready to start your day?</p>
-             <p className="text-sm text-muted-foreground">Click the button below to scan the attendance QR code to check in.</p>
+             <p className="text-sm text-muted-foreground">Center your face in the camera to mark attendance.</p>
           </div>
         )
     }
   }
-
 
   if (loading || !userProfile) {
      return (
@@ -492,15 +455,26 @@ export default function ScanPage() {
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Welcome, {userProfile?.name?.split(' ')[0]}!</h1>
-        <p className="text-muted-foreground">Scan the QR code to mark your attendance.</p>
+        <p className="text-muted-foreground">Use your face to mark your attendance.</p>
       </div>
       <Card className="w-full max-w-lg mx-auto transition-all duration-300 ease-out hover:shadow-lg border-2 border-foreground hover:border-primary">
         <CardHeader>
-          <CardTitle>Attendance Scanner</CardTitle>
+          <CardTitle>Face Attendance</CardTitle>
           <CardDescription>{currentDate}</CardDescription>
         </CardHeader>
-        <CardContent className="flex items-center justify-center p-8 min-h-[250px]">
-          {renderStatus()}
+        <CardContent className="flex items-center justify-center p-4 min-h-[300px]">
+          {status !== 'idle' ? renderStatus() : (
+              <div className="relative w-full aspect-square max-w-sm mx-auto overflow-hidden rounded-lg border-4 border-muted shadow-lg">
+                <video ref={videoRef} className="w-full h-full object-cover scale-x-[-1]" autoPlay muted playsInline />
+                {!hasCameraPermission && status === 'idle' && (
+                    <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white p-4">
+                        <CameraOff className="h-10 w-10 mb-4"/>
+                        <p className="font-semibold">Camera Access Required</p>
+                        <p className="text-sm text-center">Please allow camera access to use this feature.</p>
+                    </div>
+                )}
+              </div>
+          )}
         </CardContent>
          <CardFooter className="flex-col gap-4 pt-6">
             {hasCameraPermission === false && (
@@ -508,27 +482,15 @@ export default function ScanPage() {
                     <CameraOff className="h-4 w-4" />
                     <AlertTitle>Camera Permission Denied</AlertTitle>
                     <AlertDescription>
-                        You must allow camera access in your browser settings to scan the QR code.
+                        You must allow camera access in your browser settings to use face attendance.
                     </AlertDescription>
                 </Alert>
             )}
-             {status === 'scanning' ? (
-                <Button onClick={stopCamera} size="lg" className="w-full" variant="destructive">
-                    Cancel Scan
-                </Button>
-            ) : (
-                <Button onClick={startScan} size="lg" className="w-full" disabled={status === 'processing' || hasCompletedDay}>
-                   {activeCheckIn ? (
-                        <>
-                            <LogOut className="mr-2 h-4 w-4"/> Scan to Check-Out
-                        </>
-                   ) : (
-                        <>
-                             <LogIn className="mr-2 h-4 w-4"/> Scan to Check-In
-                        </>
-                   )}
-                </Button>
-            )}
+            <Button onClick={handleLocationAndMarkAttendance} size="lg" className="w-full" disabled={status !== 'idle' || hasCompletedDay || !hasCameraPermission}>
+               {status === 'processing' && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+               {activeCheckIn ? <LogOut className="mr-2 h-4 w-4"/> : <LocateFixed className="mr-2 h-4 w-4"/>}
+               {activeCheckIn ? 'Mark Check-Out' : 'Mark Check-In'}
+            </Button>
         </CardFooter>
       </Card>
       <div className="text-left text-muted-foreground mt-8 py-4">

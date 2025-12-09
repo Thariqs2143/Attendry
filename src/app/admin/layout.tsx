@@ -22,7 +22,7 @@ import { useTheme } from 'next-themes';
 
 const adminNavItems: NavItem[] = [
   { href: '/admin', label: 'Home', iconName: 'LayoutDashboard' },
-  { href: '/admin/generate-qr', label: 'QR Entry', iconName: 'QrCode' },
+  { href: '/admin/generate-qr', label: 'Live Attendance', iconName: 'Activity' },
   { href: '/admin/employees', label: 'Staffs', iconName: 'Users' },
   { href: '/admin/report', label: 'Report', iconName: 'BarChart3' },
   { href: '/admin/leaderboard', label: 'Leaderboard', iconName: 'Crown' },
