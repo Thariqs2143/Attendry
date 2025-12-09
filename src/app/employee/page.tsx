@@ -73,6 +73,7 @@ export default function FaceAttendancePage() {
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     setCurrentDate(new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
@@ -112,6 +113,31 @@ export default function FaceAttendancePage() {
       streamRef.current = null;
     }
   }, []);
+  
+  const setupCamera = useCallback(async () => {
+    try {
+        if (streamRef.current) {
+            stopCamera();
+        }
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+        streamRef.current = stream;
+        if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+        }
+        setHasCameraPermission(true);
+        return true;
+    } catch (error) {
+        console.error('Error accessing camera:', error);
+        setHasCameraPermission(false);
+        toast({
+            variant: 'destructive',
+            title: 'Camera Access Denied',
+            description: 'Please enable camera permissions in your browser settings to use this feature.',
+        });
+        return false;
+    }
+}, [stopCamera, toast]);
+
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -147,27 +173,9 @@ export default function FaceAttendancePage() {
 
   useEffect(() => {
     const requestPermissions = async () => {
-      let cameraGranted = false;
       let locationGranted = false;
 
-      // Request Camera
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
-        setHasCameraPermission(true);
-        cameraGranted = true;
-      } catch (error) {
-        console.error('Error accessing camera:', error);
-        setHasCameraPermission(false);
-        toast({
-          variant: 'destructive',
-          title: 'Camera Access Denied',
-          description: 'Please enable camera permissions to use this feature.',
-        });
-      }
+      const cameraGranted = await setupCamera();
 
       // Request Location
       try {
@@ -199,20 +207,58 @@ export default function FaceAttendancePage() {
       }
     };
 
-    requestPermissions();
-
-    // Cleanup function to stop camera when component unmounts or rerenders
-    return () => {
-        if (streamRef.current) {
-            streamRef.current.getTracks().forEach(track => track.stop());
-        }
-    };
-  }, [toast]);
+    if (typeof window !== 'undefined') {
+        requestPermissions();
+    }
+    
+    return () => stopCamera();
+  }, [setupCamera, stopCamera, toast]);
   
+  const captureFrame = useCallback((): string | null => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (video && canvas) {
+      const context = canvas.getContext('2d');
+      if (context) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+        return canvas.toDataURL('image/jpeg');
+      }
+    }
+    return null;
+  }, []);
+
+  const uploadImage = async (dataUri: string): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', dataUri);
+    formData.append('upload_preset', 'attendry_uploads');
+
+    const response = await fetch('https://api.cloudinary.com/v1_1/dkek6cset/image/upload', {
+        method: 'POST',
+        body: formData,
+    });
+    
+    if (!response.ok) {
+        throw new Error('Image upload failed');
+    }
+
+    const data = await response.json();
+    return data.secure_url;
+  };
+
+
   const handleLocationAndMarkAttendance = async () => {
       setStatus('processing');
       toast({ title: 'Getting your location...' });
 
+      const imageDataUri = captureFrame();
+      if (!imageDataUri) {
+          toast({ variant: 'destructive', title: 'Capture Failed', description: 'Could not capture image. Please try again.' });
+          setStatus('error');
+          return;
+      }
+      
       if (!shopData?.latitude || !shopData?.longitude) {
           toast({ variant: 'destructive', title: 'Setup Error', description: 'Shop location is not set. Please contact your admin.' });
           setStatus('error');
@@ -233,13 +279,21 @@ export default function FaceAttendancePage() {
                   return;
               }
 
-              toast({ title: 'Location Verified!', description: 'Finalizing attendance...' });
-              if (activeCheckIn) {
-                await handleCheckOut('Verified');
-              } else {
-                if(userProfile?.shopId) {
-                  await handleCheckIn(userProfile.shopId, 'Verified');
-                }
+              toast({ title: 'Location Verified!', description: 'Uploading image and finalizing attendance...' });
+
+              try {
+                const imageUrl = await uploadImage(imageDataUri);
+                 if (activeCheckIn) {
+                    await handleCheckOut('Verified', imageUrl);
+                  } else {
+                    if(userProfile?.shopId) {
+                      await handleCheckIn(userProfile.shopId, 'Verified', imageUrl);
+                    }
+                  }
+              } catch (e) {
+                console.error(e);
+                toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload attendance image.' });
+                setStatus('error');
               }
           },
           (error) => {
@@ -251,7 +305,7 @@ export default function FaceAttendancePage() {
       );
   };
 
-  const handleCheckIn = async (shopId: string, locationStatus: 'Verified' | 'Unverified') => {
+  const handleCheckIn = async (shopId: string, locationStatus: 'Verified' | 'Unverified', imageUrl: string) => {
     if (!userProfile?.uid) return;
 
     const shopConfigRef = doc(db, 'shops', shopId, 'config', 'main');
@@ -336,6 +390,7 @@ export default function FaceAttendancePage() {
         status: attendanceStatus,
         checkOutTime: null,
         locationStatus,
+        imageUrl,
     };
     batch.set(newAttendanceRef, newAttendanceRecord);
     
@@ -361,13 +416,14 @@ export default function FaceAttendancePage() {
     toast({ title: 'Check-in Successful!', description: `You have been marked as ${attendanceStatus}.` });
   };
   
-  const handleCheckOut = async (locationStatus: 'Verified' | 'Unverified') => {
+  const handleCheckOut = async (locationStatus: 'Verified' | 'Unverified', imageUrl: string) => {
     if (!userProfile?.shopId || !activeCheckIn) return;
     
     const attendanceDocRef = doc(db, 'shops', userProfile.shopId, 'attendance', activeCheckIn.id);
     await updateDoc(attendanceDocRef, {
         checkOutTime: Timestamp.now(),
-        locationStatus: locationStatus
+        locationStatus: locationStatus,
+        checkoutImageUrl: imageUrl,
     });
 
     setActiveCheckIn(null);
@@ -454,11 +510,12 @@ export default function FaceAttendancePage() {
           <CardDescription>{currentDate}</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-center p-4 min-h-[300px]">
+          <canvas ref={canvasRef} className="hidden"></canvas>
           {status !== 'idle' ? renderStatus() : (
               <div className="relative w-full aspect-square max-w-sm mx-auto overflow-hidden rounded-lg border-4 border-muted shadow-lg">
                 <video 
                     ref={videoRef} 
-                    className={`w-full h-full object-cover scale-x-[-1] transition-opacity duration-300 ${hasCameraPermission ? 'opacity-100' : 'opacity-0'}`} 
+                    className="w-full h-full object-cover scale-x-[-1] transition-opacity duration-300"
                     autoPlay 
                     muted 
                     playsInline 
@@ -489,7 +546,7 @@ export default function FaceAttendancePage() {
                 <LocateFixed className="h-4 w-4" />
                 <AlertTitle className="font-semibold text-primary">Privacy Notice</AlertTitle>
                 <AlertDescription className="text-primary/90">
-                    Your camera is for visual confirmation only. No photos are stored. Only your location is verified for attendance.
+                    Your location is verified and a photo is captured for attendance records visible to your manager.
                 </AlertDescription>
             </Alert>
             {(hasCameraPermission === false || hasLocationPermission === false) && (
@@ -518,4 +575,3 @@ export default function FaceAttendancePage() {
     </div>
   );
 }
-

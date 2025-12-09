@@ -12,6 +12,7 @@ import { onAuthStateChanged, type User as AuthUser } from 'firebase/auth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { getAuth } from 'firebase/auth';
+import Image from 'next/image';
 
 type ActivityRecord = {
     id: string;
@@ -23,6 +24,8 @@ type ActivityRecord = {
     userFallback?: string;
     userImageUrl?: string;
     locationStatus?: 'Verified' | 'Unverified' | 'Error';
+    imageUrl?: string;
+    checkoutImageUrl?: string;
 };
 
 const RecentActivity = () => {
@@ -78,22 +81,41 @@ const RecentActivity = () => {
                 {loading ? <div className="flex items-center justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
                     : activities.length > 0 ? (
                         <div className="space-y-4">
-                            {activities.map((item) => (
-                                <div key={item.id} className="flex items-start gap-4">
-                                    <Avatar className="h-9 w-9 border"><AvatarImage src={item.userImageUrl} /><AvatarFallback>{item.userFallback || '?'}</AvatarFallback></Avatar>
-                                    <div className="flex-1 text-sm">
-                                        <p><span className="font-semibold">{item.userName}</span>{item.checkOutTime ? ' checked out.' : ` checked in (${item.status}).`}</p>
-                                        <div className='flex items-center gap-2'>
-                                            <p className="text-xs text-muted-foreground">{formatDistanceToNow(item.checkOutTime?.toDate() || item.checkInTime.toDate(), { addSuffix: true })}</p>
-                                            {item.locationStatus && (
-                                                <Badge variant={item.locationStatus === 'Verified' ? 'secondary' : 'destructive'}>
-                                                    {item.locationStatus}
-                                                </Badge>
-                                            )}
+                            {activities.map((item) => {
+                                const actionText = item.checkOutTime ? 'checked out.' : 'checked in.';
+                                const timestamp = item.checkOutTime ? item.checkOutTime.toDate() : item.checkInTime.toDate();
+                                const verificationImage = item.checkOutTime ? item.checkoutImageUrl : item.imageUrl;
+                                
+                                return (
+                                    <div key={item.id} className="flex items-start gap-4">
+                                        {verificationImage ? (
+                                            <Image
+                                                src={verificationImage}
+                                                alt={`Attendance photo for ${item.userName}`}
+                                                width={48}
+                                                height={48}
+                                                className="h-12 w-12 rounded-md object-cover border-2"
+                                            />
+                                        ) : (
+                                            <Avatar className="h-12 w-12 border"><AvatarImage src={item.userImageUrl} /><AvatarFallback>{item.userFallback || '?'}</AvatarFallback></Avatar>
+                                        )}
+                                        <div className="flex-1 text-sm">
+                                            <p><span className="font-semibold">{item.userName}</span> {actionText}</p>
+                                            <div className='flex items-center gap-2'>
+                                                <p className="text-xs text-muted-foreground">{formatDistanceToNow(timestamp, { addSuffix: true })}</p>
+                                                {item.locationStatus && (
+                                                    <Badge variant={item.locationStatus === 'Verified' ? 'secondary' : 'destructive'}>
+                                                        {item.locationStatus}
+                                                    </Badge>
+                                                )}
+                                                {item.status !== 'On-time' && item.status !== 'Grace Period' && (
+                                                    <Badge variant="destructive" className="hidden sm:inline-flex">{item.status}</Badge>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     ) : <p className="text-sm text-muted-foreground text-center py-4">No attendance activity yet.</p>
                 }
