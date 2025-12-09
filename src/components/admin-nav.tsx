@@ -14,6 +14,7 @@ import {
   LogOut,
   Clock,
   Activity,
+  UserCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { NavItem } from './bottom-nav';
@@ -40,6 +41,7 @@ const iconMap: { [key: string]: any } = {
   Bell,
   Clock,
   Activity,
+  UserCheck,
 };
 
 type AdminNavProps = {

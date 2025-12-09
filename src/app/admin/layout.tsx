@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { BottomNav, type NavItem } from '@/components/bottom-nav';
 import Link from 'next/link';
 import { AdminNav } from '@/components/admin-nav';
-import { Bell, Loader2, PanelLeft, Clock } from 'lucide-react';
+import { Bell, Loader2, PanelLeft, Clock, UserCheck } from 'lucide-react';
 import { InstallPWA } from '@/components/install-pwa';
 import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
@@ -22,7 +22,7 @@ import { useTheme } from 'next-themes';
 
 const adminNavItems: NavItem[] = [
   { href: '/admin', label: 'Home', iconName: 'LayoutDashboard' },
-  { href: '/admin/generate-qr', label: 'Live Attendance', iconName: 'Activity' },
+  { href: '/admin/generate-qr', label: 'Attends', iconName: 'UserCheck' },
   { href: '/admin/employees', label: 'Staffs', iconName: 'Users' },
   { href: '/admin/report', label: 'Report', iconName: 'BarChart3' },
   { href: '/admin/leaderboard', label: 'Leaderboard', iconName: 'Crown' },
