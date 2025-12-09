@@ -352,26 +352,26 @@ export default function FaceAttendancePage(): JSX.Element {
         const timeDiffMinutes = (now.getTime() - shiftStart.getTime()) / (1000 * 60);
 
         if (timeDiffMinutes <= gamification.gracePeriodMinutes) {
-          attendanceStatus = 'On-time';
-          pointsChange = gamification.onTimePoints;
+            attendanceStatus = 'On-time';
+            pointsChange = gamification.onTimePoints;
         } else {
-          isLate = true;
-          if (timeDiffMinutes <= gamification.lateCategory1Minutes) {
-            attendanceStatus = 'Late Category 1';
-            pointsChange = gamification.lateCategory1Points;
-          } else if (timeDiffMinutes <= gamification.lateCategory2Minutes) {
-            attendanceStatus = 'Late Category 2';
-            pointsChange = gamification.lateCategory2Points;
-          } else if (timeDiffMinutes <= gamification.lateCategory3Minutes) {
-            attendanceStatus = 'Late Category 3';
-            pointsChange = gamification.lateCategory3Points;
-          } else {
-            attendanceStatus = 'Absent';
-            pointsChange = gamification.absentPoints;
-            isLate = false;
-          }
+            isLate = true;
+            if (timeDiffMinutes <= gamification.lateCategory1Minutes) {
+                attendanceStatus = 'Late Category 1';
+                pointsChange = gamification.lateCategory1Points;
+            } else if (timeDiffMinutes <= gamification.lateCategory2Minutes) {
+                attendanceStatus = 'Late Category 2';
+                pointsChange = gamification.lateCategory2Points;
+            } else if (timeDiffMinutes <= gamification.lateCategory3Minutes) {
+                attendanceStatus = 'Late Category 3';
+                pointsChange = gamification.lateCategory3Points;
+            } else {
+                attendanceStatus = 'Absent';
+                pointsChange = gamification.absentPoints;
+                isLate = false;
+            }
         }
-
+        
         // monthly late allowance check
         if (isLate) {
           const monthStart = startOfMonth(now);

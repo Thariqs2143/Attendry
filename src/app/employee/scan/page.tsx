@@ -150,28 +150,21 @@ export default function QRScannerPage() {
     if (!userProfile) return;
 
     try {
-      const parsedUrl = new URL(url);
-      const shopId = parsedUrl.searchParams.get('shopId');
-      const token = parsedUrl.searchParams.get('token');
+        const data = url.split(';').reduce((acc, part) => {
+            const [key, value] = part.split('=');
+            if (key && value) {
+              acc[key] = value;
+            }
+            return acc;
+        }, {} as Record<string, string>);
+
+        const { shopId } = data;
 
       if (!shopId) {
         throw new Error('Invalid QR code: Missing shop ID.');
       }
       if (shopId !== userProfile.shopId) {
         throw new Error('This QR code is for a different shop.');
-      }
-
-      if (token) {
-        // Dynamic QR code validation
-        const tokenDocRef = doc(db, 'shops', shopId, 'qr-history', 'currentToken');
-        const tokenSnap = await getDoc(tokenDocRef);
-        if (!tokenSnap.exists() || tokenSnap.data().token !== token) {
-          throw new Error('Invalid or expired QR code.');
-        }
-        const expires = tokenSnap.data().expires.toDate();
-        if (new Date() > expires) {
-          throw new Error('QR code has expired. Please scan the new one.');
-        }
       }
       
       const todayStart = startOfDay(new Date());
@@ -224,24 +217,24 @@ export default function QRScannerPage() {
         const timeDiffMinutes = (now.getTime() - shiftStart.getTime()) / (1000 * 60);
 
         if (timeDiffMinutes <= gamification.gracePeriodMinutes) {
-          attendanceStatus = 'On-time';
-          pointsChange = gamification.onTimePoints;
+            attendanceStatus = 'On-time';
+            pointsChange = gamification.onTimePoints;
         } else {
-          isLate = true;
-          if (timeDiffMinutes <= gamification.lateCategory1Minutes) {
-            attendanceStatus = 'Late Category 1';
-            pointsChange = gamification.lateCategory1Points;
-          } else if (timeDiffMinutes <= gamification.lateCategory2Minutes) {
-            attendanceStatus = 'Late Category 2';
-            pointsChange = gamification.lateCategory2Points;
-          } else if (timeDiffMinutes <= gamification.lateCategory3Minutes) {
-            attendanceStatus = 'Late Category 3';
-            pointsChange = gamification.lateCategory3Points;
-          } else {
-            attendanceStatus = 'Absent';
-            pointsChange = gamification.absentPoints;
-            isLate = false;
-          }
+            isLate = true;
+            if (timeDiffMinutes <= gamification.lateCategory1Minutes) {
+                attendanceStatus = 'Late Category 1';
+                pointsChange = gamification.lateCategory1Points;
+            } else if (timeDiffMinutes <= gamification.lateCategory2Minutes) {
+                attendanceStatus = 'Late Category 2';
+                pointsChange = gamification.lateCategory2Points;
+            } else if (timeDiffMinutes <= gamification.lateCategory3Minutes) {
+                attendanceStatus = 'Late Category 3';
+                pointsChange = gamification.lateCategory3Points;
+            } else {
+                attendanceStatus = 'Absent';
+                pointsChange = gamification.absentPoints;
+                isLate = false;
+            }
         }
         
         if (isLate) {
