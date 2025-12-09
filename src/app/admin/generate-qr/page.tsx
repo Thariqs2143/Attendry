@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, QrCode, Download, Printer, RefreshCw, Activity, Link as LinkIcon, Users, CheckCircle, XCircle, Camera } from 'lucide-react';
+import { Loader2, QrCode, Download, RefreshCw, Activity, Link as LinkIcon, Users, CheckCircle, XCircle, Camera } from 'lucide-react';
 import { collection, onSnapshot, query, orderBy, Timestamp, doc, getDoc, setDoc, where, getDocs, limit } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { formatDistanceToNow } from 'date-fns';
@@ -12,7 +12,8 @@ import type { User } from '../employees/page';
 import { onAuthStateChanged, type User as AuthUser } from 'firebase/auth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { useReactToPrint } from 'react-to-print';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { PrintableQrCard } from '@/components/printable-qr-card';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -142,6 +143,7 @@ export default function GenerateQrPage() {
   const [qrUrl, setQrUrl] = useState('');
   const [shopName, setShopName] = useState('');
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const { toast } = useToast();
   const printableCardRef = useRef<HTMLDivElement>(null);
@@ -153,11 +155,30 @@ export default function GenerateQrPage() {
   const logoSrc = mounted && currentTheme === 'dark' ? '/header-logo-dark.png' : '/header-logo-light.png';
 
 
-  const handlePrint = useReactToPrint({
-      content: () => printableCardRef.current,
-      documentTitle: `${shopName} - QR Code`,
-      onAfterPrint: () => toast({ title: 'Print job sent!' }),
-  });
+   const handleDownloadPdf = async () => {
+    if (!printableCardRef.current) return;
+    setDownloading(true);
+    try {
+        const canvas = await html2canvas(printableCardRef.current, {
+            scale: 2, // Increase resolution
+            useCORS: true,
+        });
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'px',
+            format: [400, 600] // Match aspect ratio of the card
+        });
+        pdf.addImage(imgData, 'PNG', 0, 0, 400, 600);
+        pdf.save(`${shopName}-QR-Code.pdf`);
+        toast({ title: 'PDF Downloaded!', description: 'Your QR code card has been saved as a PDF.' });
+    } catch (error) {
+        console.error("Error generating PDF:", error);
+        toast({ title: 'Download Failed', description: 'Could not generate PDF. Please try again.', variant: 'destructive' });
+    } finally {
+        setDownloading(false);
+    }
+  };
 
   const generateAndSaveToken = useCallback(async (uid: string) => {
     const token = Math.random().toString(36).substring(2, 10);
@@ -285,8 +306,9 @@ export default function GenerateQrPage() {
             </Tabs>
           </CardContent>
           <CardContent className="border-t pt-4 flex flex-wrap gap-4">
-              <Button onClick={handlePrint}>
-                <Printer className="mr-2 h-4 w-4" /> Print Card
+              <Button onClick={handleDownloadPdf} disabled={downloading}>
+                {downloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Download className="mr-2 h-4 w-4" />}
+                 Download PDF
               </Button>
               <Button variant="outline" onClick={copyLink}>
                   <LinkIcon className="mr-2 h-4 w-4"/> Copy Link
