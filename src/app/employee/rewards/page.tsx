@@ -73,46 +73,55 @@ export default function RewardsPage() {
     const [weeklyStats, setWeeklyStats] = useState<WeeklyStat>({ onTime: 0, late: 0 });
     const [loadingStats, setLoadingStats] = useState(true);
 
-
     useEffect(() => {
-        const fetchUserData = async (user: AuthUser) => {
-            const db = getFirestore();
-            try {
-                const userDocRef = doc(db, "users", user.uid);
-                const userDocSnap = await getDoc(userDocRef);
+        const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                setLoading(false);
+                router.push('/employee/login');
+                return;
+            }
 
+            const db = getFirestore();
+            const userDocRef = doc(db, "users", user.uid);
+
+            const unsubscribeProfile = onSnapshot(userDocRef, (userDocSnap) => {
                 if (userDocSnap.exists()) {
                     const profile = { id: userDocSnap.id, ...userDocSnap.data() } as AppUser;
                     setUserProfile(profile);
+
                     if (profile.shopId && profile.id) {
-                        await fetchRank(profile.id, profile.shopId);
+                        fetchRankAndSettings(profile.id, profile.shopId);
                         fetchWeeklySummary(profile.id, profile.shopId);
-                        
-                        const settingsDocRef = doc(db, 'shops', profile.shopId, 'config', 'main');
-                        const settingsSnap = await getDoc(settingsDocRef);
-                        if (settingsSnap.exists() && settingsSnap.data().gamification) {
-                            setGamificationSettings({ ...defaultGamificationSettings, ...settingsSnap.data().gamification });
-                        }
                     }
                 } else {
                     router.push('/employee/login');
                 }
-            } catch (error) {
-                console.error("Error fetching user data:", error);
-            } finally {
                 setLoading(false);
-            }
-        };
+            }, (error) => {
+                console.error("Error fetching user profile in real-time:", error);
+                setLoading(false);
+            });
 
-        const fetchRank = async (employeeId: string, shopId: string) => {
+            return () => unsubscribeProfile();
+        });
+
+        const fetchRankAndSettings = async (employeeId: string, shopId: string) => {
             const db = getFirestore();
+            // Fetch Rank
             const usersCollectionRef = collection(db, 'shops', shopId, 'employees');
             const q = query(usersCollectionRef, orderBy('points', 'desc'));
             const querySnapshot = await getDocs(q);
             const userRank = querySnapshot.docs.findIndex(doc => doc.id === employeeId) + 1;
             setRank(userRank);
+            
+            // Fetch Settings
+            const settingsDocRef = doc(db, 'shops', shopId, 'config', 'main');
+            const settingsSnap = await getDoc(settingsDocRef);
+            if (settingsSnap.exists() && settingsSnap.data().gamification) {
+                setGamificationSettings({ ...defaultGamificationSettings, ...settingsSnap.data().gamification });
+            }
         };
-
+        
         const fetchWeeklySummary = (employeeId: string, shopId: string) => {
             setLoadingStats(true);
             const db = getFirestore();
@@ -128,12 +137,12 @@ export default function RewardsPage() {
                 where('checkInTime', '<=', weekEnd)
             );
             
-            const unsubscribe = onSnapshot(q, (snapshot) => {
+            const unsubscribeSummary = onSnapshot(q, (snapshot) => {
                 let onTimeCount = 0;
                 let lateCount = 0;
                 snapshot.forEach(doc => {
                     const record = doc.data() as AttendanceRecord;
-                    if (record.status === 'On-time' || record.status === 'Grace Period') {
+                    if (record.status === 'On-time') {
                         onTimeCount++;
                     } else if (record.status.startsWith('Late')) {
                         lateCount++;
@@ -145,19 +154,10 @@ export default function RewardsPage() {
                 console.error("Error fetching weekly summary:", error);
                 setLoadingStats(false);
             });
-            return unsubscribe;
+            return unsubscribeSummary;
         };
         
-        const unsubscribe = onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                await fetchUserData(user);
-            } else {
-                setLoading(false);
-                router.push('/employee/login');
-            }
-        });
-
-        return () => unsubscribe();
+        return () => unsubscribeAuth();
     }, [router]);
 
 
@@ -185,7 +185,7 @@ export default function RewardsPage() {
         <CardContent className="grid grid-cols-2 gap-4 text-center">
             <div className="flex flex-col items-center p-4 bg-white/10 rounded-lg">
                 <Trophy className="h-8 sm:h-10 sm:w-10 text-yellow-300 mb-2"/>
-                <p className="text-2xl sm:text-3xl font-bold text-white">{userProfile.points.toLocaleString()}</p>
+                <p className="text-2xl sm:text-3xl font-bold text-white">{(userProfile.points || 0).toLocaleString()}</p>
                 <p className="text-xs sm:text-sm text-blue-200">Total Points</p>
             </div>
             <div className="flex flex-col items-center p-4 bg-white/10 rounded-lg">
@@ -195,7 +195,7 @@ export default function RewardsPage() {
             </div>
              <div className="flex flex-col items-center p-4 bg-white/10 rounded-lg">
                 <Flame className="h-8 sm:h-10 sm:w-10 text-yellow-300 mb-2"/>
-                <p className="text-2xl sm:text-3xl font-bold text-white">{userProfile.streak}</p>
+                <p className="text-2xl sm:text-3xl font-bold text-white">{userProfile.streak || 0}</p>
                 <p className="text-xs sm:text-sm text-blue-200">Day Streak</p>
             </div>
             <div className="flex flex-col items-center p-4 bg-white/10 rounded-lg">
@@ -279,4 +279,3 @@ export default function RewardsPage() {
     </div>
   );
 }
-
