@@ -290,11 +290,16 @@ export default function FaceAttendancePage(): JSX.Element {
   const requestPermissions = useCallback(async () => {
     // request camera
     try {
-      await navigator.mediaDevices.getUserMedia({ video: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
       setCameraPermission('granted');
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        streamRef.current = stream;
+        videoRef.current.play().catch(e => console.error("Video play failed:", e));
+      }
     } catch (e) {
       setCameraPermission('denied');
-      toast({ title: 'Camera blocked', description: 'Enable camera permission in your browser.' });
+      toast({ title: 'Camera blocked', description: 'Enable camera permission in your browser settings.' });
     }
 
     // request location
@@ -303,7 +308,7 @@ export default function FaceAttendancePage(): JSX.Element {
       setLocationPermission('granted');
     } catch (e) {
       setLocationPermission('denied');
-      toast({ title: 'Location blocked', description: 'Enable location permission in your browser.' });
+      toast({ title: 'Location blocked', description: 'Enable location permission in your browser settings.' });
     }
   }, [toast]);
 
@@ -346,12 +351,9 @@ export default function FaceAttendancePage(): JSX.Element {
 
         const timeDiffMinutes = (now.getTime() - shiftStart.getTime()) / (1000 * 60);
 
-        if (timeDiffMinutes <= 0.1) { // Allow for a small delay (e.g., 6 seconds)
+        if (timeDiffMinutes <= gamification.gracePeriodMinutes) {
           attendanceStatus = 'On-time';
           pointsChange = gamification.onTimePoints;
-        } else if (timeDiffMinutes <= gamification.gracePeriodMinutes) {
-          attendanceStatus = 'Grace Period';
-          pointsChange = 0;
         } else {
           isLate = true;
           if (timeDiffMinutes <= gamification.lateCategory1Minutes) {
@@ -389,7 +391,7 @@ export default function FaceAttendancePage(): JSX.Element {
           }
         }
 
-        const newStreak = attendanceStatus === 'On-time' || attendanceStatus === 'Grace Period' ? (userProfile.streak || 0) + 1 : 0;
+        const newStreak = attendanceStatus === 'On-time' ? (userProfile.streak || 0) + 1 : 0;
 
         const batch = writeBatch(db);
         const newAttendanceRef = doc(collection(db, 'shops', shopId, 'attendance'));
@@ -580,7 +582,7 @@ export default function FaceAttendancePage(): JSX.Element {
       </div>
       <Card className="w-full max-w-lg mx-auto transition-all duration-300 ease-out hover:shadow-lg border-2 border-foreground hover:border-primary">
         <CardHeader>
-          <CardTitle>Face Attendance</CardTitle>
+          <CardTitle>Selfie Attendance</CardTitle>
           <p className="text-sm text-muted-foreground">{currentDate}</p>
         </CardHeader>
         <CardContent className="flex items-center justify-center p-4 min-h-[300px]">

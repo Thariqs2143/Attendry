@@ -223,12 +223,9 @@ export default function QRScannerPage() {
 
         const timeDiffMinutes = (now.getTime() - shiftStart.getTime()) / (1000 * 60);
 
-        if (timeDiffMinutes <= 0.1) { // Allow for a small delay (e.g., 6 seconds)
+        if (timeDiffMinutes <= gamification.gracePeriodMinutes) {
           attendanceStatus = 'On-time';
           pointsChange = gamification.onTimePoints;
-        } else if (timeDiffMinutes <= gamification.gracePeriodMinutes) {
-          attendanceStatus = 'Grace Period';
-          pointsChange = 0;
         } else {
           isLate = true;
           if (timeDiffMinutes <= gamification.lateCategory1Minutes) {
@@ -265,7 +262,7 @@ export default function QRScannerPage() {
           }
         }
 
-        const newStreak = attendanceStatus === 'On-time' || attendanceStatus === 'Grace Period' ? (userProfile.streak || 0) + 1 : 0;
+        const newStreak = attendanceStatus === 'On-time' ? (userProfile.streak || 0) + 1 : 0;
         
         const batch = writeBatch(db);
         
