@@ -66,6 +66,16 @@ export function EmployeeNav({ navItems, profile }: EmployeeNavProps) {
       toast({ title: 'Logout Failed', variant: 'destructive' });
     }
   };
+  
+  if (!mounted) {
+      return (
+          <aside className="hidden md:flex fixed inset-y-0 left-0 w-64 flex-col border-r bg-background z-40">
+              <div className="flex h-16 items-center border-b px-6 shrink-0">
+                  <div style={{width: 150, height: 40}} />
+              </div>
+          </aside>
+      )
+  }
 
   return (
     <aside className="hidden md:flex fixed inset-y-0 left-0 w-64 flex-col border-r bg-background z-40">
@@ -75,11 +85,7 @@ export function EmployeeNav({ navItems, profile }: EmployeeNavProps) {
           onClick={() => handleNavigate('/employee')}
           className="flex items-center gap-2 font-semibold"
         >
-          {mounted ? (
-            <Image src={logoSrc} alt="Attendry Logo" width={150} height={40} priority />
-          ) : (
-            <div style={{width: 150, height: 40}} />
-          )}
+          <Image src={logoSrc} alt="Attendry Logo" width={150} height={40} priority />
         </button>
       </div>
 

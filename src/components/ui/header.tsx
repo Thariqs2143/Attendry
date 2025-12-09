@@ -41,6 +41,19 @@ export function Header({ hasBanner }: { hasBanner: boolean }) {
   const currentTheme = theme === 'system' ? systemTheme : theme;
   const logoSrc = mounted && currentTheme === 'dark' ? '/header-logo-dark.png' : '/header-logo-light.png';
 
+  // Render a placeholder until the component is mounted to avoid hydration mismatch
+  if (!mounted) {
+    return (
+        <header className={cn("sticky z-40 w-full", hasBanner ? "top-[var(--banner-height)]" : "top-0")}>
+            <div className="max-w-screen-2xl mx-auto">
+                <div className="flex h-16 items-center justify-between px-4 md:px-6">
+                    <div style={{ width: 150, height: 40 }} />
+                </div>
+            </div>
+        </header>
+    );
+  }
+
   return (
     <header 
       className={cn(
@@ -60,11 +73,7 @@ export function Header({ hasBanner }: { hasBanner: boolean }) {
         >
           {/* Logo */}
           <Link href="/" className="flex items-center" prefetch={false}>
-            {mounted ? (
-              <Image src={logoSrc} alt="Attendry Logo" width={150} height={40} priority />
-            ) : (
-              <div style={{ width: 150, height: 40 }} />
-            )}
+            <Image src={logoSrc} alt="Attendry Logo" width={150} height={40} priority />
           </Link>
           
           {/* Desktop Navigation */}
@@ -106,11 +115,7 @@ export function Header({ hasBanner }: { hasBanner: boolean }) {
                   <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
                   <div className="flex flex-col gap-8 p-6">
                   <Link href="/" className="flex items-center" prefetch={false}>
-                    {mounted ? (
-                      <Image src={logoSrc} alt="Attendry Logo" width={150} height={40} priority />
-                    ) : (
-                      <div style={{ width: 150, height: 40 }} />
-                    )}
+                    <Image src={logoSrc} alt="Attendry Logo" width={150} height={40} priority />
                   </Link>
                   <nav className="grid gap-4 text-lg">
                       {navLinks.map((link) => (

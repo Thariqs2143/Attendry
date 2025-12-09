@@ -97,6 +97,14 @@ export default function EmployeeLayout({ children }: PropsWithChildren) {
       </div>
     );
   }
+  
+  if (!mounted) {
+      return (
+          <div className="flex min-h-screen w-full items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+      );
+  }
 
   return (
     <div className="flex min-h-screen w-full">
@@ -108,11 +116,7 @@ export default function EmployeeLayout({ children }: PropsWithChildren) {
         {/* Mobile top header */}
         <header className="flex h-14 items-center gap-4 border-b bg-background px-4 md:hidden sticky top-0 z-40">
           <Link href="/employee">
-            {mounted ? (
-              <Image src={logoSrc} alt="Attendry Logo" width={120} height={32} />
-            ) : (
-              <div style={{width: 120, height: 32}} />
-            )}
+            <Image src={logoSrc} alt="Attendry Logo" width={120} height={32} />
           </Link>
           <div className="ml-auto flex items-center gap-2">
             <Link href="/employee/notifications">

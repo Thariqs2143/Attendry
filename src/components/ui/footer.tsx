@@ -1,4 +1,6 @@
 
+'use client';
+
 import Link from 'next/link';
 import { ThemeSwitcher } from '@/components/theme-switcher';
 import Image from 'next/image';
@@ -16,6 +18,13 @@ export function Footer() {
   const currentTheme = theme === 'system' ? systemTheme : theme;
   const logoSrc = mounted && currentTheme === 'dark' ? '/header-logo-dark.png' : '/header-logo-light.png';
 
+  const renderLogo = () => {
+      if (!mounted) {
+          return <div style={{width: 150, height: 40}} />;
+      }
+      return <Image src={logoSrc} alt="Attendry Logo" width={150} height={40} priority />;
+  }
+
 
   return (
     <footer className="bg-background border-t">
@@ -23,11 +32,7 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="col-span-1 md:col-span-2 space-y-4">
                 <Link href="/" className="flex items-center" prefetch={false}>
-                    {mounted ? (
-                        <Image src={logoSrc} alt="Attendry Logo" width={150} height={40} priority />
-                    ) : (
-                        <div style={{width: 150, height: 40}} />
-                    )}
+                    {renderLogo()}
                 </Link>
                 <p className="text-muted-foreground max-w-md">Attendry simplifies attendance tracking for modern businesses, helping you save time, reduce errors, and boost productivity with a smart, QR-based system.</p>
             </div>

@@ -158,6 +158,17 @@ export function AdminNav({ navItems, profile, isDesktop }: AdminNavProps) {
         </div>
     </>
   );
+  
+  if (!mounted && !isDesktop) return null;
+  if (!mounted && isDesktop) {
+       return (
+          <div className="hidden md:flex fixed left-0 top-0 h-screen w-64 border-r bg-background flex-col">
+              <div className="flex h-[60px] items-center px-6 border-b">
+                 <div style={{width: 150, height: 40}} />
+              </div>
+          </div>
+      );
+  }
 
   if (!isDesktop) {
       return (
