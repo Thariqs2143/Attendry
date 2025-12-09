@@ -223,7 +223,7 @@ export default function QRScannerPage() {
 
         const timeDiffMinutes = (now.getTime() - shiftStart.getTime()) / (1000 * 60);
 
-        if (timeDiffMinutes <= 0) {
+        if (timeDiffMinutes <= 0.1) { // Allow for a small delay (e.g., 6 seconds)
           attendanceStatus = 'On-time';
           pointsChange = gamification.onTimePoints;
         } else if (timeDiffMinutes <= gamification.gracePeriodMinutes) {

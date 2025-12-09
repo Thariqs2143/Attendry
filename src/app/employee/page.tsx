@@ -17,6 +17,7 @@ import {
   where,
   orderBy,
   Timestamp,
+  addDoc,
 } from 'firebase/firestore';
 import { setHours, setMinutes, setSeconds, startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -27,7 +28,6 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 // Types
 type ScanStatus = 'idle' | 'processing';
-
 type PermissionStatus = 'prompt' | 'granted' | 'denied';
 
 type AttendanceRecord = {
@@ -346,7 +346,7 @@ export default function FaceAttendancePage(): JSX.Element {
 
         const timeDiffMinutes = (now.getTime() - shiftStart.getTime()) / (1000 * 60);
 
-        if (timeDiffMinutes <= 0) {
+        if (timeDiffMinutes <= 0.1) { // Allow for a small delay (e.g., 6 seconds)
           attendanceStatus = 'On-time';
           pointsChange = gamification.onTimePoints;
         } else if (timeDiffMinutes <= gamification.gracePeriodMinutes) {
