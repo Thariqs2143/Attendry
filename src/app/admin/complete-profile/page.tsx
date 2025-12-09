@@ -134,32 +134,31 @@ export default function AdminCompleteProfilePage() {
         
         const fallback = shopName.split(' ').map(n => n[0]).join('');
 
-        const userAsEmployeeProfile: Partial<User> = {
-            name, email, phone: `+91${phone}`, role: 'Admin', status: 'Active',
-            isProfileComplete: true, fallback, joinDate: new Date().toISOString().split('T')[0],
-            imageUrl: imageUrl || `https://placehold.co/100x100.png?text=${fallback}`,
-        };
-
-        const newShopRef = doc(db, "shops", uid); 
-
-        const shopProfile = {
-            id: newShopRef.id, ownerName: name, ownerId: uid, shopName, businessType,
-            address, phone: `+91${phone}`, email, gstNumber, status: 'active', latitude, longitude,
-        };
-
         try {
             const batch = writeBatch(db);
-            
             const userDocRef = doc(db, "users", uid);
-            const mainUserProfile = { ...userAsEmployeeProfile, shopId: newShopRef.id };
-            batch.set(userDocRef, mainUserProfile, { merge: true });
-            
-            batch.set(newShopRef, shopProfile, { merge: true });
+            const shopDocRef = doc(db, "shops", uid);
+            const ownerAsEmployeeRef = doc(db, 'shops', uid, 'employees', uid);
 
-            const ownerAsEmployeeRef = doc(db, 'shops', newShopRef.id, 'employees', uid);
-            batch.set(ownerAsEmployeeRef, { ...userAsEmployeeProfile, shopId: newShopRef.id, uid: uid });
+            const shopProfile = {
+                id: shopDocRef.id, ownerName: name, ownerId: uid, shopName, businessType,
+                address, phone: `+91${phone}`, email, gstNumber, status: 'active', latitude, longitude,
+            };
+
+            const userAsEmployeeProfile: Partial<User> = {
+                uid: uid, name, email, phone: `+91${phone}`, role: 'Admin', status: 'Active',
+                isProfileComplete: true, fallback, joinDate: new Date().toISOString().split('T')[0],
+                imageUrl: imageUrl || `https://placehold.co/100x100.png?text=${fallback}`,
+                shopId: shopDocRef.id
+            };
+            
+            // Set all documents in the batch
+            batch.set(userDocRef, userAsEmployeeProfile, { merge: true });
+            batch.set(shopDocRef, shopProfile, { merge: true });
+            batch.set(ownerAsEmployeeRef, userAsEmployeeProfile);
 
             await batch.commit();
+            
             toast({ title: "Profile Complete!", description: "Welcome! Your shop profile has been created." });
             
             localStorage.removeItem('adminUID');
