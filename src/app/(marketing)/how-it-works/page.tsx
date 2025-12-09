@@ -3,6 +3,9 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight, BarChart3, FileText, GitBranch } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+import imageData from '@/app/lib/placeholder-images.json';
+
+const { how_it_works_step_1, how_it_works_step_2, how_it_works_step_3 } = imageData;
 
 export default function HowItWorksPage() {
     return (
@@ -32,11 +35,25 @@ export default function HowItWorksPage() {
                                     Sign up as a shop owner and create your digital workspace in under two minutes. Once your shop is set up, easily invite your employees to join by sending them an invitation link via email or WhatsApp.
                                 </p>
                             </div>
-                             <Image src="https://res.cloudinary.com/dnkghymx5/image/upload/v1762849032/Generated_Image_November_11_2025_-_1_42PM_1_n4lc6r.png" alt="Create Shop" width={600} height={400} className="rounded-lg object-cover w-full aspect-video shadow-lg"/>
+                             <Image 
+                                src={how_it_works_step_1.src} 
+                                alt={how_it_works_step_1.alt} 
+                                width={how_it_works_step_1.width} 
+                                height={how_it_works_step_1.height} 
+                                data-ai-hint={how_it_works_step_1['data-ai-hint']}
+                                className="rounded-lg object-cover w-full aspect-video shadow-lg"
+                            />
                         </div>
 
                         <div className="grid gap-8 md:grid-cols-2 md:gap-12 lg:gap-16 items-center">
-                            <Image src="https://res.cloudinary.com/dnkghymx5/image/upload/v1762849381/Generated_Image_November_11_2025_-_1_52PM_1_bkpo3k.png" alt="Generate QR" width={600} height={400} className="rounded-lg object-cover w-full aspect-video shadow-lg md:order-last"/>
+                            <Image 
+                                src={how_it_works_step_2.src} 
+                                alt={how_it_works_step_2.alt} 
+                                width={how_it_works_step_2.width} 
+                                height={how_it_works_step_2.height}
+                                data-ai-hint={how_it_works_step_2['data-ai-hint']}
+                                className="rounded-lg object-cover w-full aspect-video shadow-lg md:order-last"
+                            />
                             <div className="space-y-4">
                                 <div className="text-4xl font-bold text-primary">2.</div>
                                 <h3 className="text-3xl font-bold">Generate Your Unique QR Code</h3>
@@ -54,7 +71,14 @@ export default function HowItWorksPage() {
                                     Your employees simply scan the QR code with their smartphone's camera to check in and out. All attendance data is captured in real-time on your dashboard, ready for you to view, analyze, and export for payroll.
                                 </p>
                             </div>
-                            <Image src="https://res.cloudinary.com/dnkghymx5/image/upload/v1762849716/Generated_Image_November_11_2025_-_1_57PM_1_msv8zo.png" alt="Scan & Track" width={600} height={400} className="rounded-lg object-cover w-full aspect-video shadow-lg"/>
+                            <Image 
+                                src={how_it_works_step_3.src} 
+                                alt={how_it_works_step_3.alt} 
+                                width={how_it_works_step_3.width} 
+                                height={how_it_works_step_3.height} 
+                                data-ai-hint={how_it_works_step_3['data-ai-hint']}
+                                className="rounded-lg object-cover w-full aspect-video shadow-lg"
+                            />
                         </div>
                     </div>
                 </div>

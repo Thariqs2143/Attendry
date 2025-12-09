@@ -14,6 +14,7 @@ import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "fire
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { Label } from "@/components/ui/label";
+import imageData from '@/app/lib/placeholder-images.json';
 
 function LoginContent() {
   const router = useRouter();
@@ -119,8 +120,8 @@ function LoginContent() {
       {/* LEFT SIDE - Desktop Image */}
       <div className="relative hidden md:block">
         <Image
-          src="https://res.cloudinary.com/dnkghymx5/image/upload/v1762847075/Generated_Image_November_11_2025_-_1_11PM_1_romg21.png"
-          alt="Attendry illustration"
+          src={imageData.marketing_hero.src}
+          alt={imageData.marketing_hero.alt}
           fill
           className="object-cover"
           priority
@@ -132,8 +133,8 @@ function LoginContent() {
         {/* TOP IMAGE for Mobile */}
         <div className="md:hidden w-full relative">
             <Image
-            src="https://res.cloudinary.com/dnkghymx5/image/upload/v1762847075/Generated_Image_November_11_2025_-_1_11PM_1_romg21.png"
-            alt="Attendry illustration"
+            src={imageData.marketing_hero.src}
+            alt={imageData.marketing_hero.alt}
             width={800}
             height={600}
             className="w-full h-auto object-cover"
