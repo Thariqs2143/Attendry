@@ -504,7 +504,13 @@ export default function FaceAttendancePage() {
         <CardContent className="flex items-center justify-center p-4 min-h-[300px]">
           {status !== 'idle' ? renderStatus() : (
               <div className="relative w-full aspect-square max-w-sm mx-auto overflow-hidden rounded-lg border-4 border-muted shadow-lg">
-                <video ref={videoRef} className="w-full h-full object-cover scale-x-[-1]" autoPlay muted playsInline />
+                <video 
+                    ref={videoRef} 
+                    className={`w-full h-full object-cover scale-x-[-1] transition-opacity duration-300 ${hasCameraPermission ? 'opacity-100' : 'opacity-0'}`} 
+                    autoPlay 
+                    muted 
+                    playsInline 
+                />
                 {(hasCameraPermission === null || hasLocationPermission === null) && (
                     <div className="absolute inset-0 bg-background flex flex-col items-center justify-center text-muted-foreground p-4">
                         <Loader2 className="h-10 w-10 mb-4 animate-spin"/>

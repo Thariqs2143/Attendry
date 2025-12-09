@@ -37,9 +37,9 @@ const prompt = ai.definePrompt({
   output: { schema: VerifyFaceOutputSchema },
   prompt: `You are an expert face recognition system. Your task is to determine if the two images provided show the same person.
 
-Analyze the key facial features in both images: the captured photo and the reference photo. Compare features like eye shape and distance, nose structure, jawline, and any unique identifiers.
+Analyze the key facial features in both images: the captured photo and the reference photo. Compare features like eye shape and distance, nose structure, and jawline. Account for minor variations in lighting, angle, and expression.
 
-Based on your comparison, decide if they are the same person and set the 'isSamePerson' field to true or false. Provide a very brief, one-sentence reasoning for your decision. Be strict in your analysis. If there is notable doubt, err on the side of caution and return false.
+Based on your comparison, decide if they are the same person and set the 'isSamePerson' field to true or false. Provide a very brief, one-sentence reasoning for your decision. While security is important, aim for a reliable match rather than being overly strict. If features are generally consistent, lean towards a match.
 
 Captured Photo:
 {{media url=capturedPhotoDataUri}}
