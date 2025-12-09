@@ -65,6 +65,8 @@ export default function FaceAttendancePage() {
   const [userProfile, setUserProfile] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const [hasLocationPermission, setHasLocationPermission] = useState<boolean | null>(null);
+  const [permissionsReady, setPermissionsReady] = useState(false);
   const [activeCheckIn, setActiveCheckIn] = useState<AttendanceRecord | null>(null);
   const [hasCompletedDay, setHasCompletedDay] = useState(false);
   const [currentDate, setCurrentDate] = useState('');
@@ -105,6 +107,13 @@ export default function FaceAttendancePage() {
     }
   }, []);
 
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+  }, []);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -130,49 +139,69 @@ export default function FaceAttendancePage() {
       }
       setLoading(false);
     });
-    return () => unsubscribe();
-  }, [router, checkAttendanceStatusForToday]);
 
-  const stopCamera = useCallback(() => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-    setStatus('idle');
-  }, []);
+    return () => {
+      unsubscribe();
+      stopCamera();
+    };
+  }, [router, checkAttendanceStatusForToday, stopCamera]);
 
   useEffect(() => {
-    const getCameraPermission = async () => {
+    const requestPermissions = async () => {
+      let cameraGranted = false;
+      let locationGranted = false;
+
+      // Request Camera
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
         streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
         setHasCameraPermission(true);
+        cameraGranted = true;
       } catch (error) {
         console.error('Error accessing camera:', error);
         setHasCameraPermission(false);
         toast({
           variant: 'destructive',
           title: 'Camera Access Denied',
-          description: 'Please enable camera permissions in your browser settings to use face attendance.',
+          description: 'Please enable camera permissions to use this feature.',
         });
+      }
+
+      // Request Location
+      try {
+        await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              setHasLocationPermission(true);
+              locationGranted = true;
+              resolve(position);
+            },
+            (error) => {
+              reject(error);
+            },
+            { enableHighAccuracy: true }
+          );
+        });
+      } catch (error) {
+        console.error('Error accessing location:', error);
+        setHasLocationPermission(false);
+        toast({
+          variant: 'destructive',
+          title: 'Location Access Denied',
+          description: 'Please enable location services to use this feature.',
+        });
+      }
+
+      if (cameraGranted && locationGranted) {
+        setPermissionsReady(true);
       }
     };
 
-    getCameraPermission();
-    
-    return () => {
-      stopCamera();
-    };
-  }, [stopCamera, toast]);
-  
-  useEffect(() => {
-    if (hasCameraPermission && videoRef.current && streamRef.current) {
-      videoRef.current.srcObject = streamRef.current;
-    }
-  }, [hasCameraPermission]);
+    requestPermissions();
+  }, [toast]);
   
   const captureFrame = (): string | null => {
       if (!videoRef.current) return null;
@@ -204,7 +233,7 @@ export default function FaceAttendancePage() {
               const distance = getDistance(latitude, longitude, shopLat, shopLon);
 
               if (distance > 100) { // 100 meters radius
-                  toast({ variant: 'destructive', title: 'Location Mismatch', description: `You must be within 100 meters of the shop to mark attendance. You are ${Math.round(distance)}m away.`});
+                  toast({ variant: 'destructive', title: 'Location Mismatch', description: `You are too far from the shop. You are ${Math.round(distance)}m away.`});
                   setStatus('error');
                   return;
               }
@@ -468,34 +497,34 @@ export default function FaceAttendancePage() {
         <CardContent className="flex items-center justify-center p-4 min-h-[300px]">
           {status !== 'idle' ? renderStatus() : (
               <div className="relative w-full aspect-square max-w-sm mx-auto overflow-hidden rounded-lg border-4 border-muted shadow-lg">
-                {hasCameraPermission === true && <video ref={videoRef} className="w-full h-full object-cover scale-x-[-1]" autoPlay muted playsInline />}
-                {hasCameraPermission === null && (
+                <video ref={videoRef} className="w-full h-full object-cover scale-x-[-1]" autoPlay muted playsInline />
+                {(hasCameraPermission === null || hasLocationPermission === null) && (
                     <div className="absolute inset-0 bg-background flex flex-col items-center justify-center text-muted-foreground p-4">
                         <Loader2 className="h-10 w-10 mb-4 animate-spin"/>
-                        <p className="font-semibold">Accessing Camera...</p>
+                        <p className="font-semibold">Getting Permissions...</p>
                     </div>
                 )}
                 {hasCameraPermission === false && (
-                    <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white p-4">
+                    <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white p-4 text-center">
                         <CameraOff className="h-10 w-10 mb-4"/>
                         <p className="font-semibold">Camera Access Required</p>
-                        <p className="text-sm text-center">Please allow camera access to use this feature.</p>
+                        <p className="text-sm">Please allow camera access to use this feature.</p>
                     </div>
                 )}
               </div>
           )}
         </CardContent>
          <CardFooter className="flex-col gap-4 pt-6">
-            {hasCameraPermission === false && (
+            {(hasCameraPermission === false || hasLocationPermission === false) && (
                 <Alert variant="destructive">
                     <CameraOff className="h-4 w-4" />
-                    <AlertTitle>Camera Permission Denied</AlertTitle>
+                    <AlertTitle>Permissions Denied</AlertTitle>
                     <AlertDescription>
-                        You must allow camera access in your browser settings to use face attendance.
+                        You must allow camera and location access in your browser settings to mark attendance.
                     </AlertDescription>
                 </Alert>
             )}
-            <Button onClick={handleLocationAndMarkAttendance} size="lg" className="w-full" disabled={status !== 'idle' || hasCompletedDay || !hasCameraPermission}>
+            <Button onClick={handleLocationAndMarkAttendance} size="lg" className="w-full" disabled={status !== 'idle' || hasCompletedDay || !permissionsReady}>
                {status === 'processing' && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
                {activeCheckIn ? <LogOut className="mr-2 h-4 w-4"/> : <LocateFixed className="mr-2 h-4 w-4"/>}
                {activeCheckIn ? 'Mark Check-Out' : 'Mark Check-In'}
