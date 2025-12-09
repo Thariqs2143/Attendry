@@ -13,7 +13,6 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { setHours, setMinutes, setSeconds, startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns';
-import { verifyFace } from '@/ai/flows/verify-face-flow';
 
 type ScanStatus = 'idle' | 'scanning' | 'success' | 'error' | 'processing';
 type AttendanceRecord = {
@@ -210,17 +209,6 @@ export default function FaceAttendancePage() {
     };
   }, [toast]);
   
-  const captureFrame = (): string | null => {
-      if (!videoRef.current) return null;
-      const canvas = document.createElement('canvas');
-      canvas.width = videoRef.current.videoWidth;
-      canvas.height = videoRef.current.videoHeight;
-      const context = canvas.getContext('2d');
-      if (!context) return null;
-      context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-      return canvas.toDataURL('image/jpeg');
-  };
-
   const handleLocationAndMarkAttendance = async () => {
       setStatus('processing');
       toast({ title: 'Getting your location...' });
@@ -245,8 +233,14 @@ export default function FaceAttendancePage() {
                   return;
               }
 
-              toast({ title: 'Location Verified!', description: 'Now verifying your face...' });
-              await handleMarkAttendance('Verified');
+              toast({ title: 'Location Verified!', description: 'Finalizing attendance...' });
+              if (activeCheckIn) {
+                await handleCheckOut('Verified');
+              } else {
+                if(userProfile?.shopId) {
+                  await handleCheckIn(userProfile.shopId, 'Verified');
+                }
+              }
           },
           (error) => {
               console.error("Geolocation error:", error);
@@ -255,48 +249,6 @@ export default function FaceAttendancePage() {
           },
           { enableHighAccuracy: true }
       );
-  };
-  
-  const handleMarkAttendance = async (locationStatus: 'Verified' | 'Unverified') => {
-    if (!userProfile?.uid || !userProfile?.shopId) return;
-
-    const capturedImage = captureFrame();
-    if (!capturedImage) {
-        toast({ title: 'Capture Failed', description: 'Could not capture image from camera.', variant: 'destructive' });
-        setStatus('error');
-        return;
-    }
-
-    if (!userProfile.faceIdImageUrl) {
-        toast({ title: 'Setup Required', description: 'Your Face ID is not set up. Please go to your profile to add it.', variant: 'destructive' });
-        setStatus('error');
-        return;
-    }
-
-    try {
-        const { isSamePerson } = await verifyFace({
-            capturedPhotoDataUri: capturedImage,
-            referencePhotoUrl: userProfile.faceIdImageUrl,
-        });
-
-        if (!isSamePerson) {
-            toast({ title: 'Face Mismatch', description: 'The face captured does not match your profile. Please try again.', variant: 'destructive' });
-            setStatus('error');
-            return;
-        }
-
-        toast({ title: 'Face Verified!', description: 'Finalizing attendance...' });
-
-        if (activeCheckIn) {
-            await handleCheckOut(locationStatus);
-        } else {
-            await handleCheckIn(userProfile.shopId, locationStatus);
-        }
-    } catch (aiError) {
-        console.error("AI Face Verification Error:", aiError);
-        toast({ title: 'AI Error', description: 'Could not verify face. Please try again.', variant: 'destructive' });
-        setStatus('error');
-    }
   };
 
   const handleCheckIn = async (shopId: string, locationStatus: 'Verified' | 'Unverified') => {
@@ -475,8 +427,8 @@ export default function FaceAttendancePage() {
         }
         return (
           <div className="flex flex-col items-center gap-2 text-center">
-             <p className="text-lg font-semibold">Ready to start your day?</p>
-             <p className="text-sm text-muted-foreground">Center your face in the camera to mark attendance.</p>
+             <p className="text-lg font-semibold">Ready to mark attendance?</p>
+             <p className="text-sm text-muted-foreground">Click the button to check your location and mark attendance.</p>
           </div>
         )
     }
@@ -523,6 +475,11 @@ export default function FaceAttendancePage() {
                         <p className="font-semibold">Camera Access Required</p>
                         <p className="text-sm">Please allow camera access to use this feature.</p>
                     </div>
+                )}
+                {status === 'idle' && !activeCheckIn && !hasCompletedDay && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    {renderStatus()}
+                  </div>
                 )}
               </div>
           )}
