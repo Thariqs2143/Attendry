@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Store, Upload, MapPin } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
-import { doc, setDoc, writeBatch, collection, getDoc } from 'firebase/firestore';
+import { doc, setDoc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { User } from '@/app/admin/employees/page';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -148,10 +148,6 @@ export default function AdminCompleteProfilePage() {
         };
 
         try {
-            // First, check for referral data before starting the batch
-            const shopDocSnap = await getDoc(newShopRef);
-            const referredBy = shopDocSnap.exists() ? shopDocSnap.data()?.referredBy : null;
-            
             const batch = writeBatch(db);
             
             const userDocRef = doc(db, "users", uid);
@@ -162,20 +158,6 @@ export default function AdminCompleteProfilePage() {
 
             const ownerAsEmployeeRef = doc(db, 'shops', newShopRef.id, 'employees', uid);
             batch.set(ownerAsEmployeeRef, { ...userAsEmployeeProfile, shopId: newShopRef.id, uid: uid });
-
-            if (referredBy) {
-                const referrerShopRef = doc(db, 'shops', referredBy);
-                const referrerShopSnap = await getDoc(referrerShopRef);
-                if (referrerShopSnap.exists()) {
-                    const newReferralRef = doc(collection(db, 'shops', referredBy, 'referrals'));
-                    batch.set(newReferralRef, {
-                        referredShopId: uid,
-                        referredShopName: shopName,
-                        status: 'Joined',
-                        date: new Date().toISOString(),
-                    });
-                }
-            }
 
             await batch.commit();
             toast({ title: "Profile Complete!", description: "Welcome! Your shop profile has been created." });

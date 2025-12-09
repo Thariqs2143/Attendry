@@ -26,7 +26,6 @@ function LoginContent() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const referredBy = searchParams.get('ref');
 
 
   const handleAuthAction = async (e: React.FormEvent) => {
@@ -63,11 +62,6 @@ function LoginContent() {
         };
         
         await setDoc(doc(db, "users", user.uid), userData, { merge: true });
-
-        // If there's a referral code, store it on the shop document placeholder
-        if(referredBy) {
-            await setDoc(doc(db, "shops", user.uid), { referredBy: referredBy }, { merge: true });
-        }
         
         toast({ title: "Account Created!", description: "Please complete your shop profile to continue." });
         router.push('/admin/complete-profile');
