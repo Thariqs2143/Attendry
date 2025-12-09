@@ -4,8 +4,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle, XCircle, Loader2, Camera, CameraOff, LogIn, LogOut, PartyPopper, LocateFixed } from "lucide-react";
-import { onAuthStateChanged, type User as AuthUser } from 'firebase/auth';
+import { Loader2, Camera, CameraOff, LogIn, LogOut, PartyPopper, LocateFixed } from "lucide-react";
+import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, addDoc, collection, writeBatch, Timestamp, query, where, getDocs, limit } from 'firebase/firestore';
 import { setHours, setMinutes, setSeconds, startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns';
@@ -13,9 +13,8 @@ import type { User as AppUser } from '@/app/admin/employees/page';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import Image from 'next/image';
 
-type ScanStatus = 'idle' | 'scanning' | 'success' | 'error' | 'processing';
+type ScanStatus = 'idle' | 'processing';
 type PermissionStatus = 'prompt' | 'granted' | 'denied';
 
 type AttendanceRecord = {
@@ -88,19 +87,18 @@ export default function FaceAttendancePage() {
   }, []);
 
   const startCamera = useCallback(async () => {
-    if (streamRef.current) return;
+    if (streamRef.current || cameraPermission !== 'granted') return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
       }
       streamRef.current = stream;
-      setCameraPermission('granted');
     } catch (err) {
-      console.error("Camera access denied:", err);
+      console.error("Camera access failed:", err);
       setCameraPermission('denied');
     }
-  }, []);
+  }, [cameraPermission]);
   
   const checkAttendanceStatusForToday = useCallback(async (employeeId: string, shopId: string) => {
     const todayStart = startOfDay(new Date());
@@ -120,7 +118,6 @@ export default function FaceAttendancePage() {
         if (record.checkOutTime) {
             setHasCompletedDay(true);
             setActiveCheckIn(null);
-            stopCamera();
         } else {
             setActiveCheckIn(record);
             setHasCompletedDay(false);
@@ -129,7 +126,7 @@ export default function FaceAttendancePage() {
         setActiveCheckIn(null);
         setHasCompletedDay(false);
     }
-  }, [stopCamera]);
+  }, []);
   
   // Main effect for auth and profile fetching
   useEffect(() => {
@@ -195,14 +192,11 @@ export default function FaceAttendancePage() {
   }, [cameraPermission, hasCompletedDay, startCamera, stopCamera]);
 
   const requestPermissions = async () => {
-    let locGranted = locationPermission === 'granted';
-
     if (cameraPermission === 'prompt') {
         try {
-            // Request camera, which will update state via onchange listener
             await navigator.mediaDevices.getUserMedia({ video: true });
         } catch (err) {
-            setCameraPermission('denied');
+            // State will be updated by the 'onchange' listener
         }
     }
 
@@ -211,14 +205,11 @@ export default function FaceAttendancePage() {
         await new Promise((resolve, reject) => {
           navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
         });
-        locGranted = true;
-        setLocationPermission('granted');
       } catch (err) {
-        setLocationPermission('denied');
+        // State will be updated by the 'onchange' listener
       }
     }
   };
-
 
   const captureFrame = useCallback((): string | null => {
     const video = videoRef.current;
@@ -246,8 +237,6 @@ export default function FaceAttendancePage() {
     });
     
     if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Cloudinary upload error:', errorText);
         throw new Error('Image upload failed');
     }
 
@@ -262,15 +251,13 @@ export default function FaceAttendancePage() {
       const imageDataUri = captureFrame();
       if (!imageDataUri) {
           toast({ variant: 'destructive', title: 'Capture Failed', description: 'Could not capture image from camera.' });
-          setStatus('error');
-          setTimeout(() => setStatus('idle'), 3000);
+          setStatus('idle');
           return;
       }
       
       if (!shopData?.latitude || !shopData?.longitude) {
           toast({ variant: 'destructive', title: 'Setup Error', description: 'Shop location is not set. Please contact your admin.' });
-          setStatus('error');
-          setTimeout(() => setStatus('idle'), 3000);
+          setStatus('idle');
           return;
       }
 
@@ -284,8 +271,7 @@ export default function FaceAttendancePage() {
 
               if (distance > 100) { // 100 meters radius
                   toast({ variant: 'destructive', title: 'Location Mismatch', description: `You are too far from the shop. You are ${Math.round(distance)}m away.`});
-                  setStatus('error');
-                  setTimeout(() => setStatus('idle'), 3000);
+                  setStatus('idle');
                   return;
               }
 
@@ -303,15 +289,13 @@ export default function FaceAttendancePage() {
               } catch (e) {
                 console.error(e);
                 toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload attendance image.' });
-                setStatus('error');
-                setTimeout(() => setStatus('idle'), 3000);
+                setStatus('idle');
               }
           },
           (error) => {
               console.error("Geolocation error:", error);
               toast({ variant: 'destructive', title: 'Location Error', description: 'Could not get your location. Please try again.' });
-              setStatus('error');
-              setTimeout(() => setStatus('idle'), 3000);
+              setStatus('idle');
           },
           { enableHighAccuracy: true }
       );
@@ -319,6 +303,7 @@ export default function FaceAttendancePage() {
 
   const handleCheckIn = async (shopId: string, locationStatus: 'Verified' | 'Unverified', imageUrl: string) => {
     if (!userProfile?.uid) return;
+    setStatus('processing');
 
     const shopConfigRef = doc(db, 'shops', shopId, 'config', 'main');
     const shopConfigSnap = await getDoc(shopConfigRef);
@@ -424,13 +409,13 @@ export default function FaceAttendancePage() {
     setActiveCheckIn({ id: newAttendanceRef.id, ...newAttendanceRecord });
     setUserProfile(prev => prev ? {...prev, ...updateData} : null);
 
-    setStatus('success');
-    setTimeout(() => setStatus('idle'), 3000);
+    setStatus('idle');
     toast({ title: 'Check-in Successful!', description: `You have been marked as ${attendanceStatus}.` });
   };
   
   const handleCheckOut = async (locationStatus: 'Verified' | 'Unverified', imageUrl: string) => {
     if (!userProfile?.shopId || !activeCheckIn) return;
+    setStatus('processing');
     
     const attendanceDocRef = doc(db, 'shops', userProfile.shopId, 'attendance', activeCheckIn.id);
     await updateDoc(attendanceDocRef, {
@@ -441,9 +426,8 @@ export default function FaceAttendancePage() {
 
     setActiveCheckIn(null);
     setHasCompletedDay(true);
-    setStatus('success');
+    setStatus('idle');
     stopCamera();
-    setTimeout(() => setStatus('idle'), 3000);
     toast({ title: 'Check-out Successful!', description: 'Have a great day!' });
   };
   
@@ -464,33 +448,6 @@ export default function FaceAttendancePage() {
                 <p className="text-sm text-muted-foreground">You have already completed your attendance. See you tomorrow!</p>
             </div>
         );
-    }
-    
-    if (status !== 'idle') {
-        switch(status) {
-            case 'success':
-                return (
-                  <div className="flex flex-col items-center gap-4 text-center text-green-600">
-                    <CheckCircle className="h-20 w-20" />
-                    <p className="font-bold text-xl">Success!</p>
-                  </div>
-                );
-            case 'error':
-                return (
-                  <div className="flex flex-col items-center gap-4 text-center text-destructive">
-                    <XCircle className="h-20 w-20" />
-                    <p className="font-bold text-xl">Verification Failed</p>
-                  </div>
-                );
-            case 'processing':
-                return (
-                    <div className="flex flex-col items-center gap-4 text-center">
-                    <Loader2 className="h-20 w-20 animate-spin text-primary" />
-                    <p className="font-bold text-xl">Processing...</p>
-                    <p className="text-sm text-muted-foreground">Verifying your identity and location.</p>
-                    </div>
-                );
-        }
     }
     
     if (cameraPermission === 'denied' || locationPermission === 'denied') {
@@ -555,7 +512,7 @@ export default function FaceAttendancePage() {
          <CardFooter className="flex-col gap-4 pt-6">
             <Alert variant="default" className="border-primary/50 bg-primary/5 text-primary-foreground">
                 <LocateFixed className="h-4 w-4" />
-                <AlertTitle className="font-semibold text-primary">Location & Photo Verification</AlertTitle>
+                <AlertTitle className="font-semibold text-primary">Location &amp; Photo Verification</AlertTitle>
                 <AlertDescription className="text-primary/90">
                     Your location is verified, and a photo is captured for your manager's confirmation. No biometric data is stored.
                 </AlertDescription>
@@ -578,3 +535,5 @@ export default function FaceAttendancePage() {
     </div>
   );
 }
+
+    
