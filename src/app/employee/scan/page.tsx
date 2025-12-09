@@ -14,27 +14,11 @@ import { setHours, setMinutes, setSeconds, startOfDay, endOfDay, startOfMonth, e
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 type ScanStatus = 'idle' | 'scanning' | 'processing' | 'success' | 'error';
-type GamificationSettings = {
-  onTimePoints: number;
-  gracePeriodMinutes: number;
-  lateCategory1Minutes: number;
-  lateCategory1Points: number;
-  lateCategory2Minutes: number;
-  lateCategory2Points: number;
-  lateCategory3Minutes: number;
-  lateCategory3Points: number;
-  absentMinutes: number;
-  absentPoints: number;
-  streakBonusDays: number;
-  streakBonusPoints: number;
-};
 
 type AppUser = {
   uid: string;
   name?: string;
   shopId?: string;
-  points?: number;
-  streak?: number;
 };
 
 export default function QRScannerPage() {
@@ -194,21 +178,14 @@ export default function QRScannerPage() {
         const shopConfigRef = doc(db, 'shops', shopId, 'config', 'main');
         const shopConfigSnap = await getDoc(shopConfigRef);
         const settings = shopConfigSnap.exists() ? shopConfigSnap.data() : {};
-        const gamification: GamificationSettings = {
-          onTimePoints: 10,
+        const gamificationSettings = {
           gracePeriodMinutes: 5,
           lateCategory1Minutes: 10,
-          lateCategory1Points: -1,
           lateCategory2Minutes: 30,
-          lateCategory2Points: -2,
           lateCategory3Minutes: 60,
-          lateCategory3Points: -3,
           absentMinutes: 60,
-          absentPoints: -5,
-          streakBonusDays: 5,
-          streakBonusPoints: 50,
           ...(settings.gamification || {}),
-        } as GamificationSettings;
+        };
 
         const businessHours = settings.businessHours || {};
         const todayKey = new Date().toLocaleString('en-us', { weekday: 'long' }).toLowerCase();
@@ -219,56 +196,22 @@ export default function QRScannerPage() {
         const shiftStart = setSeconds(setMinutes(setHours(startOfDay(now), hours), minutes), 0);
 
         let attendanceStatus = 'On-time';
-        let pointsChange = 0;
-        let isLate = false;
 
         const timeDiffMinutes = (now.getTime() - shiftStart.getTime()) / (1000 * 60);
 
-        if (timeDiffMinutes > gamification.gracePeriodMinutes) {
-          isLate = true;
-          if (timeDiffMinutes <= gamification.lateCategory1Minutes) {
-              attendanceStatus = 'Late Category 1';
-              pointsChange = gamification.lateCategory1Points;
-          } else if (timeDiffMinutes <= gamification.lateCategory2Minutes) {
-              attendanceStatus = 'Late Category 2';
-              pointsChange = gamification.lateCategory2Points;
-          } else if (timeDiffMinutes <= gamification.lateCategory3Minutes) {
-              attendanceStatus = 'Late Category 3';
-              pointsChange = gamification.lateCategory3Points;
+        if (timeDiffMinutes > gamificationSettings.gracePeriodMinutes) {
+          if (timeDiffMinutes <= gamificationSettings.lateCategory1Minutes) {
+            attendanceStatus = 'Late Category 1';
+          } else if (timeDiffMinutes <= gamificationSettings.lateCategory2Minutes) {
+            attendanceStatus = 'Late Category 2';
+          } else if (timeDiffMinutes <= gamificationSettings.lateCategory3Minutes) {
+            attendanceStatus = 'Late Category 3';
           } else {
-              attendanceStatus = 'Absent';
-              pointsChange = gamification.absentPoints;
-              isLate = false;
-          }
-        } else {
-            attendanceStatus = 'On-time';
-            pointsChange = gamification.onTimePoints;
-        }
-        
-        if (isLate) {
-          const monthStart = startOfMonth(now);
-          const monthEnd = endOfMonth(now);
-          const lateQ = query(
-            collection(db, 'shops', shopId, 'attendance'),
-            where('userId', '==', userProfile.uid),
-            where('checkInTime', '>=', monthStart),
-            where('checkInTime', '<=', monthEnd),
-            where('status', 'in', ['Late Category 1', 'Late Category 2', 'Late Category 3'])
-          );
-          const lateSnap = await getDocs(lateQ);
-          const monthlyLateCount = lateSnap.size;
-          if (monthlyLateCount < 3) {
-            pointsChange = 0;
-            toast({ title: 'Late allowance used', description: `This is your ${monthlyLateCount + 1}/3 late entries for this month. No points deducted.` });
+            attendanceStatus = 'Absent';
           }
         }
-
-        const newStreak = attendanceStatus === 'On-time' ? (userProfile.streak || 0) + 1 : 0;
         
-        const batch = writeBatch(db);
-        
-        const newAttendanceRef = doc(collection(db, 'shops', shopId, 'attendance'));
-        batch.set(newAttendanceRef, {
+        await addDoc(collection(db, 'shops', shopId, 'attendance'), {
             userId: userProfile.uid,
             userName: userProfile.name,
             shopId: shopId,
@@ -277,19 +220,6 @@ export default function QRScannerPage() {
             checkOutTime: null,
             method: 'QR',
         });
-        
-        const employeeRef = doc(db, 'shops', shopId, 'employees', userProfile.uid);
-        const newPoints = Math.max(0, (userProfile.points || 0) + pointsChange);
-        const updateData: any = { points: newPoints, streak: newStreak };
-        
-        if (newStreak > 0 && newStreak % gamification.streakBonusDays === 0) {
-            updateData.points = updateData.points + gamification.streakBonusPoints;
-            toast({ title: 'Streak Bonus!', description: `+${gamification.streakBonusPoints} bonus points for your ${gamification.streakBonusDays}-day streak!` });
-        }
-        
-        batch.update(employeeRef, updateData);
-        batch.update(doc(db, 'users', userProfile.uid), updateData);
-        await batch.commit();
         
         toast({ title: 'Check-in Successful!', description: `You have been marked as ${attendanceStatus}.` });
       }

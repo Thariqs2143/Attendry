@@ -3,13 +3,13 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Trophy, Award, Star, ShieldCheck, Flame, CalendarCheck, Loader2, Landmark, Sparkles, UserCheck, Clock } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { onAuthStateChanged, type User as AuthUser } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { doc, getDoc, collection, query, orderBy, getDocs, onSnapshot, getFirestore, where, Timestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import type { User as AppUser } from "@/app/admin/employees/page";
-import { differenceInYears, startOfWeek, endOfWeek } from "date-fns";
+import { differenceInYears, startOfWeek, endOfWeek, isSameDay } from "date-fns";
 
 type GamificationSettings = {
     onTimePoints: number;
@@ -53,8 +53,8 @@ const defaultGamificationSettings: GamificationSettings = {
 };
 
 const badges = [
-    { id: "streak", icon: <Flame className="h-8 w-8" />, name: "Hot Streak", description: (settings: GamificationSettings) => `${settings.streakBonusDays}-day on-time streak`, unlocked: (user: AppUser, rank: number, settings: GamificationSettings) => (user.streak || 0) >= settings.streakBonusDays },
-    { id: "points", icon: <Trophy className="h-8 w-8" />, name: "Punctuality Pro", description: () => "1000 total points", unlocked: (user: AppUser) => (user.points || 0) >= 1000 },
+    { id: "streak", icon: <Flame className="h-8 w-8" />, name: "Hot Streak", description: (settings: GamificationSettings) => `${settings.streakBonusDays}-day on-time streak`, unlocked: (user: AppUser, rank: number, settings: GamificationSettings, streak: number) => streak >= settings.streakBonusDays },
+    { id: "points", icon: <Trophy className="h-8 w-8" />, name: "Punctuality Pro", description: () => "1000 total points", unlocked: (user: AppUser, rank: number, settings: GamificationSettings, streak: number, points: number) => points >= 1000 },
     { id: "veteran", icon: <Landmark className="h-8 w-8" />, name: "Veteran", description: () => "1 year of service", unlocked: (user: AppUser) => {
         if (!user.joinDate) return false;
         return differenceInYears(new Date(), new Date(user.joinDate)) >= 1;
@@ -64,21 +64,86 @@ const badges = [
     { id: "rank", icon: <ShieldCheck className="h-8 w-8" />, name: "Top Performer", description: () => "Reach #1 on the leaderboard", unlocked: (user: AppUser, rank: number) => rank === 1 },
 ];
 
+const calculateDynamicStats = (attendanceHistory: AttendanceRecord[], settings: GamificationSettings) => {
+    let totalPoints = 0;
+    let currentStreak = 0;
+    
+    // Sort records by date to calculate streak correctly
+    const sortedHistory = [...attendanceHistory].sort((a, b) => a.checkInTime.toDate().getTime() - b.checkInTime.toDate().getTime());
+    let lastCheckInDate: Date | null = null;
+    let streakBonusCount = 0;
+
+    sortedHistory.forEach(record => {
+        let pointsForRecord = 0;
+        switch (record.status) {
+            case 'On-time':
+                pointsForRecord = settings.onTimePoints;
+                break;
+            case 'Late Category 1':
+                pointsForRecord = settings.lateCategory1Points;
+                break;
+            case 'Late Category 2':
+                pointsForRecord = settings.lateCategory2Points;
+                break;
+            case 'Late Category 3':
+                pointsForRecord = settings.lateCategory3Points;
+                break;
+            case 'Absent':
+                pointsForRecord = settings.absentPoints;
+                break;
+            default:
+                pointsForRecord = 0;
+        }
+        totalPoints += pointsForRecord;
+        
+        // Streak calculation
+        const recordDate = record.checkInTime.toDate();
+        if (record.status === 'On-time') {
+            if (lastCheckInDate && isSameDay(recordDate, new Date(lastCheckInDate.getTime() + 24 * 60 * 60 * 1000))) {
+                currentStreak++;
+            } else {
+                currentStreak = 1;
+            }
+            lastCheckInDate = recordDate;
+            
+            if (currentStreak > 0 && currentStreak % settings.streakBonusDays === 0) {
+                 streakBonusCount++;
+            }
+
+        } else if (record.status !== 'Half-day') { // Half-day might not break a streak depending on rules
+            currentStreak = 0;
+        }
+    });
+
+    totalPoints += streakBonusCount * settings.streakBonusPoints;
+
+    return { totalPoints: Math.max(0, totalPoints), streak: currentStreak };
+};
+
 export default function RewardsPage() {
     const router = useRouter();
     const [userProfile, setUserProfile] = useState<AppUser | null>(null);
-    const [rank, setRank] = useState(0);
+    const [allUsers, setAllUsers] = useState<AppUser[]>([]);
     const [loading, setLoading] = useState(true);
     const [gamificationSettings, setGamificationSettings] = useState<GamificationSettings>(defaultGamificationSettings);
     const [weeklyStats, setWeeklyStats] = useState<WeeklyStat>({ onTime: 0, late: 0 });
     const [loadingStats, setLoadingStats] = useState(true);
+    const [attendanceHistory, setAttendanceHistory] = useState<AttendanceRecord[]>([]);
 
     // Effect 1: Handle user authentication state
     useEffect(() => {
         const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
             if (user) {
-                // Set a temporary profile to trigger other effects
-                setUserProfile({ uid: user.uid } as AppUser);
+                const db = getFirestore();
+                const userDocRef = doc(db, "users", user.uid);
+                const unsubProfile = onSnapshot(userDocRef, (userDocSnap) => {
+                    if (userDocSnap.exists()) {
+                        setUserProfile({ id: userDocSnap.id, ...userDocSnap.data() } as AppUser);
+                    } else {
+                        router.push('/employee/login');
+                    }
+                });
+                return () => unsubProfile();
             } else {
                 setLoading(false);
                 router.push('/employee/login');
@@ -86,95 +151,94 @@ export default function RewardsPage() {
         });
         return () => unsubscribeAuth();
     }, [router]);
-
-    // Effect 2: Set up real-time listener for user profile (points, streak, etc.)
+    
+    // Effect 2: Fetch shop-wide data (all users for ranking, settings)
     useEffect(() => {
-        if (!userProfile?.uid) return;
-
-        const db = getFirestore();
-        const userDocRef = doc(db, "users", userProfile.uid);
-        const unsubscribeProfile = onSnapshot(userDocRef, (userDocSnap) => {
-            if (userDocSnap.exists()) {
-                const profileData = { id: userDocSnap.id, ...userDocSnap.data() } as AppUser;
-                setUserProfile(profileData);
-            } else {
-                router.push('/employee/login');
-            }
-            setLoading(false);
-        }, (error) => {
-            console.error("Error fetching user profile:", error);
-            setLoading(false);
-        });
-
-        return () => unsubscribeProfile();
-    }, [userProfile?.uid, router]);
-
-    // Effect 3: Set up listeners for shop-specific data (rank, settings, weekly stats)
-    useEffect(() => {
-        if (!userProfile?.shopId || !userProfile?.id) return;
+        if (!userProfile?.shopId) return;
 
         const db = getFirestore();
         const shopId = userProfile.shopId;
-        const employeeId = userProfile.id;
+        setLoading(true);
 
-        // Listener for gamification settings
+        // Fetch all users for ranking
+        const usersCollectionRef = collection(db, 'shops', shopId, 'employees');
+        const qUsers = query(usersCollectionRef, orderBy('points', 'desc')); // Still use points for initial sort/rank
+        const unsubUsers = onSnapshot(qUsers, (snapshot) => {
+            const usersList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppUser));
+            setAllUsers(usersList);
+        });
+
+        // Fetch gamification settings
         const settingsDocRef = doc(db, 'shops', shopId, 'config', 'main');
-        const unsubscribeSettings = onSnapshot(settingsDocRef, (settingsSnap) => {
+        const unsubSettings = onSnapshot(settingsDocRef, (settingsSnap) => {
             if (settingsSnap.exists() && settingsSnap.data().gamification) {
                 setGamificationSettings({ ...defaultGamificationSettings, ...settingsSnap.data().gamification });
             }
         });
-
-        // Listener for user's rank
-        const usersCollectionRef = collection(db, 'shops', shopId, 'employees');
-        const qRank = query(usersCollectionRef, orderBy('points', 'desc'));
-        const unsubscribeRank = onSnapshot(qRank, (querySnapshot) => {
-            const userRank = querySnapshot.docs.findIndex(doc => doc.id === employeeId) + 1;
-            setRank(userRank);
-        });
         
-        // Listener for weekly summary
-        setLoadingStats(true);
-        const now = new Date();
-        const weekStart = startOfWeek(now);
-        const weekEnd = endOfWeek(now);
+        // Fetch user's attendance history
         const attendanceRef = collection(db, 'shops', shopId, 'attendance');
-        const qSummary = query(
-            attendanceRef, 
-            where('userId', '==', employeeId),
-            where('checkInTime', '>=', weekStart),
-            where('checkInTime', '<=', weekEnd)
-        );
-        const unsubscribeSummary = onSnapshot(qSummary, (snapshot) => {
-            let onTimeCount = 0;
-            let lateCount = 0;
-            snapshot.forEach(doc => {
-                const record = doc.data() as AttendanceRecord;
-                if (record.status === 'On-time') {
-                    onTimeCount++;
-                } else if (record.status.startsWith('Late')) {
-                    lateCount++;
-                }
-            });
-            setWeeklyStats({ onTime: onTimeCount, late: lateCount });
-            setLoadingStats(false);
-        }, (error) => {
-            console.error("Error fetching weekly summary:", error);
+        const qAttendance = query(attendanceRef, where('userId', '==', userProfile.id));
+        const unsubAttendance = onSnapshot(qAttendance, (snapshot) => {
+            const history = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceRecord));
+            setAttendanceHistory(history);
+            setLoading(false);
             setLoadingStats(false);
         });
 
 
-        // Cleanup all listeners when component unmounts or shopId changes
         return () => {
-            unsubscribeSettings();
-            unsubscribeRank();
-            unsubscribeSummary();
+            unsubUsers();
+            unsubSettings();
+            unsubAttendance();
         };
 
     }, [userProfile?.shopId, userProfile?.id]);
+    
+    const { totalPoints, streak } = useMemo(() => {
+        if (!attendanceHistory.length) return { totalPoints: 0, streak: 0 };
+        return calculateDynamicStats(attendanceHistory, gamificationSettings);
+    }, [attendanceHistory, gamificationSettings]);
+    
+    const rank = useMemo(() => {
+        if (!userProfile || allUsers.length === 0) return 0;
+        
+        const sortedUsersWithDynamicPoints = allUsers
+            .map(user => {
+                // This is a simplification. For full accuracy, you'd fetch all attendance for all users.
+                // Here we just use the current user's dynamic points to find their rank.
+                if (user.id === userProfile.id) {
+                    return { ...user, dynamicPoints: totalPoints };
+                }
+                return { ...user, dynamicPoints: user.points || 0 }; // Fallback for others
+            })
+            .sort((a, b) => b.dynamicPoints - a.dynamicPoints);
+
+        const userRank = sortedUsersWithDynamicPoints.findIndex(u => u.id === userProfile.id) + 1;
+        return userRank;
+
+    }, [allUsers, userProfile, totalPoints]);
+
+    useEffect(() => {
+        const weekly = attendanceHistory.filter(rec => {
+            const now = new Date();
+            const weekStart = startOfWeek(now);
+            const weekEnd = endOfWeek(now);
+            const recDate = rec.checkInTime.toDate();
+            return recDate >= weekStart && recDate <= weekEnd;
+        });
+
+        let onTimeCount = 0;
+        let lateCount = 0;
+        weekly.forEach(rec => {
+            if (rec.status === 'On-time') onTimeCount++;
+            else if (rec.status.startsWith('Late')) lateCount++;
+        });
+        setWeeklyStats({ onTime: onTimeCount, late: lateCount });
+    }, [attendanceHistory]);
 
 
-  if (loading || !userProfile?.name) { // Wait for full profile load
+  if (loading || !userProfile?.name) {
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -198,7 +262,7 @@ export default function RewardsPage() {
         <CardContent className="grid grid-cols-2 gap-4 text-center">
             <div className="flex flex-col items-center p-4 bg-white/10 rounded-lg">
                 <Trophy className="h-8 sm:h-10 sm:w-10 text-yellow-300 mb-2"/>
-                <p className="text-2xl sm:text-3xl font-bold text-white">{(userProfile.points || 0).toLocaleString()}</p>
+                <p className="text-2xl sm:text-3xl font-bold text-white">{totalPoints.toLocaleString()}</p>
                 <p className="text-xs sm:text-sm text-blue-200">Total Points</p>
             </div>
             <div className="flex flex-col items-center p-4 bg-white/10 rounded-lg">
@@ -208,7 +272,7 @@ export default function RewardsPage() {
             </div>
              <div className="flex flex-col items-center p-4 bg-white/10 rounded-lg">
                 <Flame className="h-8 sm:h-10 sm:w-10 text-yellow-300 mb-2"/>
-                <p className="text-2xl sm:text-3xl font-bold text-white">{userProfile.streak || 0}</p>
+                <p className="text-2xl sm:text-3xl font-bold text-white">{streak || 0}</p>
                 <p className="text-xs sm:text-sm text-blue-200">Day Streak</p>
             </div>
             <div className="flex flex-col items-center p-4 bg-white/10 rounded-lg">
@@ -273,7 +337,7 @@ export default function RewardsPage() {
         </CardHeader>
         <CardContent className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {badges.map(badge => {
-                const isUnlocked = badge.unlocked(userProfile, rank, gamificationSettings);
+                const isUnlocked = badge.unlocked(userProfile, rank, gamificationSettings, streak, totalPoints);
                 const description = typeof badge.description === 'function' ? badge.description(gamificationSettings) : badge.description;
                 return (
                     <div key={badge.id} className={`flex flex-col items-center justify-start text-center p-4 border-2 rounded-lg transition-all ${isUnlocked ? 'border-primary bg-primary/5' : 'border-dashed opacity-50'}`}>

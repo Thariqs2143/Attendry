@@ -37,21 +37,6 @@ type AttendanceRecord = {
   status?: string;
 };
 
-type GamificationSettings = {
-  onTimePoints: number;
-  gracePeriodMinutes: number;
-  lateCategory1Minutes: number;
-  lateCategory1Points: number;
-  lateCategory2Minutes: number;
-  lateCategory2Points: number;
-  lateCategory3Minutes: number;
-  lateCategory3Points: number;
-  absentMinutes: number;
-  absentPoints: number;
-  streakBonusDays: number;
-  streakBonusPoints: number;
-};
-
 type ShopData = {
   latitude?: number;
   longitude?: number;
@@ -62,8 +47,6 @@ type AppUser = {
   id?: string;
   name?: string;
   shopId?: string;
-  points?: number;
-  streak?: number;
 };
 
 // Helpers
@@ -243,21 +226,14 @@ export default function FaceAttendancePage(): JSX.Element {
       try {
         const shopConfigSnap = await getDoc(doc(db, 'shops', shopId, 'config', 'main'));
         const settings = shopConfigSnap.exists() ? shopConfigSnap.data() : {};
-        const gamification: GamificationSettings = {
-          onTimePoints: 10,
+        const gamificationSettings = {
           gracePeriodMinutes: 5,
           lateCategory1Minutes: 10,
-          lateCategory1Points: -1,
           lateCategory2Minutes: 30,
-          lateCategory2Points: -2,
           lateCategory3Minutes: 60,
-          lateCategory3Points: -3,
           absentMinutes: 60,
-          absentPoints: -5,
-          streakBonusDays: 5,
-          streakBonusPoints: 50,
           ...(settings.gamification || {}),
-        } as GamificationSettings;
+        };
         
         const businessHours = settings.businessHours || {};
         const todayKey = new Date().toLocaleString('en-us', { weekday: 'long' }).toLowerCase();
@@ -268,73 +244,35 @@ export default function FaceAttendancePage(): JSX.Element {
         const shiftStart = setSeconds(setMinutes(setHours(startOfDay(now), hours), minutes), 0);
         
         let attendanceStatus = 'On-time';
-        let pointsChange = 0;
-        let isLate = false;
-        
         const timeDiffMinutes = (now.getTime() - shiftStart.getTime()) / 60000;
 
-        if (timeDiffMinutes > gamification.gracePeriodMinutes) {
-          isLate = true;
-          if (timeDiffMinutes <= gamification.lateCategory1Minutes) {
-              attendanceStatus = 'Late Category 1';
-              pointsChange = gamification.lateCategory1Points;
-          } else if (timeDiffMinutes <= gamification.lateCategory2Minutes) {
-              attendanceStatus = 'Late Category 2';
-              pointsChange = gamification.lateCategory2Points;
-          } else if (timeDiffMinutes <= gamification.lateCategory3Minutes) {
-              attendanceStatus = 'Late Category 3';
-              pointsChange = gamification.lateCategory3Points;
+        if (timeDiffMinutes > gamificationSettings.gracePeriodMinutes) {
+          if (timeDiffMinutes <= gamificationSettings.lateCategory1Minutes) {
+            attendanceStatus = 'Late Category 1';
+          } else if (timeDiffMinutes <= gamificationSettings.lateCategory2Minutes) {
+            attendanceStatus = 'Late Category 2';
+          } else if (timeDiffMinutes <= gamificationSettings.lateCategory3Minutes) {
+            attendanceStatus = 'Late Category 3';
           } else {
-              attendanceStatus = 'Absent';
-              pointsChange = gamification.absentPoints;
-              isLate = false; // Absent is not "late" for the free pass logic
+            attendanceStatus = 'Absent';
           }
-        } else {
-            attendanceStatus = 'On-time';
-            pointsChange = gamification.onTimePoints;
-        }
-        
-        if (isLate) {
-            const monthStart = startOfMonth(now);
-            const monthEnd = endOfMonth(now);
-            const lateSnap = await getDocs(query(
-              collection(db, 'shops', shopId, 'attendance'),
-              where('userId', '==', userProfile.uid),
-              where('checkInTime', '>=', monthStart),
-              where('checkInTime', '<=', monthEnd),
-              where('status', 'in', ['Late Category 1', 'Late Category 2', 'Late Category 3'])
-            ));
-            if (lateSnap.size < 3) {
-              pointsChange = 0;
-              toast({ title: 'Late allowance used', description: `This is your ${lateSnap.size + 1}/3 late entries for this month. No points deducted.` });
-            }
         }
 
-        const newStreak = attendanceStatus === 'On-time' ? (userProfile.streak || 0) + 1 : 0;
-        
-        const batch = writeBatch(db);
         const newAttendanceRef = doc(collection(db, 'shops', shopId, 'attendance'));
         const newAttendanceRecord = {
-          userId: userProfile.uid, userName: userProfile.name, shopId,
-          checkInTime: Timestamp.now(), status: attendanceStatus, checkOutTime: null,
-          locationStatus, imageUrl, method: 'Selfie',
+          userId: userProfile.uid,
+          userName: userProfile.name,
+          shopId,
+          checkInTime: Timestamp.now(),
+          status: attendanceStatus,
+          checkOutTime: null,
+          locationStatus,
+          imageUrl,
+          method: 'Selfie',
         };
-        batch.set(newAttendanceRef, newAttendanceRecord);
-
-        const newPoints = Math.max(0, (userProfile.points || 0) + pointsChange);
-        const updateData: any = { points: newPoints, streak: newStreak };
-        
-        if (newStreak > 0 && newStreak % gamification.streakBonusDays === 0) {
-          updateData.points += gamification.streakBonusPoints;
-          toast({ title: 'Streak Bonus!', description: `+${gamification.streakBonusPoints} for your ${gamification.streakBonusDays}-day streak!` });
-        }
-        
-        batch.update(doc(db, 'shops', shopId, 'employees', userProfile.uid), updateData);
-        batch.update(doc(db, 'users', userProfile.uid), updateData);
-        await batch.commit();
+        await setDoc(newAttendanceRef, newAttendanceRecord);
 
         setActiveCheckIn({ id: newAttendanceRef.id, checkInTime: newAttendanceRecord.checkInTime });
-        setUserProfile((prev) => (prev ? { ...prev, ...updateData } : prev));
         toast({ title: 'Check-in Successful', description: `Marked as ${attendanceStatus}` });
         stopCamera();
       } catch (err) {
