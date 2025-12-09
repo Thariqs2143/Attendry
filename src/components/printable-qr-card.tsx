@@ -3,7 +3,6 @@
 
 import { forwardRef } from 'react';
 import Image from 'next/image';
-import { ScanLine } from 'lucide-react';
 
 type PrintableQrCardProps = {
   shopName: string;
@@ -14,66 +13,98 @@ type PrintableQrCardProps = {
 export const PrintableQrCard = forwardRef<HTMLDivElement, PrintableQrCardProps>(
   ({ shopName, qrUrl, logoSrc }, ref) => {
     return (
-      <div ref={ref} className="w-[400px] h-[600px] bg-white flex flex-col font-sans">
-        {/* Top decorative element */}
+      <div
+        ref={ref}
+        className="w-[400px] h-[600px] bg-white flex flex-col font-sans"
+      >
+        {/* Top decorative shapes */}
         <div className="relative h-[100px] w-full">
           <div
-            className="absolute -top-10 -left-10 w-[200px] h-[150px] bg-sky-500 origin-bottom-left"
+            className="absolute -top-10 -left-10 w-[200px] h-[150px] bg-[#001F54] origin-bottom-left"
             style={{ transform: 'rotate(-45deg)', opacity: 0.8 }}
           />
           <div
-            className="absolute -top-10 -left-0 w-[200px] h-[150px] bg-blue-600 origin-bottom-left"
+            className="absolute -top-10 left-0 w-[200px] h-[150px] bg-[#003F88] origin-bottom-left"
             style={{ transform: 'rotate(-30deg)', opacity: 0.9 }}
           />
-           <div
-            className="absolute -top-10 right-0 w-[200px] h-[150px] bg-indigo-500 origin-bottom-right"
-            style={{ transform: 'rotate(25deg)', opacity: 0.7 }}
+          <div
+            className="absolute -top-10 right-0 w-[200px] h-[150px] bg-[#00509E] origin-bottom-right"
+            style={{ transform: 'rotate(25deg)', opacity: 0.75 }}
           />
         </div>
 
         {/* Main content */}
         <div className="flex-1 flex flex-col items-center justify-between text-center px-8">
-            {/* Logo */}
-            <div className="w-48 h-16 relative">
-              <Image src={logoSrc} alt="Attendry Logo" layout="fill" objectFit="contain" />
-            </div>
 
-            {/* QR Code */}
-            <div className="p-2 border-4 border-blue-600 rounded-2xl bg-white shadow-lg my-4">
-              {qrUrl ? (
+          {/* Logo - explicit width/height to avoid stretching */}
+          <div className="w-48 h-16 flex items-center justify-center">
+            {/* Use explicit width/height so image keeps aspect ratio (object-contain) */}
+            <Image
+              src={logoSrc}
+              alt="Attendry Logo"
+              width={300}        // 48 * 4 (tailwind px -> 12rem -> 192px)
+              height={64}        // keeps a 3:1 ratio typical for horizontal logos
+              className="object-contain"
+              priority
+            />
+          </div>
+
+          {/* QR Code */}
+          <div className="p-2 border-4 border-[#003F88] rounded-2xl bg-white shadow-lg my-4">
+            {qrUrl ? (
+              <div className="w-[220px] h-[220px]">
                 <Image
                   src={qrUrl}
-                  alt={`QR Code for ${shopName}`}
+                  alt={`QR for ${shopName}`}
                   width={220}
                   height={220}
-                  className="rounded-lg"
+                  className="rounded-lg object-contain"
                 />
-              ) : (
-                <div className="w-[220px] h-[220px] bg-gray-200 flex items-center justify-center rounded-lg">
-                    <p className="text-sm text-gray-500">QR Code</p>
-                </div>
-              )}
+              </div>
+            ) : (
+              <div className="w-[220px] h-[220px] bg-gray-200 rounded-lg flex items-center justify-center">
+                <p className="text-sm text-gray-500">QR Code</p>
+              </div>
+            )}
+          </div>
+
+          {/* CTA Button - centered both axes and balanced height */}
+          <div className="w-full flex flex-col items-center">
+            <div
+              className="
+                bg-[#003F88]
+                text-white
+                font-bold
+                text-3xl
+                py-2
+                px-2
+                rounded-lg
+                shadow-md
+                w-full
+                flex
+                items-center
+                justify-center
+                text-center
+               
+              "
+            >
+              SCAN TO CHECK-IN
             </div>
 
-            {/* Call to Action */}
-            <div className="w-full">
-                <div className="bg-blue-600 text-white font-bold text-3xl py-3 px-6 rounded-lg shadow-md">
-                    SCAN TO CHECK-IN
-                </div>
-                <p className="mt-4 text-lg font-medium text-gray-600">
-                    Employees: Use your phone camera to scan.
-                </p>
-            </div>
+            <p className="mt-4 text-lg font-medium text-gray-600 text-center max-w-[320px]">
+              Employees: Use your phone camera to scan.
+            </p>
+          </div>
         </div>
 
-         {/* Bottom decorative element */}
+        {/* Bottom decorative shapes */}
         <div className="relative h-[100px] w-full overflow-hidden">
           <div
-            className="absolute -bottom-16 -right-12 w-[250px] h-[180px] bg-sky-500 origin-top-right"
+            className="absolute -bottom-16 -right-12 w-[250px] h-[180px] bg-[#001F54] origin-top-right"
             style={{ transform: 'rotate(-55deg)', opacity: 0.8 }}
           />
           <div
-            className="absolute -bottom-16 -right-0 w-[250px] h-[180px] bg-blue-600 origin-top-right"
+            className="absolute -bottom-16 right-0 w-[250px] h-[180px] bg-[#003F88] origin-top-right"
             style={{ transform: 'rotate(-40deg)', opacity: 0.9 }}
           />
         </div>
