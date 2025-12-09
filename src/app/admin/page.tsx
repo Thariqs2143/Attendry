@@ -4,7 +4,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Users, UserCheck, UserX, TrendingUp, Loader2, BarChart3, LogOut, Activity, Sparkles, ChevronsUpDown, Building, UserPlus, CalendarOff, BrainCircuit, Eye, Lock } from "lucide-react";
+import { Users, UserCheck, UserX, TrendingUp, Loader2, BarChart3, LogOut, Activity, Sparkles, ChevronsUpDown, Building, UserPlus, CalendarOff, BrainCircuit, Eye, Lock, Clock } from "lucide-react";
 import Link from 'next/link';
 import { AnimatedCounter } from "@/components/animated-counter";
 import { useEffect, useState, useMemo, useCallback } from "react";
