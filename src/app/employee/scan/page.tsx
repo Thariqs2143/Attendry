@@ -216,7 +216,10 @@ export default function QRScannerPage() {
 
         const timeDiffMinutes = (now.getTime() - shiftStart.getTime()) / (1000 * 60);
 
-        if (timeDiffMinutes > gamification.gracePeriodMinutes) {
+        if (timeDiffMinutes <= gamification.gracePeriodMinutes) {
+            attendanceStatus = 'On-time';
+            pointsChange = gamification.onTimePoints;
+        } else {
             isLate = true;
             if (timeDiffMinutes <= gamification.lateCategory1Minutes) {
                 attendanceStatus = 'Late Category 1';
@@ -232,9 +235,6 @@ export default function QRScannerPage() {
                 pointsChange = gamification.absentPoints;
                 isLate = false;
             }
-        } else {
-            attendanceStatus = 'On-time';
-            pointsChange = gamification.onTimePoints;
         }
         
         if (isLate) {

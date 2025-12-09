@@ -265,25 +265,25 @@ export default function FaceAttendancePage(): JSX.Element {
         
         const timeDiffMinutes = (now.getTime() - shiftStart.getTime()) / 60000;
 
-        if (timeDiffMinutes > gamification.gracePeriodMinutes) {
-          isLate = true;
-          if (timeDiffMinutes <= gamification.lateCategory1Minutes) {
-            attendanceStatus = 'Late Category 1';
-            pointsChange = gamification.lateCategory1Points;
-          } else if (timeDiffMinutes <= gamification.lateCategory2Minutes) {
-            attendanceStatus = 'Late Category 2';
-            pointsChange = gamification.lateCategory2Points;
-          } else if (timeDiffMinutes <= gamification.lateCategory3Minutes) {
-            attendanceStatus = 'Late Category 3';
-            pointsChange = gamification.lateCategory3Points;
-          } else {
-            attendanceStatus = 'Absent';
-            pointsChange = gamification.absentPoints;
-            isLate = false;
-          }
+        if (timeDiffMinutes <= gamification.gracePeriodMinutes) {
+          attendanceStatus = 'On-time';
+          pointsChange = gamification.onTimePoints;
         } else {
-            attendanceStatus = 'On-time';
-            pointsChange = gamification.onTimePoints;
+            isLate = true;
+            if (timeDiffMinutes <= gamification.lateCategory1Minutes) {
+                attendanceStatus = 'Late Category 1';
+                pointsChange = gamification.lateCategory1Points;
+            } else if (timeDiffMinutes <= gamification.lateCategory2Minutes) {
+                attendanceStatus = 'Late Category 2';
+                pointsChange = gamification.lateCategory2Points;
+            } else if (timeDiffMinutes <= gamification.lateCategory3Minutes) {
+                attendanceStatus = 'Late Category 3';
+                pointsChange = gamification.lateCategory3Points;
+            } else {
+                attendanceStatus = 'Absent';
+                pointsChange = gamification.absentPoints;
+                isLate = false;
+            }
         }
         
         if (isLate) {
@@ -373,12 +373,14 @@ export default function FaceAttendancePage(): JSX.Element {
           const distance = getDistance(pos.coords.latitude, pos.coords.longitude, shopData.latitude!, shopData.longitude!);
           if (distance > 100) {
             toast({ variant: 'destructive', title: 'Location Mismatch', description: `You are ${Math.round(distance)}m away from the shop.` });
+            setStatus('idle');
             return;
           }
 
           const blob = await captureFrameAsBlob();
           if (!blob) {
             toast({ variant: 'destructive', title: 'Capture Failed', description: 'Could not capture image from camera.' });
+            setStatus('idle');
             return;
           }
 
