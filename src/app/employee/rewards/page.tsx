@@ -73,116 +73,108 @@ export default function RewardsPage() {
     const [weeklyStats, setWeeklyStats] = useState<WeeklyStat>({ onTime: 0, late: 0 });
     const [loadingStats, setLoadingStats] = useState(true);
 
+    // Effect 1: Handle user authentication state
     useEffect(() => {
         const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-            if (!user) {
+            if (user) {
+                // Set a temporary profile to trigger other effects
+                setUserProfile({ uid: user.uid } as AppUser);
+            } else {
                 setLoading(false);
                 router.push('/employee/login');
-                return;
             }
+        });
+        return () => unsubscribeAuth();
+    }, [router]);
 
-            const db = getFirestore();
-            const userDocRef = doc(db, "users", user.uid);
+    // Effect 2: Set up real-time listener for user profile (points, streak, etc.)
+    useEffect(() => {
+        if (!userProfile?.uid) return;
 
-            const unsubscribeProfile = onSnapshot(userDocRef, (userDocSnap) => {
-                if (userDocSnap.exists()) {
-                    const profile = { id: userDocSnap.id, ...userDocSnap.data() } as AppUser;
-                    setUserProfile(profile);
-
-                    if (profile.shopId && profile.id) {
-                        // These functions will now set up their own real-time listeners.
-                        fetchRank(profile.id, profile.shopId);
-                        fetchWeeklySummary(profile.id, profile.shopId);
-                    }
-                } else {
-                    router.push('/employee/login');
-                }
-                setLoading(false);
-            }, (error) => {
-                console.error("Error fetching user profile in real-time:", error);
-                setLoading(false);
-            });
-
-            return () => unsubscribeProfile();
+        const db = getFirestore();
+        const userDocRef = doc(db, "users", userProfile.uid);
+        const unsubscribeProfile = onSnapshot(userDocRef, (userDocSnap) => {
+            if (userDocSnap.exists()) {
+                const profileData = { id: userDocSnap.id, ...userDocSnap.data() } as AppUser;
+                setUserProfile(profileData);
+            } else {
+                router.push('/employee/login');
+            }
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching user profile:", error);
+            setLoading(false);
         });
 
-        // Set up real-time listener for gamification settings
-        const fetchSettings = (shopId: string) => {
-            const db = getFirestore();
-            const settingsDocRef = doc(db, 'shops', shopId, 'config', 'main');
-            return onSnapshot(settingsDocRef, (settingsSnap) => {
-                if (settingsSnap.exists() && settingsSnap.data().gamification) {
-                    setGamificationSettings({ ...defaultGamificationSettings, ...settingsSnap.data().gamification });
+        return () => unsubscribeProfile();
+    }, [userProfile?.uid, router]);
+
+    // Effect 3: Set up listeners for shop-specific data (rank, settings, weekly stats)
+    useEffect(() => {
+        if (!userProfile?.shopId || !userProfile?.id) return;
+
+        const db = getFirestore();
+        const shopId = userProfile.shopId;
+        const employeeId = userProfile.id;
+
+        // Listener for gamification settings
+        const settingsDocRef = doc(db, 'shops', shopId, 'config', 'main');
+        const unsubscribeSettings = onSnapshot(settingsDocRef, (settingsSnap) => {
+            if (settingsSnap.exists() && settingsSnap.data().gamification) {
+                setGamificationSettings({ ...defaultGamificationSettings, ...settingsSnap.data().gamification });
+            }
+        });
+
+        // Listener for user's rank
+        const usersCollectionRef = collection(db, 'shops', shopId, 'employees');
+        const qRank = query(usersCollectionRef, orderBy('points', 'desc'));
+        const unsubscribeRank = onSnapshot(qRank, (querySnapshot) => {
+            const userRank = querySnapshot.docs.findIndex(doc => doc.id === employeeId) + 1;
+            setRank(userRank);
+        });
+        
+        // Listener for weekly summary
+        setLoadingStats(true);
+        const now = new Date();
+        const weekStart = startOfWeek(now);
+        const weekEnd = endOfWeek(now);
+        const attendanceRef = collection(db, 'shops', shopId, 'attendance');
+        const qSummary = query(
+            attendanceRef, 
+            where('userId', '==', employeeId),
+            where('checkInTime', '>=', weekStart),
+            where('checkInTime', '<=', weekEnd)
+        );
+        const unsubscribeSummary = onSnapshot(qSummary, (snapshot) => {
+            let onTimeCount = 0;
+            let lateCount = 0;
+            snapshot.forEach(doc => {
+                const record = doc.data() as AttendanceRecord;
+                if (record.status === 'On-time') {
+                    onTimeCount++;
+                } else if (record.status.startsWith('Late')) {
+                    lateCount++;
                 }
             });
-        };
-        
-        const fetchRank = (employeeId: string, shopId: string) => {
-            const db = getFirestore();
-            const usersCollectionRef = collection(db, 'shops', shopId, 'employees');
-            const q = query(usersCollectionRef, orderBy('points', 'desc'));
-            
-            return onSnapshot(q, (querySnapshot) => {
-                const userRank = querySnapshot.docs.findIndex(doc => doc.id === employeeId) + 1;
-                setRank(userRank);
-            });
-        };
-        
-        const fetchWeeklySummary = (employeeId: string, shopId: string) => {
-            setLoadingStats(true);
-            const db = getFirestore();
-            const now = new Date();
-            const weekStart = startOfWeek(now);
-            const weekEnd = endOfWeek(now);
+            setWeeklyStats({ onTime: onTimeCount, late: lateCount });
+            setLoadingStats(false);
+        }, (error) => {
+            console.error("Error fetching weekly summary:", error);
+            setLoadingStats(false);
+        });
 
-            const attendanceRef = collection(db, 'shops', shopId, 'attendance');
-            const q = query(
-                attendanceRef, 
-                where('userId', '==', employeeId),
-                where('checkInTime', '>=', weekStart),
-                where('checkInTime', '<=', weekEnd)
-            );
-            
-            return onSnapshot(q, (snapshot) => {
-                let onTimeCount = 0;
-                let lateCount = 0;
-                snapshot.forEach(doc => {
-                    const record = doc.data() as AttendanceRecord;
-                    if (record.status === 'On-time') {
-                        onTimeCount++;
-                    } else if (record.status.startsWith('Late')) {
-                        lateCount++;
-                    }
-                });
-                setWeeklyStats({ onTime: onTimeCount, late: lateCount });
-                setLoadingStats(false);
-            }, (error) => {
-                console.error("Error fetching weekly summary:", error);
-                setLoadingStats(false);
-            });
-        };
 
-        // When userProfile is available, set up listeners for its associated shop
-        let unsubscribeSettings: () => void = () => {};
-        let unsubscribeRank: () => void = () => {};
-        let unsubscribeSummary: () => void = () => {};
-        
-        if (userProfile?.shopId && userProfile.id) {
-            unsubscribeSettings = fetchSettings(userProfile.shopId);
-            unsubscribeRank = fetchRank(userProfile.id, userProfile.shopId);
-            unsubscribeSummary = fetchWeeklySummary(userProfile.id, userProfile.shopId);
-        }
-
+        // Cleanup all listeners when component unmounts or shopId changes
         return () => {
-            unsubscribeAuth();
             unsubscribeSettings();
             unsubscribeRank();
             unsubscribeSummary();
         };
-    }, [router, userProfile?.id, userProfile?.shopId]);
+
+    }, [userProfile?.shopId, userProfile?.id]);
 
 
-  if (loading || !userProfile) {
+  if (loading || !userProfile?.name) { // Wait for full profile load
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
