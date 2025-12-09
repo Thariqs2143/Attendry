@@ -15,6 +15,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { setHours, setMinutes, setSeconds, startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns';
 
 type ScanStatus = 'idle' | 'scanning' | 'success' | 'error' | 'processing';
+type PermissionStatus = 'prompt' | 'granted' | 'denied';
+
 type AttendanceRecord = {
     id: string;
     checkInTime: Timestamp;
@@ -63,9 +65,10 @@ export default function FaceAttendancePage() {
   const [status, setStatus] = useState<ScanStatus>('idle');
   const [userProfile, setUserProfile] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
-  const [hasLocationPermission, setHasLocationPermission] = useState<boolean | null>(null);
-  const [permissionsReady, setPermissionsReady] = useState(false);
+  
+  const [cameraPermission, setCameraPermission] = useState<PermissionStatus>('prompt');
+  const [locationPermission, setLocationPermission] = useState<PermissionStatus>('prompt');
+
   const [activeCheckIn, setActiveCheckIn] = useState<AttendanceRecord | null>(null);
   const [hasCompletedDay, setHasCompletedDay] = useState(false);
   const [currentDate, setCurrentDate] = useState('');
@@ -74,6 +77,7 @@ export default function FaceAttendancePage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [permissionsReady, setPermissionsReady] = useState(false);
 
   useEffect(() => {
     setCurrentDate(new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
@@ -111,51 +115,11 @@ export default function FaceAttendancePage() {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
     }
   }, []);
-  
-  const requestAndSetupPermissions = useCallback(async () => {
-    let cameraGranted = false;
-    let locationGranted = false;
-
-    // Request Camera
-    try {
-      if (streamRef.current) stopCamera(); // Stop any existing stream
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-      setHasCameraPermission(true);
-      cameraGranted = true;
-    } catch (error) {
-      setHasCameraPermission(false);
-      console.error('Camera permission error:', error);
-    }
-
-    // Request Location
-    try {
-      await new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true });
-      });
-      setHasLocationPermission(true);
-      locationGranted = true;
-    } catch (error) {
-      setHasLocationPermission(false);
-      console.error('Location permission error:', error);
-    }
-
-    if (cameraGranted && locationGranted) {
-      setPermissionsReady(true);
-    } else {
-      setPermissionsReady(false);
-      if (!cameraGranted) toast({ variant: 'destructive', title: 'Camera Access Denied' });
-      if (!locationGranted) toast({ variant: 'destructive', title: 'Location Access Denied' });
-    }
-  }, [stopCamera, toast]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -188,15 +152,50 @@ export default function FaceAttendancePage() {
       stopCamera();
     };
   }, [router, checkAttendanceStatusForToday, stopCamera]);
-
-  // Combined effect for permissions
+  
+  // This effect handles permissions and camera setup
   useEffect(() => {
-    if (typeof window !== 'undefined' && userProfile && !hasCompletedDay) {
-        requestAndSetupPermissions();
+    const requestPermissions = async () => {
+        let locPermission: PermissionStatus = 'denied';
+        let camPermission: PermissionStatus = 'denied';
+
+        // Request Location
+        try {
+            await new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true });
+            });
+            locPermission = 'granted';
+        } catch (error) {
+            console.error('Location permission error:', error);
+        }
+        setLocationPermission(locPermission);
+
+        // Request Camera
+        try {
+            if (streamRef.current) stopCamera();
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+            streamRef.current = stream;
+            camPermission = 'granted';
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+            }
+        } catch (error) {
+            console.error('Camera permission error:', error);
+        }
+        setCameraPermission(camPermission);
+
+        if (locPermission === 'granted' && camPermission === 'granted') {
+            setPermissionsReady(true);
+        }
+    };
+    
+    if (userProfile && !hasCompletedDay) {
+        requestPermissions();
     }
-    // Cleanup camera on navigate away
+
+    // Cleanup camera on component unmount
     return () => stopCamera();
-  }, [userProfile, hasCompletedDay, requestAndSetupPermissions, stopCamera]);
+  }, [userProfile, hasCompletedDay, stopCamera]);
 
   const captureFrame = useCallback((): string | null => {
     const video = videoRef.current;
@@ -467,12 +466,45 @@ export default function FaceAttendancePage() {
             )
         }
         return (
-          <div className="flex flex-col items-center gap-2 text-center">
-             <p className="text-lg font-semibold">Ready to mark attendance?</p>
-             <p className="text-sm text-muted-foreground">Click the button to check your location and mark attendance.</p>
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50">
+             <p className="text-lg font-semibold text-foreground">Ready to mark attendance?</p>
+             <p className="text-sm text-muted-foreground">Click the button to check your location.</p>
           </div>
         )
     }
+  }
+  
+  const renderCameraContent = () => {
+    if (cameraPermission === 'prompt' || locationPermission === 'prompt') {
+      return (
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <p className="mt-4 font-semibold">Getting Permissions...</p>
+        </div>
+      );
+    }
+
+    if (cameraPermission === 'denied') {
+        return (
+            <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white p-4 text-center">
+                <CameraOff className="h-10 w-10 mb-4"/>
+                <p className="font-semibold">Camera Access Required</p>
+                <p className="text-sm">Please allow camera access to use this feature.</p>
+            </div>
+        );
+    }
+    
+    // Only show "Ready to mark" text when camera is on and user has not checked in/out
+    if (status === 'idle' && !activeCheckIn && !hasCompletedDay) {
+        return (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/30 p-4 text-center text-white">
+             <p className="text-lg font-semibold drop-shadow-md">Ready to mark attendance?</p>
+             <p className="text-sm drop-shadow-md">Click the button below to start.</p>
+          </div>
+        );
+    }
+    
+    return null;
   }
 
   if (loading || !userProfile) {
@@ -503,26 +535,10 @@ export default function FaceAttendancePage() {
                     className="w-full h-full object-cover scale-x-[-1] transition-opacity duration-300"
                     autoPlay 
                     muted 
-                    playsInline 
+                    playsInline
+                    style={{ display: cameraPermission === 'granted' ? 'block' : 'none' }}
                 />
-                {!permissionsReady && (
-                    <div className="absolute inset-0 bg-background flex flex-col items-center justify-center text-muted-foreground p-4">
-                        <Loader2 className="h-10 w-10 mb-4 animate-spin"/>
-                        <p className="font-semibold">Getting Permissions...</p>
-                    </div>
-                )}
-                {hasCameraPermission === false && (
-                    <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white p-4 text-center">
-                        <CameraOff className="h-10 w-10 mb-4"/>
-                        <p className="font-semibold">Camera Access Required</p>
-                        <p className="text-sm">Please allow camera access to use this feature.</p>
-                    </div>
-                )}
-                {status === 'idle' && !activeCheckIn && !hasCompletedDay && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    {renderStatus()}
-                  </div>
-                )}
+                {renderCameraContent()}
               </div>
           )}
         </CardContent>
@@ -534,7 +550,7 @@ export default function FaceAttendancePage() {
                     Your location is verified and a photo is captured for attendance records visible to your manager.
                 </AlertDescription>
             </Alert>
-            {(hasCameraPermission === false || hasLocationPermission === false) && (
+            {(cameraPermission === 'denied' || locationPermission === 'denied') && (
                 <Alert variant="destructive">
                     <CameraOff className="h-4 w-4" />
                     <AlertTitle>Permissions Denied</AlertTitle>
