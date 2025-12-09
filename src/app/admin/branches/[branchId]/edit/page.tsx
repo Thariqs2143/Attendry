@@ -5,7 +5,6 @@ import { useRouter, useParams } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Store, ArrowLeft, MapPin } from 'lucide-react';
 import { useEffect, useState, Suspense } from 'react';
@@ -14,6 +13,7 @@ import { getFirestore } from 'firebase/firestore';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { onAuthStateChanged, type User as AuthUser, getAuth } from 'firebase/auth';
 import Link from 'next/link';
+import { Loader } from '@googlemaps/js-api-loader';
 
 type ShopProfile = {
     shopName: string;
@@ -33,6 +33,7 @@ function EditBranchContent() {
     const { toast } = useToast();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [locationLoading, setLocationLoading] = useState(false);
     const [authUser, setAuthUser] = useState<AuthUser | null>(null);
     const [profile, setProfile] = useState<Partial<ShopProfile>>({});
 
@@ -69,13 +70,58 @@ function EditBranchContent() {
         fetchBranch();
     }, [authUser, branchId, router, toast]);
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;
         setProfile(prev => ({ ...prev, [id]: value }));
     };
     
     const handleSelectChange = (value: string) => {
         setProfile(prev => ({...prev, businessType: value}));
+    };
+
+    const handleFetchLocation = async () => {
+        setLocationLoading(true);
+        if (!navigator.geolocation) {
+            toast({ title: "Geolocation not supported", variant: "destructive" });
+            setLocationLoading(false);
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(async (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            
+            const loader = new Loader({
+                apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
+                version: "weekly",
+            });
+
+            try {
+                const { Geocoder } = await loader.importLibrary("geocoding");
+                const geocoder = new Geocoder();
+                const response = await geocoder.geocode({ location: { lat, lng } });
+                
+                if (response.results[0]) {
+                    setProfile(prev => ({
+                        ...prev,
+                        latitude: lat.toString(),
+                        longitude: lng.toString(),
+                        address: response.results[0].formatted_address
+                    }));
+                    toast({ title: "Location Updated!", description: "Address and coordinates have been updated." });
+                } else {
+                    toast({ title: "No address found", variant: "destructive" });
+                }
+            } catch (error) {
+                console.error("Geocoding error:", error);
+                toast({ title: "Could not fetch address", variant: "destructive" });
+            } finally {
+                setLocationLoading(false);
+            }
+        }, () => {
+            toast({ title: "Location Access Denied", variant: "destructive" });
+            setLocationLoading(false);
+        });
     };
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -169,26 +215,25 @@ function EditBranchContent() {
                         <Input id="gstNumber" name="gstNumber" value={profile.gstNumber || ''} onChange={handleInputChange} />
                     </div>
                 </div>
-                <div className="space-y-2">
-                    <Label htmlFor="address">Full Branch Address *</Label>
-                    <Textarea id="address" name="address" value={profile.address || ''} onChange={handleInputChange} required />
-                </div>
+                
                 <div className="space-y-4 rounded-lg border-2 p-4">
                     <div className='flex items-start gap-3'>
                         <MapPin className='h-5 w-5 text-primary mt-1' />
                         <div>
-                            <h3 className="font-semibold">Branch Location Coordinates *</h3>
-                            <p className="text-xs text-muted-foreground">Required for Face Attendance. Go to Google Maps, right-click on your branch's location, and click the coordinates to copy them.</p>
+                            <h3 className="font-semibold">Branch Location & Address *</h3>
+                            <p className="text-xs text-muted-foreground">Update the branch's location and address automatically.</p>
                         </div>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                            <Label htmlFor="latitude">Latitude *</Label>
-                            <Input id="latitude" name="latitude" placeholder="e.g., 11.0168" value={profile.latitude || ''} onChange={handleInputChange} required />
-                        </div>
-                        <div className="space-y-1">
-                            <Label htmlFor="longitude">Longitude *</Label>
-                            <Input id="longitude" name="longitude" placeholder="e.g., 76.9558" value={profile.longitude || ''} onChange={handleInputChange} required />
+                    <Button type="button" onClick={handleFetchLocation} disabled={locationLoading} className="w-full">
+                        {locationLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4" />}
+                        Update to My Current Location
+                    </Button>
+                    <div className="space-y-2 pt-2 border-t">
+                        <Label>Current Address</Label>
+                        <p className="text-sm text-muted-foreground p-3 bg-muted rounded-md min-h-[40px]">{profile.address}</p>
+                        <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
+                            <p>Lat: {profile.latitude || 'N/A'}</p>
+                            <p>Lon: {profile.longitude || 'N/A'}</p>
                         </div>
                     </div>
                 </div>

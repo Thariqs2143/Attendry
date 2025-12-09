@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Store, ArrowLeft, Lock, MapPin } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -17,16 +16,22 @@ import { onAuthStateChanged, type User as AuthUser } from 'firebase/auth';
 import Link from 'next/link';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Loader } from '@googlemaps/js-api-loader';
 
 export default function AddBranchPage() {
     const router = useRouter();
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
+    const [locationLoading, setLocationLoading] = useState(false);
     const [authUser, setAuthUser] = useState<AuthUser | null>(null);
     const [ownerProfile, setOwnerProfile] = useState<Partial<User>>({});
     const [businessType, setBusinessType] = useState('');
     const { hasReachedBranchLimit, canAccessFeature } = useSubscription();
     const [branchCount, setBranchCount] = useState(0);
+
+    const [address, setAddress] = useState('');
+    const [latitude, setLatitude] = useState('');
+    const [longitude, setLongitude] = useState('');
 
     const isLocked = !canAccessFeature('MULTI_BRANCH') || hasReachedBranchLimit(branchCount + 1); // +1 to account for the new branch
 
@@ -34,18 +39,14 @@ export default function AddBranchPage() {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             if (user) {
                 setAuthUser(user);
-                // Fetch owner's main profile to pre-fill some info
                 const ownerDocRef = doc(db, 'users', user.uid);
                 const ownerSnap = await getDoc(ownerDocRef);
                 if (ownerSnap.exists()) {
                     setOwnerProfile(ownerSnap.data());
                 }
-
-                // Fetch current branch count
-                 const branchesQuery = query(collection(db, "shops"), where("ownerId", "==", user.uid));
-                 const branchesSnapshot = await getDocs(branchesQuery);
-                 setBranchCount(branchesSnapshot.size);
-
+                const branchesQuery = query(collection(db, "shops"), where("ownerId", "==", user.uid));
+                const branchesSnapshot = await getDocs(branchesQuery);
+                setBranchCount(branchesSnapshot.size);
             } else {
                 router.replace('/admin/login');
             }
@@ -53,15 +54,53 @@ export default function AddBranchPage() {
         return () => unsubscribe();
     }, [router]);
 
+    const handleFetchLocation = async () => {
+        setLocationLoading(true);
+        if (!navigator.geolocation) {
+            toast({ title: "Geolocation not supported", description: "Your browser doesn't support location services.", variant: "destructive" });
+            setLocationLoading(false);
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(async (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            setLatitude(lat.toString());
+            setLongitude(lng.toString());
+
+            const loader = new Loader({
+                apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
+                version: "weekly",
+            });
+
+            try {
+                const { Geocoder } = await loader.importLibrary("geocoding");
+                const geocoder = new Geocoder();
+                const response = await geocoder.geocode({ location: { lat, lng } });
+                
+                if (response.results[0]) {
+                    setAddress(response.results[0].formatted_address);
+                    toast({ title: "Location Found!", description: "Address has been filled automatically." });
+                } else {
+                    toast({ title: "No address found", variant: "destructive" });
+                }
+            } catch (error) {
+                console.error("Geocoding error:", error);
+                toast({ title: "Could not fetch address", variant: "destructive" });
+            } finally {
+                setLocationLoading(false);
+            }
+        }, () => {
+            toast({ title: "Location Access Denied", description: "Please allow location access in your browser.", variant: "destructive" });
+            setLocationLoading(false);
+        });
+    };
+
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
         if (isLocked) {
-            toast({
-                title: "Upgrade Required",
-                description: "You have reached your branch limit. Please upgrade your plan to add more.",
-                variant: "destructive"
-            });
+            toast({ title: "Upgrade Required", description: "You have reached your branch limit. Please upgrade your plan.", variant: "destructive" });
             return;
         }
 
@@ -69,20 +108,16 @@ export default function AddBranchPage() {
 
         const formData = new FormData(e.currentTarget);
         const shopName = formData.get('shopName') as string;
-        const address = formData.get('address') as string;
         const email = formData.get('email') as string;
         const gstNumber = formData.get('gstNumber') as string;
-        const latitude = formData.get('latitude') as string;
-        const longitude = formData.get('longitude') as string;
 
         if (!shopName || !businessType || !address || !authUser || !latitude || !longitude) {
-             toast({ title: "Error", description: "Please fill out all required fields, including location coordinates.", variant: "destructive" });
+             toast({ title: "Error", description: "Please fill out all required fields, including location and address.", variant: "destructive" });
              setLoading(false);
              return;
         }
 
         try {
-            // 1. Create the new shop document in the 'shops' collection first.
             const newShopRef = doc(collection(db, "shops"));
             const newShopData = {
                 id: newShopRef.id,
@@ -99,27 +134,19 @@ export default function AddBranchPage() {
             };
             await setDoc(newShopRef, newShopData);
             
-            // 2. Now that the shop exists and ownership is established,
-            // add the owner as an employee in this new branch's subcollection.
             const ownerAsEmployeeData = {
                 ...ownerProfile,
-                uid: authUser.uid, // ensure the auth UID is set
+                uid: authUser.uid,
                 shopId: newShopRef.id,
                 isProfileComplete: true,
                 status: 'Active',
                 role: 'Admin',
             };
-            // Since this is the owner, we can use their UID as the doc ID for consistency.
             const ownerAsEmployeeRef = doc(db, 'shops', newShopRef.id, 'employees', authUser.uid);
             await setDoc(ownerAsEmployeeRef, ownerAsEmployeeData);
 
-            toast({
-                title: "Branch Created!",
-                description: `${shopName} has been added to your account.`,
-            });
-            
+            toast({ title: "Branch Created!", description: `${shopName} has been added to your account.` });
             router.push('/admin');
-
         } catch (error) {
             console.error("Error creating new branch:", error);
             toast({ title: "Error", description: "Could not create the new branch. Please try again.", variant: "destructive" });
@@ -176,28 +203,24 @@ export default function AddBranchPage() {
                         <Input id="gstNumber" name="gstNumber" placeholder="e.g., 29ABCDE1234F1Z6" />
                     </div>
                 </div>
-                <div className="space-y-2">
-                    <Label htmlFor="address">Full Branch Address *</Label>
-                    <Textarea id="address" name="address" placeholder="e.g., 456 Market Street, City, State, Pincode" required />
-                </div>
                 <div className="space-y-4 rounded-lg border-2 p-4">
                     <div className='flex items-start gap-3'>
                         <MapPin className='h-5 w-5 text-primary mt-1' />
                         <div>
-                            <h3 className="font-semibold">Branch Location Coordinates *</h3>
-                            <p className="text-xs text-muted-foreground">Required for Face Attendance. Go to Google Maps, right-click on your branch's location, and click the coordinates to copy them.</p>
+                            <h3 className="font-semibold">Branch Location & Address *</h3>
+                            <p className="text-xs text-muted-foreground">Click the button to automatically find the branch's address and coordinates for face attendance.</p>
                         </div>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                            <Label htmlFor="latitude">Latitude *</Label>
-                            <Input id="latitude" name="latitude" placeholder="e.g., 11.0168" required />
+                    <Button type="button" onClick={handleFetchLocation} disabled={locationLoading} className="w-full">
+                        {locationLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4" />}
+                        Use My Current Location
+                    </Button>
+                    {address && (
+                        <div className="space-y-2 pt-2 border-t">
+                            <Label>Detected Address</Label>
+                            <p className="text-sm text-muted-foreground p-3 bg-muted rounded-md">{address}</p>
                         </div>
-                        <div className="space-y-1">
-                            <Label htmlFor="longitude">Longitude *</Label>
-                            <Input id="longitude" name="longitude" placeholder="e.g., 76.9558" required />
-                        </div>
-                    </div>
+                    )}
                 </div>
             </div>
             <div className="flex justify-center pt-4">

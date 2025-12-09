@@ -5,26 +5,21 @@ import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Store, Upload, MapPin } from 'lucide-react';
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { doc, setDoc, writeBatch, collection, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { User } from '@/app/admin/employees/page';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Card, CardContent } from '@/components/ui/card';
-
-type Suggestion = {
-    place_id: number;
-    display_name: string;
-};
+import { Loader } from '@googlemaps/js-api-loader';
 
 export default function AdminCompleteProfilePage() {
     const router = useRouter();
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
+    const [locationLoading, setLocationLoading] = useState(false);
     const [email, setEmail] = useState('');
     const [name, setName] = useState('');
     const [uid, setUid] = useState('');
@@ -35,11 +30,7 @@ export default function AdminCompleteProfilePage() {
     const [phone, setPhone] = useState('');
     const [latitude, setLatitude] = useState('');
     const [longitude, setLongitude] = useState('');
-
     const [address, setAddress] = useState('');
-    const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-    const [isSearching, setIsSearching] = useState(false);
-    const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         const adminUID = localStorage.getItem('adminUID');
@@ -72,63 +63,61 @@ export default function AdminCompleteProfilePage() {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error("Cloudinary upload error:", errorText);
-                throw new Error(`Upload failed with status: ${response.status}`);
+                throw new Error(`Upload failed: ${errorText}`);
             }
             
             const data = await response.json();
-            
-            if (data.secure_url) {
-                setImageUrl(data.secure_url);
-                toast({ title: "Photo Uploaded!", description: "Your profile photo has been updated." });
-            } else {
-                console.error("Cloudinary upload failed:", data);
-                throw new Error('Image URL not found in response');
-            }
+            setImageUrl(data.secure_url);
+            toast({ title: "Photo Uploaded!", description: "Your profile photo has been updated." });
         } catch (error) {
-            console.error("Error uploading photo to Cloudinary:", error);
+            console.error("Error uploading photo:", error);
             toast({ title: "Upload Failed", description: "Could not upload your photo.", variant: "destructive" });
         } finally {
             setUploading(false);
         }
     };
     
-    const fetchSuggestions = useCallback(async (query: string) => {
-        if (query.length < 3) {
-            setSuggestions([]);
+    const handleFetchLocation = async () => {
+        setLocationLoading(true);
+        if (!navigator.geolocation) {
+            toast({ title: "Geolocation not supported", description: "Your browser doesn't support location services.", variant: "destructive" });
+            setLocationLoading(false);
             return;
         }
-        setIsSearching(true);
-        try {
-            const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&countrycodes=in&limit=5`);
-            const data: Suggestion[] = await response.json();
-            setSuggestions(data);
-        } catch (error) {
-            console.error("Failed to fetch address suggestions:", error);
-            setSuggestions([]);
-        } finally {
-            setIsSearching(false);
-        }
-    }, []);
 
-    const handleAddressChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        const value = e.target.value;
-        setAddress(value);
+        navigator.geolocation.getCurrentPosition(async (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            setLatitude(lat.toString());
+            setLongitude(lng.toString());
 
-        if (debounceTimeoutRef.current) {
-            clearTimeout(debounceTimeoutRef.current);
-        }
+            const loader = new Loader({
+                apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
+                version: "weekly",
+            });
 
-        debounceTimeoutRef.current = setTimeout(() => {
-            fetchSuggestions(value);
-        }, 500); // 500ms debounce
+            try {
+                const { Geocoder } = await loader.importLibrary("geocoding");
+                const geocoder = new Geocoder();
+                const response = await geocoder.geocode({ location: { lat, lng } });
+                
+                if (response.results[0]) {
+                    setAddress(response.results[0].formatted_address);
+                    toast({ title: "Location Found!", description: "Address and coordinates have been filled automatically." });
+                } else {
+                    toast({ title: "No address found", variant: "destructive" });
+                }
+            } catch (error) {
+                console.error("Geocoding error:", error);
+                toast({ title: "Could not fetch address", variant: "destructive" });
+            } finally {
+                setLocationLoading(false);
+            }
+        }, () => {
+            toast({ title: "Location Access Denied", description: "Please allow location access in your browser.", variant: "destructive" });
+            setLocationLoading(false);
+        });
     };
-
-    const handleSuggestionClick = (suggestion: Suggestion) => {
-        setAddress(suggestion.display_name);
-        setSuggestions([]);
-    };
-
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -138,9 +127,8 @@ export default function AdminCompleteProfilePage() {
         const shopName = formData.get('shopName') as string;
         const gstNumber = formData.get('gstNumber') as string;
 
-
         if (!shopName || !businessType || !address || !phone || !latitude || !longitude) {
-             toast({ title: "Error", description: "Please fill out all required fields, including location coordinates.", variant: "destructive" });
+             toast({ title: "Error", description: "Please fill out all required fields.", variant: "destructive" });
              setLoading(false);
              return;
         }
@@ -154,46 +142,24 @@ export default function AdminCompleteProfilePage() {
         const fallback = shopName.split(' ').map(n => n[0]).join('');
 
         const userAsEmployeeProfile: Partial<User> = {
-            name,
-            email,
-            phone: `+91${phone}`,
-            role: 'Admin',
-            status: 'Active',
-            isProfileComplete: true,
-            fallback,
-            joinDate: new Date().toISOString().split('T')[0],
+            name, email, phone: `+91${phone}`, role: 'Admin', status: 'Active',
+            isProfileComplete: true, fallback, joinDate: new Date().toISOString().split('T')[0],
             imageUrl: imageUrl || `https://placehold.co/100x100.png?text=${fallback}`,
         };
 
         const newShopRef = doc(db, "shops", uid); 
 
         const shopProfile = {
-            id: newShopRef.id,
-            ownerName: name,
-            ownerId: uid,
-            shopName,
-            businessType,
-            address,
-            phone: `+91${phone}`,
-            email,
-            gstNumber,
-            status: 'active',
-            latitude,
-            longitude,
+            id: newShopRef.id, ownerName: name, ownerId: uid, shopName, businessType,
+            address, phone: `+91${phone}`, email, gstNumber, status: 'active', latitude, longitude,
         };
 
         try {
             const batch = writeBatch(db);
-
             const userDocRef = doc(db, "users", uid);
-             const mainUserProfile = {
-                ...userAsEmployeeProfile,
-                shopId: newShopRef.id, 
-             };
+            const mainUserProfile = { ...userAsEmployeeProfile, shopId: newShopRef.id };
             batch.set(userDocRef, mainUserProfile, { merge: true });
-
             batch.set(newShopRef, shopProfile, { merge: true });
-
             const ownerAsEmployeeRef = doc(db, 'shops', newShopRef.id, 'employees', uid);
             batch.set(ownerAsEmployeeRef, { ...userAsEmployeeProfile, shopId: newShopRef.id, uid: uid });
 
@@ -214,19 +180,13 @@ export default function AdminCompleteProfilePage() {
             }
 
             await batch.commit();
-
-
-            toast({
-                title: "Profile Complete!",
-                description: "Welcome! Your shop profile has been created.",
-            });
+            toast({ title: "Profile Complete!", description: "Welcome! Your shop profile has been created." });
             
             localStorage.removeItem('adminUID');
             localStorage.removeItem('adminEmail');
             localStorage.removeItem('adminName');
             
             router.push('/admin');
-
         } catch (error) {
             console.error("Error creating admin profile:", error);
             toast({ title: "Error", description: "Could not save your profile. Please try again.", variant: "destructive" });
@@ -296,40 +256,24 @@ export default function AdminCompleteProfilePage() {
                         <Input id="gstNumber" name="gstNumber" placeholder="e.g. 29ABCDE1234F1Z5" />
                     </div>
                 </div>
-                <div className="relative space-y-2">
-                    <Label htmlFor="address">Full Shop Address *</Label>
-                    <Textarea id="address" name="address" placeholder="e.g. 123 Main Street, City, State, Pincode" required value={address} onChange={handleAddressChange} />
-                     {isSearching && (
-                        <div className="absolute top-full left-0 w-full p-2 z-10">
-                            <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                        </div>
-                    )}
-                    {suggestions.length > 0 && (
-                        <Card className="absolute top-full left-0 w-full max-h-60 overflow-y-auto z-10 shadow-lg">
-                            <CardContent className="p-2">
-                                {suggestions.map(suggestion => (
-                                    <button
-                                        key={suggestion.place_id}
-                                        type="button"
-                                        className="w-full text-left p-2 rounded-md hover:bg-accent text-sm"
-                                        onClick={() => handleSuggestionClick(suggestion)}
-                                    >
-                                        {suggestion.display_name}
-                                    </button>
-                                ))}
-                            </CardContent>
-                        </Card>
-                    )}
-                </div>
-                <div className="space-y-4 rounded-lg border-2 p-4">
+                
+                 <div className="space-y-4 rounded-lg border-2 p-4">
                     <div className='flex items-start gap-3'>
                         <MapPin className='h-5 w-5 text-primary mt-1' />
                         <div>
-                            <h3 className="font-semibold">Shop Location Coordinates</h3>
-                            <p className="text-xs text-muted-foreground">Required for Face Attendance. Go to Google Maps, right-click on your shop's location, and click the coordinates to copy them.</p>
+                            <h3 className="font-semibold">Shop Location & Address *</h3>
+                            <p className="text-xs text-muted-foreground">Click the button to automatically find your address and coordinates. This is required for face attendance.</p>
                         </div>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Button type="button" onClick={handleFetchLocation} disabled={locationLoading} className="w-full">
+                        {locationLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4" />}
+                        Use My Current Location
+                    </Button>
+                    <div className="space-y-2 pt-2 border-t">
+                        <Label htmlFor="address">Address</Label>
+                        <Input id="address" name="address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Auto-filled or type manually" required/>
+                    </div>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-1">
                             <Label htmlFor="latitude">Latitude *</Label>
                             <Input id="latitude" name="latitude" placeholder="e.g., 11.0168" required value={latitude} onChange={(e) => setLatitude(e.target.value)} />

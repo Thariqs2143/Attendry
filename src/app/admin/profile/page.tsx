@@ -5,9 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Save, ArrowLeft, Upload } from 'lucide-react';
+import { Loader2, Save, ArrowLeft, Upload, MapPin } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
 import { doc, getDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
@@ -16,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { onAuthStateChanged, type User as AuthUser } from 'firebase/auth';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Loader } from '@googlemaps/js-api-loader';
 
 type ShopProfile = {
     ownerName?: string;
@@ -24,6 +24,8 @@ type ShopProfile = {
     address?: string;
     email?: string;
     gstNumber?: string;
+    latitude?: string;
+    longitude?: string;
 };
 
 type FullProfile = AppUser & ShopProfile;
@@ -33,17 +35,11 @@ export default function AdminProfilePage() {
     const { toast } = useToast();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    
+    const [locationLoading, setLocationLoading] = useState(false);
     const [authUser, setAuthUser] = useState<AuthUser | null>(null);
     const [profile, setProfile] = useState<Partial<FullProfile>>({
-        name: '',
-        email: '',
-        phone: '',
-        shopName: '',
-        businessType: '',
-        address: '',
-        gstNumber: '',
-        imageUrl: '',
+        name: '', email: '', phone: '', shopName: '', businessType: '',
+        address: '', gstNumber: '', imageUrl: '', latitude: '', longitude: ''
     });
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -75,7 +71,7 @@ export default function AdminProfilePage() {
         return () => unsubscribe();
     }, [router, toast]);
     
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;
         setProfile(prev => ({ ...prev, [id]: value }));
     };
@@ -101,34 +97,68 @@ export default function AdminProfilePage() {
             });
 
             if (!response.ok) {
-                const errorText = await response.text();
-                console.error("Cloudinary upload error:", errorText);
-                throw new Error(`Upload failed with status: ${response.status}`);
+                throw new Error(`Upload failed: ${await response.text()}`);
             }
 
             const data = await response.json();
-
-            if (data.secure_url) {
-                const imageUrl = data.secure_url;
-                setProfile(prev => ({ ...prev, imageUrl: imageUrl }));
-                
-                const userDocRef = doc(db, "users", authUser.uid);
-                await updateDoc(userDocRef, { imageUrl: imageUrl });
-
-                toast({ title: "Photo Uploaded!", description: "Your profile photo has been updated." });
-            } else {
-                console.error("Cloudinary upload failed:", data);
-                const errorText = await response.text();
-                throw new Error(`Image URL not found in response. Raw response: ${errorText}`);
-            }
+            const imageUrl = data.secure_url;
+            setProfile(prev => ({ ...prev, imageUrl: imageUrl }));
+            
+            const userDocRef = doc(db, "users", authUser.uid);
+            await updateDoc(userDocRef, { imageUrl: imageUrl });
+            toast({ title: "Photo Uploaded!", description: "Your profile photo has been updated." });
         } catch (error) {
-            console.error("Error uploading photo to Cloudinary:", error);
-            toast({ title: "Upload Failed", description: "Could not upload your photo.", variant: "destructive" });
+            console.error("Error uploading photo:", error);
+            toast({ title: "Upload Failed", variant: "destructive" });
         } finally {
             setUploading(false);
         }
     };
 
+    const handleFetchLocation = async () => {
+        setLocationLoading(true);
+        if (!navigator.geolocation) {
+            toast({ title: "Geolocation not supported", variant: "destructive" });
+            setLocationLoading(false);
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(async (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            
+            const loader = new Loader({
+                apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
+                version: "weekly",
+            });
+
+            try {
+                const { Geocoder } = await loader.importLibrary("geocoding");
+                const geocoder = new Geocoder();
+                const response = await geocoder.geocode({ location: { lat, lng } });
+                
+                if (response.results[0]) {
+                    setProfile(prev => ({
+                        ...prev,
+                        latitude: lat.toString(),
+                        longitude: lng.toString(),
+                        address: response.results[0].formatted_address
+                    }));
+                    toast({ title: "Location Updated!", description: "Address and coordinates have been updated." });
+                } else {
+                    toast({ title: "No address found", variant: "destructive" });
+                }
+            } catch (error) {
+                console.error("Geocoding error:", error);
+                toast({ title: "Could not fetch address", variant: "destructive" });
+            } finally {
+                setLocationLoading(false);
+            }
+        }, () => {
+            toast({ title: "Location Access Denied", variant: "destructive" });
+            setLocationLoading(false);
+        });
+    };
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -140,7 +170,7 @@ export default function AdminProfilePage() {
             return;
         }
 
-        if (!profile.name || !profile.shopName || !profile.businessType || !profile.address) {
+        if (!profile.name || !profile.shopName || !profile.businessType || !profile.address || !profile.latitude || !profile.longitude) {
              toast({ title: "Error", description: "Please fill out all required fields.", variant: "destructive" });
              setSaving(false);
              return;
@@ -148,35 +178,27 @@ export default function AdminProfilePage() {
 
         try {
             const batch = writeBatch(db);
-
             const userDocRef = doc(db, "users", authUser.uid);
             batch.update(userDocRef, {
-                name: profile.name,
-                email: profile.email || '',
+                name: profile.name, email: profile.email || '',
                 fallback: profile.shopName.split(' ').map(n => n[0]).join(''),
                 imageUrl: profile.imageUrl || '',
             });
             
             const shopDocRef = doc(db, "shops", authUser.uid);
             batch.update(shopDocRef, {
-                ownerName: profile.name,
-                shopName: profile.shopName,
-                businessType: profile.businessType,
-                address: profile.address,
-                email: profile.email || '',
-                gstNumber: profile.gstNumber || '',
+                ownerName: profile.name, shopName: profile.shopName,
+                businessType: profile.businessType, address: profile.address,
+                email: profile.email || '', gstNumber: profile.gstNumber || '',
+                latitude: profile.latitude, longitude: profile.longitude,
             });
 
             await batch.commit();
-
-            toast({
-                title: "Profile Updated!",
-                description: "Your shop profile has been saved.",
-            });
+            toast({ title: "Profile Updated!", description: "Your shop profile has been saved." });
             router.push('/admin/settings');
         } catch (error) {
             console.error("Error updating profile:", error);
-            toast({ title: "Error", description: "Could not save your profile. Please try again.", variant: "destructive" });
+            toast({ title: "Error", description: "Could not save your profile.", variant: "destructive" });
         } finally {
             setSaving(false);
         }
@@ -258,10 +280,35 @@ export default function AdminProfilePage() {
                         <Input id="gstNumber" value={profile.gstNumber || ''} onChange={handleInputChange} placeholder="e.g. 29ABCDE1234F1Z5" />
                     </div>
                 </div>
-                <div className="space-y-2">
-                    <Label htmlFor="address">Full Shop Address *</Label>
-                    <Textarea id="address" value={profile.address || ''} onChange={handleInputChange} placeholder="e.g. 123 Main Street, City, State, Pincode" required />
+
+                <div className="space-y-4 rounded-lg border-2 p-4">
+                    <div className='flex items-start gap-3'>
+                        <MapPin className='h-5 w-5 text-primary mt-1' />
+                        <div>
+                            <h3 className="font-semibold">Shop Location & Address *</h3>
+                            <p className="text-xs text-muted-foreground">Update your location and address automatically.</p>
+                        </div>
+                    </div>
+                    <Button type="button" onClick={handleFetchLocation} disabled={locationLoading} className="w-full">
+                        {locationLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4" />}
+                        Update to My Current Location
+                    </Button>
+                    <div className="space-y-2 pt-2 border-t">
+                        <Label htmlFor="address">Address</Label>
+                        <Input id="address" name="address" value={profile.address || ''} onChange={(e) => setProfile(prev => ({...prev, address: e.target.value}))} placeholder="Auto-filled or type manually" required />
+                    </div>
+                     <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <Label htmlFor="latitude">Latitude *</Label>
+                            <Input id="latitude" name="latitude" placeholder="e.g., 11.0168" required value={profile.latitude || ''} onChange={(e) => setProfile(prev => ({...prev, latitude: e.target.value}))} />
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="longitude">Longitude *</Label>
+                            <Input id="longitude" name="longitude" placeholder="e.g., 76.9558" required value={profile.longitude || ''} onChange={(e) => setProfile(prev => ({...prev, longitude: e.target.value}))} />
+                        </div>
+                    </div>
                 </div>
+
             </div>
             <div className="flex justify-center pt-4">
                 <Button type="submit" size="lg" className="w-full max-w-sm" disabled={saving || uploading}>
