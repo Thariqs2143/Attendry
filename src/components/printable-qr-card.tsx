@@ -36,15 +36,14 @@ export const PrintableQrCard = forwardRef<HTMLDivElement, PrintableQrCardProps>(
         {/* Main content */}
         <div className="flex-1 flex flex-col items-center justify-between text-center px-8">
 
-          {/* Logo - explicit width/height to avoid stretching */}
-          <div className="w-48 h-16 flex items-center justify-center">
-            {/* Use explicit width/height so image keeps aspect ratio (object-contain) */}
+          {/* Logo */}
+          <div className="w-48 h-auto">
             <Image
               src={logoSrc}
               alt="Attendry Logo"
-              width={300}        // 48 * 4 (tailwind px -> 12rem -> 192px)
-              height={64}        // keeps a 3:1 ratio typical for horizontal logos
-              className="object-contain"
+              width={300}
+              height={100}
+              className="object-contain w-full h-full"
               priority
             />
           </div>
@@ -68,30 +67,12 @@ export const PrintableQrCard = forwardRef<HTMLDivElement, PrintableQrCardProps>(
             )}
           </div>
 
-          {/* CTA Button - centered both axes and balanced height */}
+          {/* CTA Text */}
           <div className="w-full flex flex-col items-center">
-            <div
-              className="
-                bg-[#003F88]
-                text-white
-                font-bold
-                text-3xl
-                py-2
-                px-2
-                rounded-lg
-                shadow-md
-                w-full
-                flex
-                items-center
-                justify-center
-                text-center
-               
-              "
-            >
-              SCAN TO CHECK-IN
-            </div>
-
-            <p className="mt-4 text-lg font-medium text-gray-600 text-center max-w-[320px]">
+             <h2 className="text-3xl font-bold text-[#003F88]">
+                SCAN TO CHECK-IN
+            </h2>
+            <p className="mt-2 text-lg font-medium text-gray-600 text-center max-w-[320px]">
               Employees: Use your phone camera to scan.
             </p>
           </div>
