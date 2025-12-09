@@ -91,24 +91,23 @@ export default function AdminCompleteProfilePage() {
             setLongitude(lng.toString());
 
             try {
-                // Using OpenStreetMap's free Nominatim service
                 const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
                 const data = await response.json();
                 
                 if (data && data.display_name) {
                     setAddress(data.display_name);
-                    toast({ title: "Location Found!", description: "Address has been filled automatically." });
+                    toast({ title: "Location Found!", description: "Address and coordinates have been filled automatically." });
                 } else {
-                    toast({ title: "No address found", description: "Could not find a specific address for your location.", variant: "destructive" });
+                    toast({ title: "No address found", variant: "destructive" });
                 }
             } catch (error) {
                 console.error("Geocoding error:", error);
-                toast({ title: "Could not fetch address", description: "An error occurred while fetching the address.", variant: "destructive" });
+                toast({ title: "Could not fetch address", variant: "destructive" });
             } finally {
                 setLocationLoading(false);
             }
         }, () => {
-            toast({ title: "Location Access Denied", description: "Please allow location access in your browser to use this feature.", variant: "destructive" });
+            toast({ title: "Location Access Denied", description: "Please allow location access in your browser.", variant: "destructive" });
             setLocationLoading(false);
         });
     };
@@ -122,7 +121,7 @@ export default function AdminCompleteProfilePage() {
         const gstNumber = formData.get('gstNumber') as string;
 
         if (!shopName || !businessType || !address || !phone || !latitude || !longitude) {
-             toast({ title: "Error", description: "Please fill out all required fields, including location coordinates.", variant: "destructive" });
+             toast({ title: "Error", description: "Please fill out all required fields.", variant: "destructive" });
              setLoading(false);
              return;
         }
@@ -149,16 +148,21 @@ export default function AdminCompleteProfilePage() {
         };
 
         try {
+            // First, check for referral data before starting the batch
+            const shopDocSnap = await getDoc(newShopRef);
+            const referredBy = shopDocSnap.exists() ? shopDocSnap.data()?.referredBy : null;
+            
             const batch = writeBatch(db);
+            
             const userDocRef = doc(db, "users", uid);
             const mainUserProfile = { ...userAsEmployeeProfile, shopId: newShopRef.id };
             batch.set(userDocRef, mainUserProfile, { merge: true });
+            
             batch.set(newShopRef, shopProfile, { merge: true });
+
             const ownerAsEmployeeRef = doc(db, 'shops', newShopRef.id, 'employees', uid);
             batch.set(ownerAsEmployeeRef, { ...userAsEmployeeProfile, shopId: newShopRef.id, uid: uid });
 
-            const shopDocSnap = await getDoc(newShopRef);
-            const referredBy = shopDocSnap.data()?.referredBy;
             if (referredBy) {
                 const referrerShopRef = doc(db, 'shops', referredBy);
                 const referrerShopSnap = await getDoc(referrerShopRef);
