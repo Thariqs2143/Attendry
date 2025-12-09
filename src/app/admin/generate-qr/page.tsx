@@ -2,23 +2,30 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, QrCode, Download, RefreshCw, Activity, Link as LinkIcon, Users, CheckCircle, XCircle, Camera } from 'lucide-react';
-import { collection, onSnapshot, query, orderBy, Timestamp, doc, getDoc, setDoc, where, getDocs, limit } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebase';
-import { formatDistanceToNow } from 'date-fns';
-import type { User } from '../employees/page';
-import { onAuthStateChanged, type User as AuthUser } from 'firebase/auth';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
-import { PrintableQrCard } from '@/components/printable-qr-card';
-import { useToast } from '@/hooks/use-toast';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import Image from 'next/image';
+import { Expand, QrCode, Loader2, History, Download, X, UserPlus, Calendar as CalendarIcon, Save, RefreshCw, Activity, Edit, ChevronDown } from 'lucide-react';
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
+import { doc, getDoc, addDoc, collection, onSnapshot, query, orderBy, Timestamp, where, getDocs, setDoc, limit } from 'firebase/firestore';
+import { db, auth } from '@/lib/firebase';
+import { format, setHours, setMinutes, setSeconds, formatDistanceToNow } from 'date-fns';
+import type { User } from '../employees/page';
+import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import Link from 'next/link';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
+import { Textarea } from '@/components/ui/textarea';
+import { onAuthStateChanged, type User as AuthUser } from 'firebase/auth';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Switch } from '@/components/ui/switch';
 import { useTheme } from 'next-themes';
+import jsPDF from 'jspdf';
 
 
 type ActivityRecord = {
@@ -27,301 +34,569 @@ type ActivityRecord = {
     userName: string;
     checkInTime: Timestamp;
     checkOutTime?: Timestamp;
-    status: 'On-time' | 'Late' | 'Manual' | 'Absent' | 'Half-day' | 'Grace Period';
+    status: 'On-time' | 'Late' | 'Manual' | 'Absent' | 'Half-day';
     userFallback?: string;
     userImageUrl?: string;
-    locationStatus?: 'Verified' | 'Unverified' | 'Error';
-    imageUrl?: string;
-    checkoutImageUrl?: string;
-    method?: 'Selfie' | 'QR';
 };
 
-const RecentActivity = ({ shopId }: { shopId: string }) => {
-    const [activities, setActivities] = useState<ActivityRecord[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [allEmployees, setAllEmployees] = useState<User[]>([]);
+type QrHistoryRecord = {
+    id: string;
+    generatedAt: Timestamp;
+    qrCodeUrl: string;
+    type: 'permanent' | 'dynamic';
+};
 
+
+const QrGeneratorCard = () => {
+    const { toast } = useToast();
+    const [qrMode, setQrMode] = useState<'permanent' | 'dynamic'>('permanent');
+    const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+    const [shopName, setShopName] = useState('');
+    
+    const [permanentQrUrl, setPermanentQrUrl] = useState('');
+    const [isPermanentGenerated, setIsPermanentGenerated] = useState(false);
+    const [permanentLoading, setPermanentLoading] = useState(true);
+
+    const [dynamicQrUrl, setDynamicQrUrl] = useState('');
+    const [timeLeft, setTimeLeft] = useState(15);
+
+    const { theme, systemTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
+  
     useEffect(() => {
-        if (!shopId) return;
+      setMounted(true);
+    }, []);
+  
+    const currentTheme = theme === 'system' ? systemTheme : theme;
+    const logoSrc = mounted && currentTheme === 'dark' ? '/header-logo-dark.png' : '/header-logo-light.png';
 
-        const fetchEmployees = async () => {
-             const employeesRef = collection(db, 'shops', shopId, 'employees');
-             const empSnapshot = await getDocs(employeesRef);
-             const employeesData = empSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
-             setAllEmployees(employeesData);
-        };
-        fetchEmployees();
-    }, [shopId]);
-
-    useEffect(() => {
-        if (!shopId || allEmployees.length === 0) {
-             setLoading(false);
-             return;
-        };
-
-        setLoading(true);
-        const attendanceRef = collection(db, 'shops', shopId, 'attendance');
-        const q = query(attendanceRef, orderBy('checkInTime', 'desc'), limit(50));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const fetchedActivities = snapshot.docs.map(doc => {
-                const data = doc.data() as ActivityRecord;
-                const employee = allEmployees.find(e => e.uid === data.userId);
-                return { ...data, id: doc.id, userFallback: employee?.fallback, userImageUrl: employee?.imageUrl };
-            });
-            setActivities(fetchedActivities);
-            setLoading(false);
-        }, (error) => {
-            console.error("Error fetching live feed:", error);
-            setLoading(false);
+     
+     useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                setAuthUser(user);
+                 try {
+                    const shopDocRef = doc(db, 'shops', user.uid);
+                    const shopSnap = await getDoc(shopDocRef);
+                    if (shopSnap.exists()) {
+                        setShopName(shopSnap.data().shopName);
+                         const qrHistoryRef = doc(db, 'shops', user.uid, 'qr-history', 'permanent-qr');
+                         const qrSnap = await getDoc(qrHistoryRef);
+                         if (qrSnap.exists()) {
+                             setPermanentQrUrl(qrSnap.data().qrCodeUrl);
+                             setIsPermanentGenerated(true);
+                         }
+                    }
+                } catch(e) {
+                    console.error("Error fetching initial data", e);
+                } finally {
+                    setPermanentLoading(false);
+                }
+            }
         });
         return () => unsubscribe();
-    }, [shopId, allEmployees]);
+    }, []);
+
+    const handleGeneratePermanent = async () => {
+        if (!authUser || !shopName) return;
+        setPermanentLoading(true);
+        const data = encodeURIComponent(`attendry-shop-qr;shopId=${authUser.uid};shopName=${shopName}`);
+        const generatedUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${data}`;
+        setPermanentQrUrl(generatedUrl);
+        setIsPermanentGenerated(true);
+        try {
+            await setDoc(doc(db, 'shops', authUser.uid, 'qr-history', 'permanent-qr'), {
+                shopId: authUser.uid, generatedAt: Timestamp.now(), qrCodeUrl: generatedUrl, type: 'permanent'
+            }, { merge: true });
+        } catch (error) {
+            toast({ title: "Error", description: "Could not save QR code history.", variant: "destructive" });
+        } finally {
+            setPermanentLoading(false);
+        }
+    };
+
+    const handleDownloadPdf = async () => {
+        if (!permanentQrUrl) return;
+
+        const doc = new jsPDF({
+            orientation: 'portrait',
+            unit: 'px',
+            format: [400, 600]
+        });
+
+        // Background shapes
+        doc.setFillColor(37, 99, 235); // blue-600
+        doc.triangle(0, 0, 150, 0, 0, 100, 'F');
+        doc.setFillColor(37, 99, 235, 0.8);
+        doc.triangle(50, 0, 200, 0, 0, 75, 'F');
+        
+        doc.setFillColor(37, 99, 235, 0.7);
+        doc.triangle(300, 0, 400, 100, 400, 0, 'F');
+
+        doc.setFillColor(37, 99, 235); // blue-600
+        doc.triangle(400, 600, 250, 600, 400, 500, 'F');
+        doc.setFillColor(37, 99, 235, 0.8);
+        doc.triangle(350, 600, 200, 600, 400, 525, 'F');
+
+        // Logo
+        if (logoSrc) {
+            try {
+                const imgResponse = await fetch(logoSrc);
+                const imgBlob = await imgResponse.blob();
+                const reader = new FileReader();
+                reader.readAsDataURL(imgBlob);
+                reader.onloadend = function() {
+                    const base64Img = reader.result as string;
+                    doc.addImage(base64Img, 'PNG', 125, 40, 150, 40);
+                    addQrAndText();
+                }
+            } catch(e) {
+                doc.setFontSize(24);
+                doc.setFont('helvetica', 'bold');
+                doc.text("Attendry", 200, 80, { align: 'center' });
+                addQrAndText();
+            }
+        } else {
+             doc.setFontSize(24);
+             doc.setFont('helvetica', 'bold');
+             doc.text("Attendry", 200, 80, { align: 'center' });
+             addQrAndText();
+        }
+
+        const addQrAndText = async () => {
+             // QR Code
+            const qrResponse = await fetch(permanentQrUrl);
+            const qrBlob = await qrResponse.blob();
+            const reader = new FileReader();
+            reader.readAsDataURL(qrBlob);
+            reader.onloadend = () => {
+                const base64data = reader.result as string;
+                doc.addImage(base64data, 'PNG', 90, 120, 220, 220);
+
+                // Call to Action
+                doc.setTextColor(37, 99, 235);
+                doc.setFontSize(30);
+                doc.setFont('helvetica', 'bold');
+                doc.text("SCAN TO CHECK-IN", 200, 380, { align: 'center' });
+                
+                doc.setTextColor(75, 85, 99); // gray-600
+                doc.setFontSize(18);
+                doc.setFont('helvetica', 'normal');
+                doc.text("Employees: Use your phone camera to scan.", 200, 410, { align: 'center'});
+
+                doc.save(`Attendry-QR-Card-${shopName.replace(/\s+/g, '_')}.pdf`);
+                toast({ title: "PDF Downloaded", description: "Your QR code card is ready." });
+            };
+        }
+    };
+    
+     const generateDynamicQr = useCallback(async () => {
+        if (!authUser || !shopName) return;
+        const timestamp = Date.now();
+        const data = encodeURIComponent(`attendry-shop-qr;shopId=${authUser.uid};shopName=${shopName};ts=${timestamp}`);
+        const generatedUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${data}`;
+        setDynamicQrUrl(generatedUrl);
+        setTimeLeft(15);
+        try {
+             await addDoc(collection(db, 'shops', authUser.uid, 'qr-history'), {
+                shopId: authUser.uid, generatedAt: Timestamp.fromMillis(timestamp), qrCodeUrl: generatedUrl, type: 'dynamic'
+            });
+        } catch(error) {
+            console.error("Error saving dynamic QR to history:", error);
+        }
+    }, [authUser, shopName]);
+
+    useEffect(() => {
+        let genInterval: NodeJS.Timeout | undefined;
+        if (qrMode === 'dynamic' && authUser && shopName) {
+            generateDynamicQr();
+            genInterval = setInterval(generateDynamicQr, 15000);
+        }
+        return () => clearInterval(genInterval);
+    }, [qrMode, authUser, shopName, generateDynamicQr]);
+
+    useEffect(() => {
+        if (qrMode !== 'dynamic' || !timeLeft || !dynamicQrUrl) return;
+        const countdownInterval = setInterval(() => {
+            setTimeLeft(prevTime => prevTime > 0 ? prevTime - 1 : 0);
+        }, 1000);
+        return () => clearInterval(countdownInterval);
+    }, [qrMode, timeLeft, dynamicQrUrl]);
+
+
+    const renderQrContent = () => {
+        if (qrMode === 'permanent') {
+            return (
+                <>
+                    <CardContent className="flex items-center justify-center p-8">
+                        {permanentLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                            : isPermanentGenerated ? (
+                                <div className="flex flex-col items-center justify-center gap-4 transition-all animate-in fade-in-50 duration-500">
+                                    <div className="relative w-64 h-64 border p-2 rounded-lg bg-white">
+                                        {permanentQrUrl && <Image src={permanentQrUrl} alt="Generated QR Code" width={256} height={256} className="rounded-md"/>}
+                                    </div>
+                                </div>
+                            ) : <p className="text-muted-foreground">Click the button below to generate your QR code.</p>
+                        }
+                    </CardContent>
+                    <CardFooter className="flex-col gap-2 pt-6">
+                        <Button onClick={handleGeneratePermanent} className="w-full" disabled={permanentLoading}>{isPermanentGenerated ? 'Re-generate QR Code' : 'Generate QR Code'}</Button>
+                        {isPermanentGenerated && (
+                           <Button onClick={handleDownloadPdf} variant="secondary" className="w-full">
+                                <Download className="mr-2 h-4 w-4"/>Download for Print
+                            </Button>
+                        )}
+                    </CardFooter>
+                </>
+            )
+        }
+        
+        if (qrMode === 'dynamic') {
+             return (
+                <>
+                    <CardContent className="flex flex-col items-center justify-center p-8 gap-6">
+                        {dynamicQrUrl ? (
+                            <>
+                                <div className="relative w-64 h-64 border p-2 rounded-lg bg-white">
+                                    <Image src={dynamicQrUrl} alt="Dynamic QR Code" width={256} height={256} className="rounded-md"/>
+                                </div>
+                                <div className="w-full space-y-2 text-center">
+                                    <div className="flex items-center justify-center gap-2 font-semibold text-primary"><RefreshCw className="h-4 w-4 animate-spin"/><span>Refreshes in {timeLeft}s</span></div>
+                                    <Progress value={(timeLeft / 15) * 100} className="w-full h-2" />
+                                </div>
+                            </>
+                        ) : <Loader2 className="h-6 w-6 animate-spin text-primary" />}
+                    </CardContent>
+                    <CardFooter>
+                        <Dialog>
+                            <DialogTrigger asChild><Button className="w-full"><Expand className="mr-2 h-4 w-4"/>Full Screen</Button></DialogTrigger>
+                            <DialogContent className="w-screen h-screen max-w-full p-4 bg-white flex flex-col items-center justify-center gap-8">
+                                <DialogHeader><DialogTitle className="sr-only">Full Screen QR Code</DialogTitle></DialogHeader>
+                                {dynamicQrUrl && <Image src={dynamicQrUrl.replace('size=400x400', 'size=800x800')} alt="Full Screen QR Code" width={800} height={800} className="rounded-lg max-w-[90vw] max-h-[80vh] object-contain"/>}
+                                <DialogClose asChild><Button size="lg" className="w-full max-w-xs"><X className="mr-2 h-4 w-4"/>Close</Button></DialogClose>
+                            </DialogContent>
+                        </Dialog>
+                    </CardFooter>
+                </>
+             )
+        }
+    }
 
 
     return (
-         <Card className="h-full flex flex-col transition-all duration-300 ease-out hover:shadow-lg border-2 border-foreground/20 hover:border-primary">
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Activity className="h-5 w-5" />Live Attendance Feed</CardTitle>
-                <CardDescription>A real-time log of all attendance activity.</CardDescription>
+        <Card className="w-full transition-all duration-300 ease-out hover:shadow-lg border-2 border-foreground hover:border-primary">
+            <CardHeader className="relative pb-2">
+                <CardTitle>QR Code Generator</CardTitle>
+                 <CardDescription>
+                    {qrMode === 'permanent' ? 'Print and place this in your store for employees.' : 'This refreshes to prevent misuse. Display on a tablet.'}
+                </CardDescription>
+                 <div className="absolute top-4 right-4 hidden md:flex items-center space-x-2">
+                    <Switch id="qr-mode-switch-desktop" checked={qrMode === 'dynamic'} onCheckedChange={(checked) => setQrMode(checked ? 'dynamic' : 'permanent')}/>
+                    <Label htmlFor="qr-mode-switch-desktop" className={cn("font-semibold", qrMode === 'dynamic' && 'text-primary')}>
+                        Dynamic QR
+                    </Label>
+                </div>
             </CardHeader>
-            <CardContent className="flex-1">
-                {loading ? <div className="flex items-center justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-                    : activities.length > 0 ? (
-                        <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
-                            {activities.map((item) => {
-                                const actionText = item.checkOutTime ? 'checked out.' : 'checked in.';
-                                const timestamp = item.checkOutTime ? item.checkOutTime.toDate() : item.checkInTime.toDate();
-                                const verificationImage = item.checkOutTime ? item.checkoutImageUrl : item.imageUrl;
-                                
-                                return (
-                                    <div key={item.id} className="flex items-start gap-4">
-                                        {verificationImage ? (
-                                            <Image
-                                                src={verificationImage}
-                                                alt={`Attendance photo for ${item.userName}`}
-                                                width={48}
-                                                height={48}
-                                                className="h-12 w-12 rounded-md object-cover border-2"
-                                            />
-                                        ) : (
-                                            <Avatar className="h-12 w-12 border"><AvatarImage src={item.userImageUrl} /><AvatarFallback>{item.userFallback || '?'}</AvatarFallback></Avatar>
-                                        )}
-                                        <div className="flex-1 text-sm">
-                                            <p><span className="font-semibold">{item.userName}</span> {actionText}</p>
-                                            <div className='flex items-center gap-2 flex-wrap'>
-                                                <p className="text-xs text-muted-foreground">{formatDistanceToNow(timestamp, { addSuffix: true })}</p>
-                                                {item.method && (
-                                                    <Badge variant="outline" className="flex items-center gap-1">
-                                                        {item.method === 'Selfie' ? <Camera className="h-3 w-3" /> : <QrCode className="h-3 w-3" />}
-                                                        {item.method}
-                                                    </Badge>
-                                                )}
-                                                {item.locationStatus && (
-                                                    <Badge variant={item.locationStatus === 'Verified' ? 'secondary' : 'destructive'}>
-                                                        {item.locationStatus === 'Verified' ? <CheckCircle className="h-3 w-3 mr-1" /> : <XCircle className="h-3 w-3 mr-1" />}
-                                                        {item.locationStatus}
-                                                    </Badge>
-                                                )}
-                                                {(item.status !== 'On-time' && item.status !== 'Grace Period') && (
-                                                    <Badge variant="destructive" className="hidden sm:inline-flex">{item.status}</Badge>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    ) : <div className="text-center py-10"><Users className="h-10 w-10 mx-auto text-muted-foreground mb-4" /><p className="text-sm text-muted-foreground">No attendance activity yet.</p></div>
-                }
+            <CardContent>
+                <div className="mt-4 flex justify-center md:hidden items-center space-x-2">
+                    <Switch id="qr-mode-switch-mobile" checked={qrMode === 'dynamic'} onCheckedChange={(checked) => setQrMode(checked ? 'dynamic' : 'permanent')}/>
+                    <Label htmlFor="qr-mode-switch-mobile" className={cn("font-semibold", qrMode === 'dynamic' && 'text-primary')}>
+                        Use Dynamic QR
+                    </Label>
+                </div>
             </CardContent>
+            {renderQrContent()}
         </Card>
     )
 }
 
-export default function GenerateQrPage() {
-  const [qrMode, setQrMode] = useState<'permanent' | 'dynamic'>('permanent');
-  const [qrUrl, setQrUrl] = useState('');
-  const [shopName, setShopName] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [downloading, setDownloading] = useState(false);
-  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
-  const { toast } = useToast();
-  const printableCardRef = useRef<HTMLDivElement>(null);
-  const { theme, systemTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  
-  useEffect(() => setMounted(true), []);
-  const currentTheme = theme === 'system' ? systemTheme : theme;
-  const logoSrc = mounted && currentTheme === 'dark' ? '/header-logo-dark.png' : '/header-logo-light.png';
 
+const ManualEntryForm = () => {
+    const { toast } = useToast();
+    const [loading, setLoading] = useState(false);
+    const [employees, setEmployees] = useState<User[]>([]);
+    const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
+    const [date, setDate] = useState<Date | undefined>(new Date());
+    const [checkInTime, setCheckInTime] = useState('');
+    const [checkOutTime, setCheckOutTime] = useState('');
+    const [status, setStatus] = useState<'On-time' | 'Late' | 'Absent' | 'Manual' | 'Half-day'>('Manual');
+    const [reason, setReason] = useState('');
+    const [authUser, setAuthUser] = useState<AuthUser | null>(null);
 
-   const handleDownloadPdf = async () => {
-    if (!printableCardRef.current) return;
-    setDownloading(true);
-    try {
-        const canvas = await html2canvas(printableCardRef.current, {
-            scale: 2, // Increase resolution
-            useCORS: true,
+     useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            if(user) {
+                setAuthUser(user);
+                const fetchEmployees = async () => {
+                    const employeesCollectionRef = collection(db, 'shops', user.uid, 'employees');
+                    const q = query(employeesCollectionRef, where('status', '==', 'Active'), where('role', '!=', 'Admin'));
+                    const querySnapshot = await getDocs(q);
+                    const employeeList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+                    setEmployees(employeeList);
+                };
+                fetchEmployees();
+            }
         });
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF({
-            orientation: 'portrait',
-            unit: 'px',
-            format: [400, 600] // Match aspect ratio of the card
-        });
-        pdf.addImage(imgData, 'PNG', 0, 0, 400, 600);
-        pdf.save(`${shopName}-QR-Code.pdf`);
-        toast({ title: 'PDF Downloaded!', description: 'Your QR code card has been saved as a PDF.' });
-    } catch (error) {
-        console.error("Error generating PDF:", error);
-        toast({ title: 'Download Failed', description: 'Could not generate PDF. Please try again.', variant: 'destructive' });
-    } finally {
-        setDownloading(false);
-    }
-  };
+        return () => unsubscribe();
+    }, []);
 
-  const generateAndSaveToken = useCallback(async (uid: string) => {
-    const token = Math.random().toString(36).substring(2, 10);
-    const expires = new Date();
-    expires.setSeconds(expires.getSeconds() + 15);
-    const tokenDocRef = doc(db, 'shops', uid, 'qr-history', 'currentToken');
-    await setDoc(tokenDocRef, { token, expires: Timestamp.fromDate(expires) });
-    return token;
-  }, []);
-
-  useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setAuthUser(user);
+    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
         setLoading(true);
-        const shopDocRef = doc(db, 'shops', user.uid);
-        const shopSnap = await getDoc(shopDocRef);
-        if (shopSnap.exists()) {
-          const shopData = shopSnap.data();
-          setShopName(shopData.shopName);
-          const configDocRef = doc(db, 'shops', user.uid, 'config', 'main');
-          const configSnap = await getDoc(configDocRef);
-          if (configSnap.exists()) {
-            setQrMode(configSnap.data().qrCodeMode || 'permanent');
-          }
+
+        if (!selectedEmployeeId || !date || !checkInTime || !status || !authUser) {
+            toast({ title: "Missing Fields", description: "Please select an employee, date, status, and check-in time.", variant: "destructive" }); setLoading(false); return;
         }
-        setLoading(false);
-      }
-    });
-    return () => unsubscribeAuth();
-  }, []);
 
-  useEffect(() => {
-    if (!authUser) return;
+        try {
+            const [checkInHours, checkInMinutes] = checkInTime.split(':').map(Number);
+            let finalCheckIn = setSeconds(setMinutes(setHours(date, checkInHours), checkInMinutes), 0);
+            let finalCheckOut = null;
+            if (checkOutTime) {
+                const [checkOutHours, checkOutMinutes] = checkOutTime.split(':').map(Number);
+                finalCheckOut = setSeconds(setMinutes(setHours(date, checkOutHours), checkOutMinutes), 0);
+            }
+            const employee = employees.find(e => e.id === selectedEmployeeId);
 
-    const generatePermanentUrl = () => {
-      const baseUrl = window.location.origin;
-      const url = `${baseUrl}/employee/scan?shopId=${authUser.uid}`;
-      const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=512x512&data=${encodeURIComponent(url)}`;
-      setQrUrl(qrApiUrl);
+            await addDoc(collection(db, 'shops', authUser.uid, 'attendance'), {
+                userId: selectedEmployeeId, userName: employee?.name || 'Unknown', shopId: authUser.uid,
+                checkInTime: Timestamp.fromDate(finalCheckIn), checkOutTime: finalCheckOut ? Timestamp.fromDate(finalCheckOut) : null,
+                status: status, reason: reason,
+            });
+
+            toast({ title: "Record Added!", description: `Attendance for ${employee?.name} has been saved.` });
+            setSelectedEmployeeId(''); setDate(new Date()); setCheckInTime(''); setCheckOutTime(''); setStatus('Manual'); setReason('');
+        } catch (error) {
+            toast({ title: "Error", description: "Could not save the record. Please try again.", variant: "destructive" });
+        } finally { setLoading(false); }
     };
-
-    if (qrMode === 'permanent') {
-      generatePermanentUrl();
-    } else if (qrMode === 'dynamic') {
-      let intervalId: NodeJS.Timeout;
-
-      const generateDynamicUrl = async () => {
-        const token = await generateAndSaveToken(authUser.uid);
-        const baseUrl = window.location.origin;
-        const url = `${baseUrl}/employee/scan?shopId=${authUser.uid}&token=${token}`;
-        const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=512x512&data=${encodeURIComponent(url)}`;
-        setQrUrl(qrApiUrl);
-      };
-
-      generateDynamicUrl();
-      intervalId = setInterval(generateDynamicUrl, 15000);
-
-      return () => clearInterval(intervalId);
-    }
-  }, [qrMode, authUser, generateAndSaveToken]);
-
-  const copyLink = () => {
-    const baseUrl = window.location.origin;
-    const url = `${baseUrl}/employee/scan?shopId=${authUser?.uid}`;
-    navigator.clipboard.writeText(url);
-    toast({ title: 'Link Copied!', description: 'The permanent check-in link has been copied.' });
-  }
-
-  if (loading || !authUser) {
+    
     return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+        <Card className="w-full transition-all duration-300 ease-out hover:shadow-lg border-2 border-foreground hover:border-primary">
+            <CardHeader>
+                <CardTitle>Manual Attendance Entry</CardTitle>
+                <CardDescription>If a QR scan fails, you can create a record here.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    {employees.length > 0 ? (
+                        <div className="space-y-2">
+                            <Label htmlFor="employee">Employee *</Label>
+                            <Select onValueChange={setSelectedEmployeeId} value={selectedEmployeeId} required>
+                                <SelectTrigger id="employee"><SelectValue placeholder="Select an employee" /></SelectTrigger>
+                                <SelectContent>{employees.map(emp => (<SelectItem key={emp.id} value={emp.id!}>{emp.name} ({emp.employeeId})</SelectItem>))}</SelectContent>
+                            </Select>
+                        </div>
+                    ) : (
+                        <div className="text-center p-4 border rounded-md">
+                            <p className="text-muted-foreground text-sm">No active employees found.</p>
+                            <Link href="/admin/employees"><Button variant="link" className="mt-2"><UserPlus className="mr-2"/>Manage Employees</Button></Link>
+                        </div>
+                    )}
+                    
+                    <div className="space-y-2">
+                        <Label htmlFor="date">Date *</Label>
+                        <Popover>
+                            <PopoverTrigger asChild><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal",!date && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4" />{date ? format(date, "PPP") : <span>Pick a date</span>}</Button></PopoverTrigger>
+                            <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={date} onSelect={setDate} initialFocus /></PopoverContent>
+                        </Popover>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2"><Label htmlFor="checkInTime">Check-in *</Label><Input id="checkInTime" type="time" value={checkInTime} onChange={e => setCheckInTime(e.target.value)} required /></div>
+                        <div className="space-y-2"><Label htmlFor="checkOutTime">Check-out</Label><Input id="checkOutTime" type="time" value={checkOutTime} onChange={e => setCheckOutTime(e.target.value)} /></div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="status">Status *</Label>
+                        <Select onValueChange={(value) => setStatus(value as any)} value={status} required>
+                            <SelectTrigger id="status"><SelectValue placeholder="Select status" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Manual">Manual</SelectItem><SelectItem value="On-time">On-time</SelectItem><SelectItem value="Late">Late</SelectItem>
+                                <SelectItem value="Absent">Absent</SelectItem><SelectItem value="Half-day">Half-day</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="space-y-2"><Label htmlFor="reason">Reason (Optional)</Label><Textarea id="reason" placeholder="e.g., Forgot phone, technical issue, etc." value={reason} onChange={e => setReason(e.target.value)}/></div>
+
+                     <Button type="submit" className="w-full" disabled={loading || employees.length === 0}>
+                        {loading && <Loader2 className="mr-2 animate-spin" />}<Save className="mr-2"/>Save Record
+                    </Button>
+                </form>
+            </CardContent>
+        </Card>
     );
-  }
+};
+
+
+const RecentActivity = () => {
+    const [activities, setActivities] = useState<ActivityRecord[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [showAll, setShowAll] = useState(false);
+    const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+    const [allEmployees, setAllEmployees] = useState<User[]>([]);
+
+    useEffect(() => {
+        const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                setAuthUser(user);
+                const employeesRef = collection(db, 'shops', user.uid, 'employees');
+                const empSnapshot = await getDocs(employeesRef);
+                const employeesData = empSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+                setAllEmployees(employeesData);
+            } else {
+                setLoading(false);
+            }
+        });
+        return () => unsubscribeAuth();
+    }, []);
+
+    useEffect(() => {
+        if (!authUser) return;
+        if (allEmployees.length === 0 && authUser) { setLoading(false); return; }
+        setLoading(true);
+        const attendanceRef = collection(db, 'shops', authUser.uid, 'attendance');
+        const q = query(attendanceRef, orderBy('checkInTime', 'desc'), limit(25));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const fetchedActivities = snapshot.docs.map(doc => {
+                const data = doc.data() as ActivityRecord;
+                const employee = allEmployees.find(e => e.id === data.userId);
+                return { ...data, id: doc.id, userFallback: employee?.fallback, userImageUrl: employee?.imageUrl };
+            });
+            setActivities(fetchedActivities);
+            setLoading(false);
+        });
+        return () => unsubscribe();
+    }, [authUser, allEmployees]);
+
+    const displayedActivities = showAll ? activities : activities.slice(0, 8);
+
+    return (
+         <Card className="h-full flex flex-col transition-all duration-300 ease-out hover:shadow-lg border-2 border-foreground hover:border-primary">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Activity className="h-5 w-5" />Recent Activity</CardTitle>
+                <CardDescription>A live log of the most recent attendance scans.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1">
+                {loading ? <div className="flex items-center justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+                    : activities.length > 0 ? (
+                        <div className="space-y-4">
+                            {displayedActivities.map((item) => (
+                                <div key={item.id} className="flex items-start gap-4">
+                                    <Avatar className="h-9 w-9 border"><AvatarImage src={item.userImageUrl} /><AvatarFallback>{item.userFallback || '?'}</AvatarFallback></Avatar>
+                                    <div className="flex-1 text-sm">
+                                        <p><span className="font-semibold">{item.userName}</span>{item.checkOutTime ? ' checked out.' : ` checked in (${item.status}).`}</p>
+                                        <p className="text-xs text-muted-foreground">{formatDistanceToNow(item.checkOutTime?.toDate() || item.checkInTime.toDate(), { addSuffix: true })}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : <p className="text-sm text-muted-foreground text-center py-4">No attendance activity yet.</p>
+                }
+            </CardContent>
+             {activities.length > 8 && (
+                <CardFooter>
+                    <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => setShowAll(!showAll)}
+                    >
+                        <ChevronDown className={cn("mr-2 h-4 w-4 transition-transform", showAll && "rotate-180")} />
+                        {showAll ? 'Show Less' : 'Show More'}
+                    </Button>
+                </CardFooter>
+            )}
+        </Card>
+    )
+}
+
+const QrHistory = () => {
+    const [history, setHistory] = useState<QrHistoryRecord[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+
+    useEffect(() => {
+        const unsubscribeAuth = onAuthStateChanged(auth, (user) => { if (user) setAuthUser(user); });
+        return () => unsubscribeAuth();
+    }, []);
+
+    useEffect(() => {
+        if (!authUser) return;
+        setLoading(true);
+        const historyRef = collection(db, 'shops', authUser.uid, 'qr-history');
+        const q = query(historyRef, orderBy('generatedAt', 'desc'), limit(5));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const fetchedHistory = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as QrHistoryRecord));
+            setHistory(fetchedHistory);
+            setLoading(false);
+        });
+        return () => unsubscribe();
+    }, [authUser]);
+
+    return (
+        <Card className="transition-all duration-300 ease-out hover:shadow-lg border-2 border-foreground hover:border-primary">
+            <CardHeader><CardTitle className="flex items-center gap-2"><History className="h-5 w-5" />Generation History</CardTitle><CardDescription>A log of the most recently generated QR codes.</CardDescription></CardHeader>
+            <CardContent>
+                {loading ? <div className="flex items-center justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+                    : history.length > 0 ? (
+                        <div className="space-y-3">
+                            {history.map(item => (
+                                <div key={item.id} className="flex items-center justify-between text-sm">
+                                    <div className="flex items-center gap-2"><QrCode className="h-4 w-4 text-muted-foreground" /><span className="font-semibold capitalize">{item.type}</span></div>
+                                    <p className="text-xs text-muted-foreground">{formatDistanceToNow(item.generatedAt.toDate(), { addSuffix: true })}</p>
+                                </div>
+                            ))}
+                        </div>
+                    ) : <p className="text-sm text-muted-foreground text-center py-4">No QR codes generated yet.</p>
+                }
+            </CardContent>
+        </Card>
+    );
+};
+
+
+export default function GenerateAndEntryPage() {
+  const [viewMode, setViewMode] = useState<'qr' | 'manual'>('qr');
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">QR Code Generator</h1>
-        <p className="text-muted-foreground">
-          Use this page to display a QR code for your employees to check in.
-        </p>
-      </div>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="hidden md:block">
+                <h1 className="text-3xl font-bold tracking-tight">QR & Manual Entry</h1>
+                <p className="text-muted-foreground">Generate QR codes for check-in or manually add an attendance record.</p>
+            </div>
+            <div className="w-full md:w-auto">
+                <div className="w-full md:w-auto md:inline-flex rounded-md border-2 border-primary bg-muted p-1 grid grid-cols-2">
+                    <Button 
+                        onClick={() => setViewMode('qr')}
+                        variant={viewMode === 'qr' ? 'default' : 'ghost'} 
+                        className={cn("rounded-sm px-3 py-1.5 h-auto text-sm font-medium", viewMode === 'qr' ? 'shadow-sm' : '')}
+                    >
+                        QR Code
+                    </Button>
+                    <Button 
+                        onClick={() => setViewMode('manual')}
+                        variant={viewMode === 'manual' ? 'default' : 'ghost'} 
+                        className={cn("rounded-sm px-3 py-1.5 h-auto text-sm font-medium", viewMode === 'manual' ? 'shadow-sm' : '')}
+                    >
+                        Manual Entry
+                    </Button>
+                </div>
+            </div>
+        </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
-        <Card className="transform-gpu transition-all duration-300 ease-out hover:shadow-lg border-2 border-foreground/20 hover:border-primary">
-          <CardHeader>
-            <CardTitle>{shopName}</CardTitle>
-            <CardDescription>
-              Employees can scan this code to mark their attendance.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Tabs value={qrMode} onValueChange={(value) => setQrMode(value as any)} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-4">
-                <TabsTrigger value="permanent">Permanent</TabsTrigger>
-                <TabsTrigger value="dynamic">Dynamic</TabsTrigger>
-              </TabsList>
-              <TabsContent value="permanent">
-                  <div className="p-4 border rounded-lg flex flex-col items-center gap-4">
-                    {qrUrl ? (
-                      <Image src={qrUrl} alt="Permanent QR Code" width={256} height={256} />
-                    ) : (
-                      <div className="w-64 h-64 flex items-center justify-center bg-muted rounded-lg">
-                        <Loader2 className="animate-spin" />
-                      </div>
-                    )}
-                    <p className="text-xs text-center text-muted-foreground">This code is permanent. Print it and display it at your shop entrance.</p>
-                  </div>
-              </TabsContent>
-              <TabsContent value="dynamic">
-                 <div className="p-4 border rounded-lg flex flex-col items-center gap-4">
-                    {qrUrl ? (
-                       <Image src={qrUrl} alt="Dynamic QR Code" width={256} height={256} />
-                    ) : (
-                      <div className="w-64 h-64 flex items-center justify-center bg-muted rounded-lg">
-                        <Loader2 className="animate-spin" />
-                      </div>
-                    )}
-                    <p className="text-xs text-center text-muted-foreground flex items-center gap-2"><RefreshCw className="h-4 w-4 animate-spin" /> This code refreshes every 15 seconds. Ideal for displaying on a tablet.</p>
-                  </div>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-          <CardContent className="border-t pt-4 flex flex-wrap gap-4">
-              <Button onClick={handleDownloadPdf} disabled={downloading}>
-                {downloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Download className="mr-2 h-4 w-4" />}
-                 Download PDF
-              </Button>
-              <Button variant="outline" onClick={copyLink}>
-                  <LinkIcon className="mr-2 h-4 w-4"/> Copy Link
-              </Button>
-          </CardContent>
-        </Card>
-        
-        <RecentActivity shopId={authUser.uid} />
-      </div>
-
-      <div style={{ position: 'absolute', left: '-9999px' }}>
-        <PrintableQrCard ref={printableCardRef} shopName={shopName} qrUrl={qrUrl} logoSrc={logoSrc}/>
-      </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
+            <div className="lg:col-span-2">
+                {viewMode === 'qr' ? <QrGeneratorCard /> : <ManualEntryForm />}
+            </div>
+            <div className="lg:col-span-1">
+                <RecentActivity />
+            </div>
+        </div>
+        <div className="w-full">
+            <QrHistory />
+        </div>
     </div>
   );
 }
