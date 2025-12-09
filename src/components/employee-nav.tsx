@@ -12,6 +12,7 @@ import {
   LogOut,
   type LucideIcon,
   UserCheck,
+  ShieldCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { NavItem } from './bottom-nav';
@@ -34,6 +35,7 @@ const iconMap: Record<string, LucideIcon> = {
   CalendarOff,
   Bell,
   UserCheck,
+  ShieldCheck,
 };
 
 type EmployeeNavProps = {
