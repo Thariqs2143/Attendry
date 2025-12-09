@@ -290,6 +290,16 @@ export default function AdminProfilePage() {
                         <Label htmlFor="address">Address</Label>
                         <Input id="address" name="address" value={profile.address || ''} onChange={(e) => setProfile(prev => ({...prev, address: e.target.value}))} placeholder="Auto-filled or type manually" required />
                     </div>
+                    <div className="grid grid-cols-2 gap-4">
+                       <div className="space-y-1">
+                           <Label htmlFor="latitude">Latitude *</Label>
+                           <Input id="latitude" name="latitude" placeholder="e.g., 11.0168" required value={profile.latitude || ''} onChange={(e) => setProfile(prev => ({...prev, latitude: e.target.value}))} />
+                       </div>
+                       <div className="space-y-1">
+                           <Label htmlFor="longitude">Longitude *</Label>
+                           <Input id="longitude" name="longitude" placeholder="e.g., 76.9558" required value={profile.longitude || ''} onChange={(e) => setProfile(prev => ({...prev, longitude: e.target.value}))} />
+                       </div>
+                   </div>
                 </div>
 
             </div>

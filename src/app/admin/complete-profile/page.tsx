@@ -91,6 +91,7 @@ export default function AdminCompleteProfilePage() {
             setLongitude(lng.toString());
 
             try {
+                // Using OpenStreetMap's free Nominatim service
                 const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
                 const data = await response.json();
                 
@@ -98,16 +99,16 @@ export default function AdminCompleteProfilePage() {
                     setAddress(data.display_name);
                     toast({ title: "Location Found!", description: "Address has been filled automatically." });
                 } else {
-                    toast({ title: "No address found", variant: "destructive" });
+                    toast({ title: "No address found", description: "Could not find a specific address for your location.", variant: "destructive" });
                 }
             } catch (error) {
                 console.error("Geocoding error:", error);
-                toast({ title: "Could not fetch address", variant: "destructive" });
+                toast({ title: "Could not fetch address", description: "An error occurred while fetching the address.", variant: "destructive" });
             } finally {
                 setLocationLoading(false);
             }
         }, () => {
-            toast({ title: "Location Access Denied", description: "Please allow location access in your browser.", variant: "destructive" });
+            toast({ title: "Location Access Denied", description: "Please allow location access in your browser to use this feature.", variant: "destructive" });
             setLocationLoading(false);
         });
     };
@@ -121,7 +122,7 @@ export default function AdminCompleteProfilePage() {
         const gstNumber = formData.get('gstNumber') as string;
 
         if (!shopName || !businessType || !address || !phone || !latitude || !longitude) {
-             toast({ title: "Error", description: "Please fill out all required fields.", variant: "destructive" });
+             toast({ title: "Error", description: "Please fill out all required fields, including location coordinates.", variant: "destructive" });
              setLoading(false);
              return;
         }
@@ -265,6 +266,16 @@ export default function AdminCompleteProfilePage() {
                     <div className="space-y-2 pt-2 border-t">
                         <Label htmlFor="address">Address</Label>
                         <Input id="address" name="address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Auto-filled or type manually" required/>
+                    </div>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <Label htmlFor="latitude">Latitude *</Label>
+                            <Input id="latitude" name="latitude" placeholder="e.g., 11.0168" required value={latitude} onChange={(e) => setLatitude(e.target.value)} />
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="longitude">Longitude *</Label>
+                            <Input id="longitude" name="longitude" placeholder="e.g., 76.9558" required value={longitude} onChange={(e) => setLongitude(e.target.value)} />
+                        </div>
                     </div>
                 </div>
             </div>
