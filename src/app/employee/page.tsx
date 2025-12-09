@@ -201,7 +201,7 @@ export default function FaceAttendancePage() {
 
     requestPermissions();
 
-    // Cleanup function to stop camera when component unmounts
+    // Cleanup function to stop camera when component unmounts or rerenders
     return () => {
         if (streamRef.current) {
             streamRef.current.getTracks().forEach(track => track.stop());
@@ -485,6 +485,13 @@ export default function FaceAttendancePage() {
           )}
         </CardContent>
          <CardFooter className="flex-col gap-4 pt-6">
+            <Alert variant="default" className="border-primary/50 bg-primary/5 text-primary-foreground">
+                <LocateFixed className="h-4 w-4" />
+                <AlertTitle className="font-semibold text-primary">Privacy Notice</AlertTitle>
+                <AlertDescription className="text-primary/90">
+                    Your camera is for visual confirmation only. No photos are stored. Only your location is verified for attendance.
+                </AlertDescription>
+            </Alert>
             {(hasCameraPermission === false || hasLocationPermission === false) && (
                 <Alert variant="destructive">
                     <CameraOff className="h-4 w-4" />
@@ -511,3 +518,4 @@ export default function FaceAttendancePage() {
     </div>
   );
 }
+
