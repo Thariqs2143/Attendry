@@ -11,10 +11,10 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { differenceInMonths, differenceInYears } from 'date-fns';
-import { ArrowLeft, Trash2, Loader2, History, Save, GitBranch, Clock } from 'lucide-react';
+import { ArrowLeft, Trash2, Loader2, History, Save, GitBranch, Clock, UserPlus } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { doc, getDoc, deleteDoc, updateDoc, writeBatch, collection, getDocs, where, query, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, deleteDoc, updateDoc, writeBatch, collection, getDocs, where, query, onSnapshot, addDoc, Timestamp } from 'firebase/firestore';
 import { getAuth, onAuthStateChanged, type User as AuthUser } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -82,6 +82,12 @@ function EmployeeDetailContent() {
   const [selectedBranch, setSelectedBranch] = useState('');
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [selectedShift, setSelectedShift] = useState('');
+
+  const [manualEntryDate, setManualEntryDate] = useState('');
+  const [manualCheckIn, setManualCheckIn] = useState('');
+  const [manualCheckOut, setManualCheckOut] = useState('');
+  const [isAddingManualEntry, setIsAddingManualEntry] = useState(false);
+
 
   useEffect(() => {
     const auth = getAuth();
@@ -274,6 +280,38 @@ function EmployeeDetailContent() {
       }
   }
 
+  const handleAddManualEntry = async () => {
+      if (!employee || !branchId || !manualEntryDate || !manualCheckIn) {
+          toast({ title: "Missing fields", description: "Please provide at least a date and check-in time.", variant: "destructive" });
+          return;
+      }
+      setIsAddingManualEntry(true);
+      
+      const checkInDateTime = new Date(`${manualEntryDate}T${manualCheckIn}`);
+      const checkOutDateTime = manualCheckOut ? new Date(`${manualEntryDate}T${manualCheckOut}`) : null;
+
+      try {
+          const db = getFirestore();
+          await addDoc(collection(db, 'shops', branchId, 'attendance'), {
+              userId: employee.uid,
+              userName: employee.name,
+              shopId: branchId,
+              checkInTime: Timestamp.fromDate(checkInDateTime),
+              checkOutTime: checkOutDateTime ? Timestamp.fromDate(checkOutDateTime) : null,
+              status: 'Manual',
+          });
+          toast({ title: "Success!", description: "Manual attendance record has been added." });
+          setManualEntryDate('');
+          setManualCheckIn('');
+          setManualCheckOut('');
+      } catch (error) {
+          console.error("Error adding manual entry:", error);
+          toast({ title: "Error", description: "Could not add manual entry.", variant: "destructive" });
+      } finally {
+          setIsAddingManualEntry(false);
+      }
+  };
+
 
   if (loading) {
     return (
@@ -302,12 +340,53 @@ function EmployeeDetailContent() {
             </div>
         </div>
         <div className="flex flex-col sm:flex-row gap-4 w-full">
-            <Link href={`/admin/employees/${employeeId}/history`} className="w-full">
+            <Link href={`/admin/employees/${employeeId}/history?branchId=${branchId}`} className="w-full">
               <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
                 <History className="mr-2 h-4 w-4" />
                 View History
               </Button>
             </Link>
+             <Dialog>
+                <DialogTrigger asChild>
+                    <Button variant="secondary" className="w-full">
+                        <UserPlus className="mr-2 h-4 w-4"/>
+                        Manual Entry
+                    </Button>
+                </DialogTrigger>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Add Manual Attendance</DialogTitle>
+                        <DialogDescription>
+                            Manually add a check-in and check-out record for {employee.name}.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4 space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="manual-date">Date</Label>
+                            <Input id="manual-date" type="date" value={manualEntryDate} onChange={(e) => setManualEntryDate(e.target.value)} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="manual-checkin">Check-in Time</Label>
+                                <Input id="manual-checkin" type="time" value={manualCheckIn} onChange={(e) => setManualCheckIn(e.target.value)} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="manual-checkout">Check-out Time</Label>
+                                <Input id="manual-checkout" type="time" value={manualCheckOut} onChange={(e) => setManualCheckOut(e.target.value)} />
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button variant="ghost">Cancel</Button>
+                        </DialogClose>
+                        <Button onClick={handleAddManualEntry} disabled={isAddingManualEntry}>
+                            {isAddingManualEntry ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                            Add Record
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
             <Dialog>
                 <DialogTrigger asChild>
                     <Button variant="outline" className="w-full">
