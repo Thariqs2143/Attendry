@@ -103,7 +103,7 @@ export default function AdminCompleteProfilePage() {
                 
                 if (response.results[0]) {
                     setAddress(response.results[0].formatted_address);
-                    toast({ title: "Location Found!", description: "Address has been filled automatically." });
+                    toast({ title: "Location Found!", description: "Address and coordinates have been filled automatically." });
                 } else {
                     toast({ title: "No address found", variant: "destructive" });
                 }
@@ -269,12 +269,20 @@ export default function AdminCompleteProfilePage() {
                         {locationLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4" />}
                         Use My Current Location
                     </Button>
-                    {address && (
-                        <div className="space-y-2 pt-2 border-t">
-                            <Label>Detected Address</Label>
-                            <p className="text-sm text-muted-foreground p-3 bg-muted rounded-md">{address}</p>
+                    <div className="space-y-2 pt-2 border-t">
+                        <Label htmlFor="address">Address</Label>
+                        <Input id="address" name="address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Auto-filled or type manually" required/>
+                    </div>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <Label htmlFor="latitude">Latitude *</Label>
+                            <Input id="latitude" name="latitude" placeholder="e.g., 11.0168" required value={latitude} onChange={(e) => setLatitude(e.target.value)} />
                         </div>
-                    )}
+                        <div className="space-y-1">
+                            <Label htmlFor="longitude">Longitude *</Label>
+                            <Input id="longitude" name="longitude" placeholder="e.g., 76.9558" required value={longitude} onChange={(e) => setLongitude(e.target.value)} />
+                        </div>
+                    </div>
                 </div>
             </div>
             <div className="flex justify-center pt-4">
