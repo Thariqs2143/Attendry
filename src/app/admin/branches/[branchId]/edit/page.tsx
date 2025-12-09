@@ -13,7 +13,6 @@ import { getFirestore } from 'firebase/firestore';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { onAuthStateChanged, type User as AuthUser, getAuth } from 'firebase/auth';
 import Link from 'next/link';
-import { Loader } from '@googlemaps/js-api-loader';
 
 type ShopProfile = {
     shopName: string;
@@ -91,22 +90,16 @@ function EditBranchContent() {
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
             
-            const loader = new Loader({
-                apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
-                version: "weekly",
-            });
-
             try {
-                const { Geocoder } = await loader.importLibrary("geocoding");
-                const geocoder = new Geocoder();
-                const response = await geocoder.geocode({ location: { lat, lng } });
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+                const data = await response.json();
                 
-                if (response.results[0]) {
+                if (data && data.display_name) {
                     setProfile(prev => ({
                         ...prev,
                         latitude: lat.toString(),
                         longitude: lng.toString(),
-                        address: response.results[0].formatted_address
+                        address: data.display_name
                     }));
                     toast({ title: "Location Updated!", description: "Address and coordinates have been updated." });
                 } else {
@@ -230,11 +223,7 @@ function EditBranchContent() {
                     </Button>
                     <div className="space-y-2 pt-2 border-t">
                         <Label>Current Address</Label>
-                        <p className="text-sm text-muted-foreground p-3 bg-muted rounded-md min-h-[40px]">{profile.address}</p>
-                        <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
-                            <p>Lat: {profile.latitude || 'N/A'}</p>
-                            <p>Lon: {profile.longitude || 'N/A'}</p>
-                        </div>
+                        <Input id="address" name="address" value={profile.address || ''} onChange={handleInputChange} required />
                     </div>
                 </div>
             </div>

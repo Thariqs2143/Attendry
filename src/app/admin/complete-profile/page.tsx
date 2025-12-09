@@ -13,7 +13,6 @@ import { db } from '@/lib/firebase';
 import type { User } from '@/app/admin/employees/page';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader } from '@googlemaps/js-api-loader';
 
 export default function AdminCompleteProfilePage() {
     const router = useRouter();
@@ -91,19 +90,13 @@ export default function AdminCompleteProfilePage() {
             setLatitude(lat.toString());
             setLongitude(lng.toString());
 
-            const loader = new Loader({
-                apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
-                version: "weekly",
-            });
-
             try {
-                const { Geocoder } = await loader.importLibrary("geocoding");
-                const geocoder = new Geocoder();
-                const response = await geocoder.geocode({ location: { lat, lng } });
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+                const data = await response.json();
                 
-                if (response.results[0]) {
-                    setAddress(response.results[0].formatted_address);
-                    toast({ title: "Location Found!", description: "Address and coordinates have been filled automatically." });
+                if (data && data.display_name) {
+                    setAddress(data.display_name);
+                    toast({ title: "Location Found!", description: "Address has been filled automatically." });
                 } else {
                     toast({ title: "No address found", variant: "destructive" });
                 }
@@ -272,16 +265,6 @@ export default function AdminCompleteProfilePage() {
                     <div className="space-y-2 pt-2 border-t">
                         <Label htmlFor="address">Address</Label>
                         <Input id="address" name="address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Auto-filled or type manually" required/>
-                    </div>
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                            <Label htmlFor="latitude">Latitude *</Label>
-                            <Input id="latitude" name="latitude" placeholder="e.g., 11.0168" required value={latitude} onChange={(e) => setLatitude(e.target.value)} />
-                        </div>
-                        <div className="space-y-1">
-                            <Label htmlFor="longitude">Longitude *</Label>
-                            <Input id="longitude" name="longitude" placeholder="e.g., 76.9558" required value={longitude} onChange={(e) => setLongitude(e.target.value)} />
-                        </div>
                     </div>
                 </div>
             </div>

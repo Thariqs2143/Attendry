@@ -16,7 +16,6 @@ import { onAuthStateChanged, type User as AuthUser } from 'firebase/auth';
 import Link from 'next/link';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Loader } from '@googlemaps/js-api-loader';
 
 export default function AddBranchPage() {
     const router = useRouter();
@@ -68,18 +67,12 @@ export default function AddBranchPage() {
             setLatitude(lat.toString());
             setLongitude(lng.toString());
 
-            const loader = new Loader({
-                apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
-                version: "weekly",
-            });
-
             try {
-                const { Geocoder } = await loader.importLibrary("geocoding");
-                const geocoder = new Geocoder();
-                const response = await geocoder.geocode({ location: { lat, lng } });
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+                const data = await response.json();
                 
-                if (response.results[0]) {
-                    setAddress(response.results[0].formatted_address);
+                if (data && data.display_name) {
+                    setAddress(data.display_name);
                     toast({ title: "Location Found!", description: "Address has been filled automatically." });
                 } else {
                     toast({ title: "No address found", variant: "destructive" });
@@ -215,12 +208,10 @@ export default function AddBranchPage() {
                         {locationLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4" />}
                         Use My Current Location
                     </Button>
-                    {address && (
-                        <div className="space-y-2 pt-2 border-t">
-                            <Label>Detected Address</Label>
-                            <p className="text-sm text-muted-foreground p-3 bg-muted rounded-md">{address}</p>
-                        </div>
-                    )}
+                    <div className="space-y-2 pt-2 border-t">
+                        <Label>Detected Address</Label>
+                        <Input id="address" name="address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Auto-filled or type manually" required/>
+                    </div>
                 </div>
             </div>
             <div className="flex justify-center pt-4">

@@ -15,7 +15,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { onAuthStateChanged, type User as AuthUser } from 'firebase/auth';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader } from '@googlemaps/js-api-loader';
 
 type ShopProfile = {
     ownerName?: string;
@@ -127,22 +126,16 @@ export default function AdminProfilePage() {
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
             
-            const loader = new Loader({
-                apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
-                version: "weekly",
-            });
-
             try {
-                const { Geocoder } = await loader.importLibrary("geocoding");
-                const geocoder = new Geocoder();
-                const response = await geocoder.geocode({ location: { lat, lng } });
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+                const data = await response.json();
                 
-                if (response.results[0]) {
+                if (data && data.display_name) {
                     setProfile(prev => ({
                         ...prev,
                         latitude: lat.toString(),
                         longitude: lng.toString(),
-                        address: response.results[0].formatted_address
+                        address: data.display_name
                     }));
                     toast({ title: "Location Updated!", description: "Address and coordinates have been updated." });
                 } else {
@@ -296,16 +289,6 @@ export default function AdminProfilePage() {
                     <div className="space-y-2 pt-2 border-t">
                         <Label htmlFor="address">Address</Label>
                         <Input id="address" name="address" value={profile.address || ''} onChange={(e) => setProfile(prev => ({...prev, address: e.target.value}))} placeholder="Auto-filled or type manually" required />
-                    </div>
-                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                            <Label htmlFor="latitude">Latitude *</Label>
-                            <Input id="latitude" name="latitude" placeholder="e.g., 11.0168" required value={profile.latitude || ''} onChange={(e) => setProfile(prev => ({...prev, latitude: e.target.value}))} />
-                        </div>
-                        <div className="space-y-1">
-                            <Label htmlFor="longitude">Longitude *</Label>
-                            <Input id="longitude" name="longitude" placeholder="e.g., 76.9558" required value={profile.longitude || ''} onChange={(e) => setProfile(prev => ({...prev, longitude: e.target.value}))} />
-                        </div>
                     </div>
                 </div>
 
