@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { BottomNav, type NavItem } from '@/components/bottom-nav';
 import Link from 'next/link';
 import { EmployeeNav } from '@/components/employee-nav';
-import { Bell, Loader2 } from 'lucide-react';
+import { Bell, Loader2, QrCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
 import { onAuthStateChanged, type User as AuthUser } from 'firebase/auth';
@@ -18,6 +18,7 @@ import { useTheme } from 'next-themes';
 
 const employeeNavItems: NavItem[] = [
   { href: '/employee', label: 'Face ID', iconName: 'UserCheck' },
+  { href: '/employee/scan', label: 'Scan QR', iconName: 'QrCode' },
   { href: '/employee/history', label: 'History', iconName: 'History' },
   { href: '/employee/leave', label: 'Leave', iconName: 'CalendarOff' },
   { href: '/employee/rewards', label: 'Rewards', iconName: 'Trophy' },
