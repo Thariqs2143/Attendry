@@ -84,19 +84,20 @@ export default function AddEmployeePage() {
             return;
         }
         
-        // --- Start of the new, corrected logic ---
         const tempAppName = `temp-employee-creation-${Date.now()}`;
-        const tempApp = initializeApp(firebaseConfig, tempAppName);
-        const { getAuth } = await import("firebase/auth");
-        const tempAuth = getAuth(tempApp);
-
+        let tempApp;
         try {
-            // Step 1: Create the new employee user in Firebase Auth using the temporary app.
-            // This does NOT affect the shop owner's login session.
+            tempApp = initializeApp(firebaseConfig, tempAppName);
+            const { getAuth } = await import("firebase/auth");
+            const tempAuth = getAuth(tempApp);
+            
             const employeeCredential = await createUserWithEmailAndPassword(tempAuth, email, password);
             const newEmployeeUser = employeeCredential.user;
-            
-            // Step 2: As the currently logged-in admin, write the employee's data to Firestore.
+
+            if (!newEmployeeUser || !newEmployeeUser.uid) {
+                throw new Error("Failed to get UID for new user.");
+            }
+
             const newEmployeeProfile = {
                 uid: newEmployeeUser.uid,
                 name,
@@ -115,11 +116,9 @@ export default function AddEmployeePage() {
 
             const batch = writeBatch(db);
             
-            // Write to global users collection
             const userDocRef = doc(db, "users", newEmployeeUser.uid);
             batch.set(userDocRef, newEmployeeProfile);
 
-            // Write to shop's employees subcollection
             const shopEmployeeDocRef = doc(db, 'shops', selectedBranch.id, 'employees', newEmployeeUser.uid);
             batch.set(shopEmployeeDocRef, newEmployeeProfile);
 
@@ -141,11 +140,11 @@ export default function AddEmployeePage() {
             }
             toast({ title: "Error Creating Employee", description, variant: "destructive" });
         } finally {
-            // Step 3: Clean up the temporary Firebase app instance.
-            await deleteApp(tempApp);
+            if (tempApp) {
+                await deleteApp(tempApp);
+            }
             setLoading(false);
         }
-        // --- End of the new, corrected logic ---
     };
 
     return (
@@ -245,5 +244,3 @@ export default function AddEmployeePage() {
         </div>
     );
 }
-
-    
