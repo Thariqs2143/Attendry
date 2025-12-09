@@ -201,6 +201,13 @@ export default function FaceAttendancePage() {
     };
 
     requestPermissions();
+
+    // Cleanup function to stop camera when component unmounts
+    return () => {
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+        }
+    };
   }, [toast]);
   
   const captureFrame = (): string | null => {
