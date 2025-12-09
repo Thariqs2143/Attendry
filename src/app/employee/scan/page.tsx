@@ -192,7 +192,8 @@ export default function QRScannerPage() {
       if (lastRecord && !lastRecord.data().checkOutTime) {
         // Handle Check-out
         await updateDoc(doc(db, 'shops', shopId, 'attendance', lastRecord.id), {
-          checkOutTime: Timestamp.now()
+          checkOutTime: Timestamp.now(),
+          checkoutMethod: 'QR',
         });
         toast({ title: 'Check-out Successful!', description: 'Have a great day!' });
       } else {
@@ -276,6 +277,7 @@ export default function QRScannerPage() {
             checkInTime: Timestamp.now(),
             status: attendanceStatus,
             checkOutTime: null,
+            method: 'QR',
         });
         
         const employeeRef = doc(db, 'shops', shopId, 'employees', userProfile.uid);

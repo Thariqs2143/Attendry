@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, QrCode, Download, Printer, RefreshCw, Activity, Link as LinkIcon, Users, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, QrCode, Download, Printer, RefreshCw, Activity, Link as LinkIcon, Users, CheckCircle, XCircle, Camera } from 'lucide-react';
 import { collection, onSnapshot, query, orderBy, Timestamp, doc, getDoc, setDoc, where, getDocs, limit } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { formatDistanceToNow } from 'date-fns';
@@ -32,6 +32,7 @@ type ActivityRecord = {
     locationStatus?: 'Verified' | 'Unverified' | 'Error';
     imageUrl?: string;
     checkoutImageUrl?: string;
+    method?: 'Selfie' | 'QR';
 };
 
 const RecentActivity = ({ shopId }: { shopId: string }) => {
@@ -106,15 +107,21 @@ const RecentActivity = ({ shopId }: { shopId: string }) => {
                                         )}
                                         <div className="flex-1 text-sm">
                                             <p><span className="font-semibold">{item.userName}</span> {actionText}</p>
-                                            <div className='flex items-center gap-2'>
+                                            <div className='flex items-center gap-2 flex-wrap'>
                                                 <p className="text-xs text-muted-foreground">{formatDistanceToNow(timestamp, { addSuffix: true })}</p>
+                                                {item.method && (
+                                                    <Badge variant="outline" className="flex items-center gap-1">
+                                                        {item.method === 'Selfie' ? <Camera className="h-3 w-3" /> : <QrCode className="h-3 w-3" />}
+                                                        {item.method}
+                                                    </Badge>
+                                                )}
                                                 {item.locationStatus && (
                                                     <Badge variant={item.locationStatus === 'Verified' ? 'secondary' : 'destructive'}>
                                                         {item.locationStatus === 'Verified' ? <CheckCircle className="h-3 w-3 mr-1" /> : <XCircle className="h-3 w-3 mr-1" />}
                                                         {item.locationStatus}
                                                     </Badge>
                                                 )}
-                                                {item.status !== 'On-time' && item.status !== 'Grace Period' && (
+                                                {(item.status !== 'On-time' && item.status !== 'Grace Period') && (
                                                     <Badge variant="destructive" className="hidden sm:inline-flex">{item.status}</Badge>
                                                 )}
                                             </div>

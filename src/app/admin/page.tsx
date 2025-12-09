@@ -4,7 +4,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Users, UserCheck, UserX, TrendingUp, Loader2, BarChart3, LogOut, Activity, Sparkles, ChevronsUpDown, Building, UserPlus, CalendarOff, BrainCircuit, Eye, Lock, Clock } from "lucide-react";
+import { Users, UserCheck, UserX, TrendingUp, Loader2, BarChart3, LogOut, Activity, Sparkles, ChevronsUpDown, Building, UserPlus, CalendarOff, BrainCircuit, Eye, Lock, Clock, QrCode, Camera } from "lucide-react";
 import Link from 'next/link';
 import { AnimatedCounter } from "@/components/animated-counter";
 import { useEffect, useState, useMemo, useCallback } from "react";
@@ -44,6 +44,7 @@ type ActivityFeedItem = {
     type: 'check-in' | 'check-out' | 'leave-request';
     timestamp: Timestamp;
     text: string;
+    method?: 'Selfie' | 'QR';
     user: {
         name: string;
         fallback: string;
@@ -372,7 +373,7 @@ export default function AdminDashboard() {
             : query(collection(db, 'shops', selectedBranchId, 'attendance'), orderBy('checkInTime', 'desc'), limit(10));
         
         const unsubscribeAttendance = onSnapshot(liveFeedQuery, async (attSnapshot) => {
-            const attendanceRecords = attSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceRecord));
+            const attendanceRecords = attSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceRecord & {method?: 'Selfie' | 'QR'}));
             setAllAttendance(attendanceRecords);
 
             const userIds = [...new Set(attendanceRecords.map(ar => ar.userId))];
@@ -392,6 +393,7 @@ export default function AdminDashboard() {
                     type: record.checkOutTime ? 'check-out' : 'check-in',
                     timestamp: record.checkOutTime || record.checkInTime,
                     text: record.checkOutTime ? 'checked out.' : `checked in (${record.status}).`,
+                    method: record.method,
                     user: { name: record.userName, fallback: user?.fallback || '?', imageUrl: user?.imageUrl }
                 } as ActivityFeedItem;
             });
@@ -751,9 +753,16 @@ export default function AdminDashboard() {
                                     <span className="font-semibold">{item.user.name}</span>
                                     {' '}{item.text}
                                 </p>
-                                <p className="text-xs text-muted-foreground">
-                                    {formatDistanceToNow(item.timestamp.toDate(), { addSuffix: true })}
-                                </p>
+                                <div className="flex items-center gap-2">
+                                     <p className="text-xs text-muted-foreground">
+                                        {formatDistanceToNow(item.timestamp.toDate(), { addSuffix: true })}
+                                    </p>
+                                    {item.method && (
+                                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                            • {item.method === 'Selfie' ? <Camera className="h-3 w-3" /> : <QrCode className="h-3 w-3" />}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                            </div>
                         ))}

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -279,9 +280,12 @@ export default function FaceAttendancePage(): JSX.Element {
 
   // auto-start camera only when granted and not checked out
   useEffect(() => {
-    if (cameraPermission === 'granted' && !hasCompletedDay) startCamera();
-    else stopCamera();
-  }, [cameraPermission, hasCompletedDay, startCamera, stopCamera]);
+    if (cameraPermission === 'granted' && !hasCompletedDay) {
+        startCamera();
+    } else {
+        stopCamera();
+    }
+}, [cameraPermission, hasCompletedDay, startCamera, stopCamera]);
 
   const requestPermissions = useCallback(async () => {
     // request camera
@@ -398,6 +402,7 @@ export default function FaceAttendancePage(): JSX.Element {
           checkOutTime: null,
           locationStatus,
           imageUrl,
+          method: 'Selfie',
         } as any;
 
         batch.set(newAttendanceRef, newAttendanceRecord);
@@ -436,8 +441,9 @@ export default function FaceAttendancePage(): JSX.Element {
         const attendanceRef = doc(db, 'shops', userProfile.shopId, 'attendance', activeCheckIn.id);
         await updateDoc(attendanceRef, {
           checkOutTime: Timestamp.now(),
-          locationStatus,
+          checkoutLocationStatus: locationStatus,
           checkoutImageUrl: imageUrl,
+          checkoutMethod: 'Selfie',
         });
         setActiveCheckIn(null);
         setHasCompletedDay(true);
