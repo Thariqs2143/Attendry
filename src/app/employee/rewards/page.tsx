@@ -38,7 +38,7 @@ type AttendanceRecord = {
 };
 
 const defaultGamificationSettings: GamificationSettings = {
-    onTimePoints: 1,
+    onTimePoints: 10,
     gracePeriodMinutes: 5,
     lateCategory1Minutes: 10,
     lateCategory1Points: -1,
@@ -243,8 +243,7 @@ export default function RewardsPage() {
             <CardDescription>How to earn and lose points, as set by your manager.</CardDescription>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground space-y-3">
-            <p><strong className="text-primary">+{gamificationSettings.onTimePoints} points</strong> for each on-time check-in.</p>
-            <p><strong className="text-primary">0 points</strong> for checking in within the {gamificationSettings.gracePeriodMinutes}-minute grace period.</p>
+            <p><strong className="text-primary">+{gamificationSettings.onTimePoints} points</strong> for checking in on-time (including the {gamificationSettings.gracePeriodMinutes}-minute grace period).</p>
             <p><strong className="text-destructive">{gamificationSettings.lateCategory1Points} points</strong> for being {gamificationSettings.gracePeriodMinutes + 1}-{gamificationSettings.lateCategory1Minutes} minutes late.</p>
             <p><strong className="text-destructive">{gamificationSettings.lateCategory2Points} points</strong> for being {gamificationSettings.lateCategory1Minutes + 1}-{gamificationSettings.lateCategory2Minutes} minutes late.</p>
             <p><strong className="text-destructive">{gamificationSettings.lateCategory3Points} points</strong> for being over {gamificationSettings.lateCategory2Minutes} minutes late.</p>
@@ -280,3 +279,4 @@ export default function RewardsPage() {
     </div>
   );
 }
+
