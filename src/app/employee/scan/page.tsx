@@ -177,7 +177,7 @@ export default function QRScannerPage() {
       async (pos) => {
         try {
           const distance = getDistance(pos.coords.latitude, pos.coords.longitude, Number(shopData.latitude!), Number(shopData.longitude!));
-          if (distance > 100) {
+          if (distance > 1500) {
               toast({ variant: 'destructive', title: 'Location Mismatch', description: `You are ${Math.round(distance)}m away from the shop.` });
               setStatus('error');
               setTimeout(() => setStatus('idle'), 3000);
