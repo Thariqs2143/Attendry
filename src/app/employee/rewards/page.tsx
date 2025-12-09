@@ -53,8 +53,8 @@ const defaultGamificationSettings: GamificationSettings = {
 };
 
 const badges = [
-    { id: "streak", icon: <Flame className="h-8 w-8" />, name: "Hot Streak", description: (settings: GamificationSettings) => `${settings.streakBonusDays}-day on-time streak`, unlocked: (user: AppUser, rank: number, settings: GamificationSettings) => user.streak >= settings.streakBonusDays },
-    { id: "points", icon: <Trophy className="h-8 w-8" />, name: "Punctuality Pro", description: () => "1000 total points", unlocked: (user: AppUser) => user.points >= 1000 },
+    { id: "streak", icon: <Flame className="h-8 w-8" />, name: "Hot Streak", description: (settings: GamificationSettings) => `${settings.streakBonusDays}-day on-time streak`, unlocked: (user: AppUser, rank: number, settings: GamificationSettings) => (user.streak || 0) >= settings.streakBonusDays },
+    { id: "points", icon: <Trophy className="h-8 w-8" />, name: "Punctuality Pro", description: () => "1000 total points", unlocked: (user: AppUser) => (user.points || 0) >= 1000 },
     { id: "veteran", icon: <Landmark className="h-8 w-8" />, name: "Veteran", description: () => "1 year of service", unlocked: (user: AppUser) => {
         if (!user.joinDate) return false;
         return differenceInYears(new Date(), new Date(user.joinDate)) >= 1;
@@ -90,7 +90,8 @@ export default function RewardsPage() {
                     setUserProfile(profile);
 
                     if (profile.shopId && profile.id) {
-                        fetchRankAndSettings(profile.id, profile.shopId);
+                        // These functions will now set up their own real-time listeners.
+                        fetchRank(profile.id, profile.shopId);
                         fetchWeeklySummary(profile.id, profile.shopId);
                     }
                 } else {
@@ -105,21 +106,26 @@ export default function RewardsPage() {
             return () => unsubscribeProfile();
         });
 
-        const fetchRankAndSettings = async (employeeId: string, shopId: string) => {
+        // Set up real-time listener for gamification settings
+        const fetchSettings = (shopId: string) => {
             const db = getFirestore();
-            // Fetch Rank
+            const settingsDocRef = doc(db, 'shops', shopId, 'config', 'main');
+            return onSnapshot(settingsDocRef, (settingsSnap) => {
+                if (settingsSnap.exists() && settingsSnap.data().gamification) {
+                    setGamificationSettings({ ...defaultGamificationSettings, ...settingsSnap.data().gamification });
+                }
+            });
+        };
+        
+        const fetchRank = (employeeId: string, shopId: string) => {
+            const db = getFirestore();
             const usersCollectionRef = collection(db, 'shops', shopId, 'employees');
             const q = query(usersCollectionRef, orderBy('points', 'desc'));
-            const querySnapshot = await getDocs(q);
-            const userRank = querySnapshot.docs.findIndex(doc => doc.id === employeeId) + 1;
-            setRank(userRank);
             
-            // Fetch Settings
-            const settingsDocRef = doc(db, 'shops', shopId, 'config', 'main');
-            const settingsSnap = await getDoc(settingsDocRef);
-            if (settingsSnap.exists() && settingsSnap.data().gamification) {
-                setGamificationSettings({ ...defaultGamificationSettings, ...settingsSnap.data().gamification });
-            }
+            return onSnapshot(q, (querySnapshot) => {
+                const userRank = querySnapshot.docs.findIndex(doc => doc.id === employeeId) + 1;
+                setRank(userRank);
+            });
         };
         
         const fetchWeeklySummary = (employeeId: string, shopId: string) => {
@@ -137,7 +143,7 @@ export default function RewardsPage() {
                 where('checkInTime', '<=', weekEnd)
             );
             
-            const unsubscribeSummary = onSnapshot(q, (snapshot) => {
+            return onSnapshot(q, (snapshot) => {
                 let onTimeCount = 0;
                 let lateCount = 0;
                 snapshot.forEach(doc => {
@@ -154,11 +160,26 @@ export default function RewardsPage() {
                 console.error("Error fetching weekly summary:", error);
                 setLoadingStats(false);
             });
-            return unsubscribeSummary;
         };
+
+        // When userProfile is available, set up listeners for its associated shop
+        let unsubscribeSettings: () => void = () => {};
+        let unsubscribeRank: () => void = () => {};
+        let unsubscribeSummary: () => void = () => {};
         
-        return () => unsubscribeAuth();
-    }, [router]);
+        if (userProfile?.shopId && userProfile.id) {
+            unsubscribeSettings = fetchSettings(userProfile.shopId);
+            unsubscribeRank = fetchRank(userProfile.id, userProfile.shopId);
+            unsubscribeSummary = fetchWeeklySummary(userProfile.id, userProfile.shopId);
+        }
+
+        return () => {
+            unsubscribeAuth();
+            unsubscribeSettings();
+            unsubscribeRank();
+            unsubscribeSummary();
+        };
+    }, [router, userProfile?.id, userProfile?.shopId]);
 
 
   if (loading || !userProfile) {
