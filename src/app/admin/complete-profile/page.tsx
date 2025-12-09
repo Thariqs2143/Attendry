@@ -96,7 +96,7 @@ export default function AdminCompleteProfilePage() {
                 
                 if (data && data.display_name) {
                     setAddress(data.display_name);
-                    toast({ title: "Location Found!", description: "Address and coordinates have been filled automatically." });
+                    toast({ title: "Location Found!", description: "Address has been filled automatically." });
                 } else {
                     toast({ title: "No address found", variant: "destructive" });
                 }
