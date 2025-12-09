@@ -21,6 +21,24 @@ type AppUser = {
   shopId?: string;
 };
 
+type ShopData = {
+  latitude?: number;
+  longitude?: number;
+};
+
+// Helpers
+const R = 6371e3; // metres
+const toRad = (deg: number) => (deg * Math.PI) / 180;
+const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const φ1 = toRad(lat1);
+  const φ2 = toRad(lat2);
+  const Δφ = toRad(lat2 - lat1);
+  const Δλ = toRad(lon2 - lon1);
+  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; // meters
+};
+
 export default function QRScannerPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -32,6 +50,8 @@ export default function QRScannerPage() {
   const [userProfile, setUserProfile] = useState<AppUser | null>(null);
   const [scanResult, setScanResult] = useState('');
   const animationFrameId = useRef<number>();
+  const [shopData, setShopData] = useState<ShopData | null>(null);
+
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -42,7 +62,18 @@ export default function QRScannerPage() {
       const userDocRef = doc(db, 'users', user.uid);
       const userSnap = await getDoc(userDocRef);
       if (userSnap.exists()) {
-        setUserProfile({ uid: user.uid, ...userSnap.data() } as AppUser);
+        const profile = { uid: user.uid, ...userSnap.data() } as AppUser;
+        setUserProfile(profile);
+        if (profile.shopId) {
+          const shopSnap = await getDoc(doc(db, 'shops', profile.shopId));
+          if(shopSnap.exists()) {
+              const data = shopSnap.data();
+              setShopData({
+                  latitude: Number(data.latitude),
+                  longitude: Number(data.longitude)
+              })
+          }
+        }
       }
     });
     return () => unsubscribe();
@@ -133,105 +164,134 @@ export default function QRScannerPage() {
   const handleAttendance = async (url: string) => {
     if (!userProfile) return;
 
-    try {
-        const data = url.split(';').reduce((acc, part) => {
-            const [key, value] = part.split('=');
-            if (key && value) {
-              acc[key] = value;
-            }
-            return acc;
-        }, {} as Record<string, string>);
-
-        const { shopId } = data;
-
-      if (!shopId) {
-        throw new Error('Invalid QR code: Missing shop ID.');
-      }
-      if (shopId !== userProfile.shopId) {
-        throw new Error('This QR code is for a different shop.');
-      }
-      
-      const todayStart = startOfDay(new Date());
-      const todayEnd = endOfDay(new Date());
-
-      const attendanceQuery = query(
-        collection(db, 'shops', shopId, 'attendance'),
-        where('userId', '==', userProfile.uid),
-        where('checkInTime', '>=', todayStart),
-        where('checkInTime', '<=', todayEnd),
-        orderBy('checkInTime', 'desc'),
-        limit(1)
-      );
-
-      const querySnapshot = await getDocs(attendanceQuery);
-      const lastRecord = querySnapshot.docs[0];
-
-      if (lastRecord && !lastRecord.data().checkOutTime) {
-        // Handle Check-out
-        await updateDoc(doc(db, 'shops', shopId, 'attendance', lastRecord.id), {
-          checkOutTime: Timestamp.now(),
-          checkoutMethod: 'QR',
-        });
-        toast({ title: 'Check-out Successful!', description: 'Have a great day!' });
-      } else {
-        // Handle Check-in
-        const shopConfigRef = doc(db, 'shops', shopId, 'config', 'main');
-        const shopConfigSnap = await getDoc(shopConfigRef);
-        const settings = shopConfigSnap.exists() ? shopConfigSnap.data() : {};
-        const gamificationSettings = {
-          gracePeriodMinutes: 5,
-          lateCategory1Minutes: 10,
-          lateCategory2Minutes: 30,
-          lateCategory3Minutes: 60,
-          absentMinutes: 60,
-          ...(settings.gamification || {}),
-        };
-
-        const businessHours = settings.businessHours || {};
-        const todayKey = new Date().toLocaleString('en-us', { weekday: 'long' }).toLowerCase();
-        const shiftStartTimeString = businessHours[todayKey]?.startTime || '09:30';
-
-        const now = new Date();
-        const [hours, minutes] = shiftStartTimeString.split(':').map((v: string) => parseInt(v, 10));
-        const shiftStart = setSeconds(setMinutes(setHours(startOfDay(now), hours), minutes), 0);
-
-        let attendanceStatus = 'On-time';
-
-        const timeDiffMinutes = (now.getTime() - shiftStart.getTime()) / (1000 * 60);
-
-        if (timeDiffMinutes > gamificationSettings.gracePeriodMinutes) {
-          if (timeDiffMinutes <= gamificationSettings.lateCategory1Minutes) {
-            attendanceStatus = 'Late Category 1';
-          } else if (timeDiffMinutes <= gamificationSettings.lateCategory2Minutes) {
-            attendanceStatus = 'Late Category 2';
-          } else if (timeDiffMinutes <= gamificationSettings.lateCategory3Minutes) {
-            attendanceStatus = 'Late Category 3';
-          } else {
-            attendanceStatus = 'Absent';
-          }
-        }
-        
-        await addDoc(collection(db, 'shops', shopId, 'attendance'), {
-            userId: userProfile.uid,
-            userName: userProfile.name,
-            shopId: shopId,
-            checkInTime: Timestamp.now(),
-            status: attendanceStatus,
-            checkOutTime: null,
-            method: 'QR',
-        });
-        
-        toast({ title: 'Check-in Successful!', description: `You have been marked as ${attendanceStatus}.` });
-      }
-
-      setStatus('success');
-      setTimeout(() => setStatus('idle'), 2000);
-    } catch (e: any) {
-      console.error(e);
-      toast({ title: 'Attendance Failed', description: e.message, variant: 'destructive' });
+    // First verify location
+    toast({ title: 'Verifying location...' });
+    if (!shopData || typeof shopData.latitude !== 'number' || typeof shopData.longitude !== 'number') {
+      toast({ variant: 'destructive', title: 'Setup Error', description: 'Shop location is not configured.' });
       setStatus('error');
       setTimeout(() => setStatus('idle'), 3000);
+      return;
     }
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const distance = getDistance(pos.coords.latitude, pos.coords.longitude, Number(shopData.latitude!), Number(shopData.longitude!));
+          if (distance > 100) {
+              toast({ variant: 'destructive', title: 'Location Mismatch', description: `You are ${Math.round(distance)}m away from the shop.` });
+              setStatus('error');
+              setTimeout(() => setStatus('idle'), 3000);
+              return;
+          }
+
+          // Location verified, proceed with attendance logic
+          const data = url.split(';').reduce((acc, part) => {
+              const [key, value] = part.split('=');
+              if (key && value) {
+                acc[key] = value;
+              }
+              return acc;
+          }, {} as Record<string, string>);
+
+          const { shopId } = data;
+
+          if (!shopId) {
+            throw new Error('Invalid QR code: Missing shop ID.');
+          }
+          if (shopId !== userProfile.shopId) {
+            throw new Error('This QR code is for a different shop.');
+          }
+          
+          const todayStart = startOfDay(new Date());
+          const todayEnd = endOfDay(new Date());
+
+          const attendanceQuery = query(
+            collection(db, 'shops', shopId, 'attendance'),
+            where('userId', '==', userProfile.uid),
+            where('checkInTime', '>=', todayStart),
+            where('checkInTime', '<=', todayEnd),
+            orderBy('checkInTime', 'desc'),
+            limit(1)
+          );
+
+          const querySnapshot = await getDocs(attendanceQuery);
+          const lastRecord = querySnapshot.docs[0];
+
+          if (lastRecord && !lastRecord.data().checkOutTime) {
+            // Handle Check-out
+            await updateDoc(doc(db, 'shops', shopId, 'attendance', lastRecord.id), {
+              checkOutTime: Timestamp.now(),
+              checkoutMethod: 'QR',
+            });
+            toast({ title: 'Check-out Successful!', description: 'Have a great day!' });
+          } else {
+            // Handle Check-in
+            const shopConfigRef = doc(db, 'shops', shopId, 'config', 'main');
+            const shopConfigSnap = await getDoc(shopConfigRef);
+            const settings = shopConfigSnap.exists() ? shopConfigSnap.data() : {};
+            const gamificationSettings = {
+              gracePeriodMinutes: 5,
+              lateCategory1Minutes: 10,
+              lateCategory2Minutes: 30,
+              lateCategory3Minutes: 60,
+              absentMinutes: 60,
+              ...(settings.gamification || {}),
+            };
+
+            const businessHours = settings.businessHours || {};
+            const todayKey = new Date().toLocaleString('en-us', { weekday: 'long' }).toLowerCase();
+            const shiftStartTimeString = businessHours[todayKey]?.startTime || '09:30';
+
+            const now = new Date();
+            const [hours, minutes] = shiftStartTimeString.split(':').map((v: string) => parseInt(v, 10));
+            const shiftStart = setSeconds(setMinutes(setHours(startOfDay(now), hours), minutes), 0);
+
+            let attendanceStatus = 'On-time';
+
+            const timeDiffMinutes = (now.getTime() - shiftStart.getTime()) / (1000 * 60);
+
+            if (timeDiffMinutes > gamificationSettings.gracePeriodMinutes) {
+              if (timeDiffMinutes <= gamificationSettings.lateCategory1Minutes) {
+                attendanceStatus = 'Late Category 1';
+              } else if (timeDiffMinutes <= gamificationSettings.lateCategory2Minutes) {
+                attendanceStatus = 'Late Category 2';
+              } else if (timeDiffMinutes <= gamificationSettings.lateCategory3Minutes) {
+                attendanceStatus = 'Late Category 3';
+              } else {
+                attendanceStatus = 'Absent';
+              }
+            }
+            
+            await addDoc(collection(db, 'shops', shopId, 'attendance'), {
+                userId: userProfile.uid,
+                userName: userProfile.name,
+                shopId: shopId,
+                checkInTime: Timestamp.now(),
+                status: attendanceStatus,
+                checkOutTime: null,
+                method: 'QR',
+            });
+            
+            toast({ title: 'Check-in Successful!', description: `You have been marked as ${attendanceStatus}.` });
+          }
+
+          setStatus('success');
+          setTimeout(() => setStatus('idle'), 2000);
+        } catch (e: any) {
+          console.error(e);
+          toast({ title: 'Attendance Failed', description: e.message, variant: 'destructive' });
+          setStatus('error');
+          setTimeout(() => setStatus('idle'), 3000);
+        }
+      },
+      (err) => {
+        console.error('Geolocation error', err);
+        toast({ variant: 'destructive', title: 'Location Error', description: 'Could not get your location. Please enable location services.' });
+        setStatus('error');
+        setTimeout(() => setStatus('idle'), 3000);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
   };
   
   if (hasCameraPermission === null) {
@@ -267,7 +327,7 @@ export default function QRScannerPage() {
                 {status === 'error' && <AlertTriangle className="h-16 w-16 text-destructive" />}
                 <p className="font-semibold text-lg">{
                     status === 'idle' ? 'Ready to Scan'
-                    : status === 'processing' ? 'Processing...'
+                    : status === 'processing' ? 'Verifying...'
                     : status === 'success' ? 'Success!'
                     : status === 'error' ? 'Scan Failed'
                     : 'Scanning...'

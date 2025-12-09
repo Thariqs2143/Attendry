@@ -18,6 +18,7 @@ import {
   orderBy,
   Timestamp,
   addDoc,
+  setDoc,
 } from 'firebase/firestore';
 import { setHours, setMinutes, setSeconds, startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -319,7 +320,7 @@ export default function FaceAttendancePage(): JSX.Element {
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         try {
-          const distance = getDistance(pos.coords.latitude, pos.coords.longitude, shopData.latitude!, shopData.longitude!);
+          const distance = getDistance(pos.coords.latitude, pos.coords.longitude, Number(shopData.latitude!), Number(shopData.longitude!));
           if (distance > 100) {
             toast({ variant: 'destructive', title: 'Location Mismatch', description: `You are ${Math.round(distance)}m away from the shop.` });
             setStatus('idle');
