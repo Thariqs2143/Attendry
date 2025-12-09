@@ -143,7 +143,6 @@ export default function ProfilePage() {
           checkPermissions();
       } catch (error) {
           toast({ title: "Location access was denied.", variant: "destructive" });
-          checkPermissions();
       }
   };
 
