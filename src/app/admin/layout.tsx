@@ -61,7 +61,7 @@ export default function AdminLayout({ children }: PropsWithChildren) {
   const logoSrc = mounted && currentTheme === 'dark' ? '/header-logo-dark.png' : '/header-logo-light.png';
 
   const isAuthPage =
-    pathname === '/login' ||
+    pathname.startsWith('/login') ||
     pathname.startsWith('/admin/login') ||
     pathname.startsWith('/admin/signup') ||
     pathname === '/admin/complete-profile';
